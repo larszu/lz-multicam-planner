@@ -158,11 +158,13 @@ MultiCam Planner is designed for quick, intuitive camera planning with essential
   same id. The
   Cable Planner uses it to recognise a project it has seen before.
 - **Camera list for the Cable Planner** (`*.cameras.json`, format `camera-list`
-  v2): every placed camera with manufacturer, model, device-type GUID, position
-  and height, the active mount, the set focal length, an engaged extender and
-  the lens (manufacturer, model, zoom range, mount). A field MultiCam does not
-  know stays out — no default that would read like a measurement over there.
-  v1 files are still read. The `.avplan` export carries the same list inside
+  v3): every placed camera with manufacturer, model, device-type GUID, position
+  and height, pan and tilt, the active mount, the set focal length, an engaged
+  extender, the lens (manufacturer, model, zoom range, mount) and its saved PTZ
+  presets (number, shot, segment, pan, tilt, focal length, focus, saved at).
+  A field MultiCam does not know stays out — no default that would read like a
+  measurement over there. v1 and v2 files are still read; a reader that only
+  knows v2 refuses a v3 file by name instead of silently dropping the presets. The `.avplan` export carries the same list inside
   MultiCam's own slot (`domains.cameras.cameraList`), so the Cable Planner
   does not need to know MultiCam's project format; it is rebuilt on every
   export and dropped on import.

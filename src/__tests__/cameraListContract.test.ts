@@ -1,5 +1,5 @@
 // ───────────────────────────────────────────────────────────────────────────
-// Drift-Guard fuer das Kamera-Listen-Format `camera-list` v2 (liest v1).
+// Drift-Guard fuer das Kamera-Listen-Format `camera-list` v3 (liest v1, v2).
 //
 // Das Format ist in ZWEI Apps dupliziert: multicam-planner schreibt
 // (src/utils/cameraExport.ts), cable-planner liest (src/renderer/lib/
@@ -33,16 +33,18 @@ import {
   type CameraListEntry,
   type CameraListExchange,
   type CameraListLens,
+  type CameraListPreset,
 } from '../utils/cameraExport';
 import type { VenueCamera, Camera, Lens } from '../types';
 
 // Eingefrorener Contract — MUSS in beiden Repos identisch sein.
 const CONTRACT = {
   kind: 'camera-list',
-  version: 2,
+  version: 3,
   envelopeKeys: ['app', 'appVersion', 'cameras', 'exportedAt', 'formatVersion', 'kind', 'projectId'],
-  entryKeys: ['deviceTypeId', 'extender', 'focalMm', 'id', 'label', 'lens', 'manufacturer', 'model', 'mount', 'x', 'y', 'z'],
+  entryKeys: ['deviceTypeId', 'extender', 'focalMm', 'id', 'label', 'lens', 'manufacturer', 'model', 'mount', 'pan', 'presets', 'tilt', 'x', 'y', 'z'],
   lensKeys: ['focalMaxMm', 'focalMinMm', 'manufacturer', 'model', 'mount'],
+  presetKeys: ['focalMm', 'focusM', 'name', 'number', 'pan', 'savedAt', 'segment', 'tilt'],
 } as const;
 
 // Voll besetzter Muster-Eintrag (jedes Feld gesetzt). Er haelt die Laufzeit-
@@ -54,6 +56,16 @@ const lens: CameraListLens = {
   focalMinMm: 7.8,
   focalMaxMm: 187,
   mount: 'B4',
+};
+const preset: CameraListPreset = {
+  number: 3,
+  name: 'Pult',
+  segment: 'Begrüßung',
+  pan: 12.5,
+  tilt: -4,
+  focalMm: 85,
+  focusM: 9.2,
+  savedAt: '2026-09-06T10:00:00.000Z',
 };
 const entry: CameraListEntry = {
   id: 'vc1',
@@ -68,6 +80,9 @@ const entry: CameraListEntry = {
   focalMm: 50,
   extender: 2,
   lens,
+  pan: 180,
+  tilt: -3,
+  presets: [preset],
 };
 const exchange: CameraListExchange = {
   kind: CAMERA_LIST_KIND,
@@ -99,6 +114,10 @@ describe('camera-list Wire-Contract (Drift-Guard)', () => {
     expect(sortedKeys(lens)).toEqual(CONTRACT.lensKeys);
   });
 
+  it('Feld-Namen des Presets sind eingefroren', () => {
+    expect(sortedKeys(preset)).toEqual(CONTRACT.presetKeys);
+  });
+
   it('fängt auch ein neu hinzugefügtes OPTIONALES Feld', () => {
     // Die Muster-Literale oben wuerden das nicht tun. Hier gegen den
     // Interface-Rumpf im Quelltext — dieselbe Pruefung wie im cable-planner,
@@ -106,6 +125,7 @@ describe('camera-list Wire-Contract (Drift-Guard)', () => {
     expect(interfaceKeys(cameraExportSrc, 'CameraListEntry')).toEqual(CONTRACT.entryKeys);
     expect(interfaceKeys(cameraExportSrc, 'CameraListExchange')).toEqual(CONTRACT.envelopeKeys);
     expect(interfaceKeys(cameraExportSrc, 'CameraListLens')).toEqual(CONTRACT.lensKeys);
+    expect(interfaceKeys(cameraExportSrc, 'CameraListPreset')).toEqual(CONTRACT.presetKeys);
   });
 
   it('der ECHTE Exporter schreibt genau den eingefrorenen Envelope', () => {
@@ -116,6 +136,14 @@ describe('camera-list Wire-Contract (Drift-Guard)', () => {
       {
         id: 'vc1', cameraId: 'cam-a', lensId: 'lens-a', label: 'Kamera 1',
         x: 3.5, y: 7.25, z: 1.8, activeMount: 'B4', focalLength: 50, extenderActive: 2,
+        pan: 180, tilt: -3,
+        presets: [
+          {
+            id: 'p3', number: 3, name: 'Pult', segment: 'Begrüßung', pan: 12.5, tilt: -4,
+            focalLength: 85, focusDistance: 9.2, savedAt: '2026-09-06T10:00:00.000Z',
+            savedAtPosition: { x: 3.5, y: 7.25, z: 1.8 },
+          },
+        ],
       },
     ] as unknown as VenueCamera[];
     const lib = {
@@ -140,6 +168,9 @@ describe('camera-list Wire-Contract (Drift-Guard)', () => {
     expect(sortedKeys(out)).toEqual(CONTRACT.envelopeKeys);
     expect(sortedKeys(out.cameras[0])).toEqual(CONTRACT.entryKeys);
     expect(sortedKeys(out.cameras[0].lens!)).toEqual(CONTRACT.lensKeys);
+    // Der Stand des Speicherns bleibt in MultiCam: er ist die Frage „hat
+    // sich die Kamera seither bewegt?", und die beantwortet MultiCam selbst.
+    expect(sortedKeys(out.cameras[0].presets![0])).toEqual(CONTRACT.presetKeys);
     expect(out).toEqual(exchange);
   });
 
@@ -154,6 +185,13 @@ describe('camera-list Wire-Contract (Drift-Guard)', () => {
     const back = parseCameraList(JSON.stringify(v1));
     expect(back.formatVersion).toBe(1);
     expect(back.cameras[0].model).toBe('PMW-F55');
+  });
+
+  it('v2 wird weiter gelesen', () => {
+    const { pan: _p, tilt: _t, presets: _ps, ...v2Eintrag } = entry;
+    const back = parseCameraList(JSON.stringify({ ...exchange, formatVersion: 2, cameras: [v2Eintrag] }));
+    expect(back.formatVersion).toBe(2);
+    expect(back.cameras[0].presets).toBeUndefined();
   });
 
   it('parse lehnt fremdes Format und fremde Version ab', () => {
@@ -349,5 +387,34 @@ describe('camera-list v2 — Optik und Höhe', () => {
       // Und was fehlt, laesst den Parser nicht scheitern: die Rundreise haelt.
       expect(() => parseCameraList(JSON.stringify(out))).not.toThrow();
     });
+  });
+});
+
+describe('camera-list v3: ein Preset ist nachstellbar oder die Datei lädt nicht', () => {
+  const mitPreset = (p: Record<string, unknown>) =>
+    JSON.stringify({ ...exchange, cameras: [{ ...entry, presets: [{ ...preset, ...p }] }] });
+
+  it('nimmt ein vollständiges Preset an', () => {
+    expect(parseCameraList(JSON.stringify(exchange)).cameras[0].presets![0].name).toBe('Pult');
+  });
+
+  it('lehnt Nummer, Brennweite und Fokus ab, die es nicht gibt', () => {
+    expect(() => parseCameraList(mitPreset({ number: -1 }))).toThrow(/number/);
+    expect(() => parseCameraList(mitPreset({ number: 2.5 }))).toThrow(/number/);
+    expect(() => parseCameraList(mitPreset({ focalMm: 0 }))).toThrow(/focalMm/);
+    expect(() => parseCameraList(mitPreset({ focusM: -1 }))).toThrow(/focusM/);
+    expect(() => parseCameraList(mitPreset({ pan: 'links' }))).toThrow(/pan/);
+  });
+
+  it('verlangt Ausrichtung, Optik und Stand', () => {
+    for (const feld of ['pan', 'tilt', 'focalMm', 'focusM', 'savedAt']) {
+      expect(() => parseCameraList(mitPreset({ [feld]: undefined })), feld).toThrow(new RegExp(feld));
+    }
+  });
+
+  it('presets ist eine Liste', () => {
+    expect(() =>
+      parseCameraList(JSON.stringify({ ...exchange, cameras: [{ ...entry, presets: { 3: preset } }] })),
+    ).toThrow(/presets/);
   });
 });

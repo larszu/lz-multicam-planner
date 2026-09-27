@@ -1,5 +1,5 @@
 // ───────────────────────────────────────────────────────────────────────────
-// Kamera-Liste (`camera-list` v2, liest v1 und v2)
+// Kamera-Liste (`camera-list` v3, liest v1 bis v3)
 //
 // Neutrales Format, um in MultiCam platzierte Kameras an den Cable-Planner zu
 // uebergeben: dort werden sie zu Equipment-Nodes (Kategorie "Kameras"), die man
@@ -13,14 +13,38 @@
 // Angabe bleibt aus, keine Vorgabe, die drueben wie eine Messung aussaehe.
 // v1 ist die Teilmenge ohne diese Felder und wird weiter gelesen.
 //
+// v3 (2026-09-27) traegt die AUSRICHTUNG der Kamera (`pan`, `tilt` in Grad,
+// MultiCams Konvention: Pan 0 = nach rechts im Grundriss, Tilt negativ =
+// nach unten) und ihre gespeicherten PTZ-PRESETS (Bedarf 14). Der Grund ist
+// die Uebergabe einer Festinstallation: das Kamera-Positionsblatt entsteht im
+// Cable-Planner, und ein Preset, das nur im Kamerakopf lebt, ist nach dem
+// ersten Tausch weg. Ein Preset wird mit dem Stand exportiert, an dem es
+// gespeichert wurde — nicht mit den heutigen Werten der Kamera.
+//
+// Ein Versionssprung und kein stilles Zusatzfeld, weil der Vertrag das so
+// verlangt (`__tests__/cameraListContract.test.ts`): ein Leser, der v3 nicht
+// kennt, lehnt die Datei benannt ab, statt die Presets still zu verlieren.
+//
 // Schema-identisch zum Cable-Planner (src/renderer/lib/multicamCameraImport.ts).
 // Reine Daten, headless testbar.
 // ───────────────────────────────────────────────────────────────────────────
 import type { VenueCamera, Camera, Lens } from '../types';
 
 export const CAMERA_LIST_KIND = 'camera-list' as const;
-export const CAMERA_LIST_VERSION = 2 as const;
-export const CAMERA_LIST_READABLE_VERSIONS: readonly number[] = [1, 2];
+export const CAMERA_LIST_VERSION = 3 as const;
+export const CAMERA_LIST_READABLE_VERSIONS: readonly number[] = [1, 2, 3];
+
+/** Ein gespeichertes PTZ-Preset, wie es in die Liste geht (v3). */
+export interface CameraListPreset {
+  number: number; // Preset-Nummer im Geraet, ganze Zahl >= 0
+  name: string; // benannter Shot, darf leer sein
+  segment?: string;
+  pan: number; // Grad
+  tilt: number; // Grad
+  focalMm: number; // endlich > 0
+  focusM: number; // endlich >= 0
+  savedAt: string; // ISO — wann das Preset gespeichert wurde
+}
 
 /** Das Objektiv an einer Kamera, wie der Katalog es beschreibt. */
 export interface CameraListLens {
@@ -47,10 +71,13 @@ export interface CameraListEntry {
   focalMm?: number; // eingestellte Brennweite, endlich > 0
   extender?: number; // tatsaechlich eingeschalteter Extender-Faktor; fehlt bei keinem/1
   lens?: CameraListLens;
+  pan?: number; // v3: Grad, 0 = nach rechts im Grundriss
+  tilt?: number; // v3: Grad, negativ = nach unten
+  presets?: CameraListPreset[]; // v3: nach Nummer sortiert
 }
 export interface CameraListExchange {
   kind: typeof CAMERA_LIST_KIND;
-  formatVersion: 1 | 2;
+  formatVersion: 1 | 2 | 3;
   app: string;
   appVersion: string;
   exportedAt: string;
@@ -72,6 +99,25 @@ const positiv = (v: unknown): number | undefined => {
  *  Speicher weiterreicht (der .avplan-Slot), sieht sonst Schluessel ohne Wert. */
 function nurBekannt<T extends object>(o: T): T {
   return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
+}
+
+/** Die Presets der Kamera, nach Nummer — oder nichts, wenn sie keine hat. */
+function presetsVon(c: VenueCamera): CameraListPreset[] | undefined {
+  const liste = [...(c.presets ?? [])]
+    .sort((a, b) => a.number - b.number)
+    .map((p) =>
+      nurBekannt<CameraListPreset>({
+        number: p.number,
+        name: p.name,
+        segment: text(p.segment),
+        pan: p.pan,
+        tilt: p.tilt,
+        focalMm: p.focalLength,
+        focusM: p.focusDistance,
+        savedAt: p.savedAt,
+      }),
+    );
+  return liste.length > 0 ? liste : undefined;
 }
 
 function objektiv(lens: Lens | undefined): CameraListLens | undefined {
@@ -116,6 +162,9 @@ export function toCameraList(
         focalMm: positiv(c.focalLength),
         extender: extender !== undefined && extender !== 1 ? extender : undefined,
         lens: objektiv(resolveLens(c.lensId)),
+        pan: zahl(c.pan),
+        tilt: zahl(c.tilt),
+        presets: presetsVon(c),
       });
     }),
   });
@@ -171,7 +220,37 @@ function pruefeEintrag(roh: unknown, index: number): CameraListEntry {
     pruefeText(l, ['manufacturer', 'model', 'mount'], `${wo}, Objektiv`);
     pruefePositiv(l, ['focalMinMm', 'focalMaxMm'], `${wo}, Objektiv`);
   }
+  pruefeZahl(e, ['pan', 'tilt'], wo);
+  if (e.presets !== undefined) {
+    if (!Array.isArray(e.presets)) throw new Error(`${wo}: Feld „presets" ist keine Liste.`);
+    e.presets.forEach((p, i) => pruefePreset(p, `${wo}, Preset #${i + 1}`));
+  }
   return roh as CameraListEntry;
+}
+
+/**
+ * Ein Preset ist nur nachstellbar, wenn Nummer, Ausrichtung, Brennweite und
+ * Fokus da sind. Eines ohne sie waere am Pult eine Taste, die irgendwohin
+ * faehrt — deshalb sind sie Pflicht, und nur Name und Segment duerfen fehlen
+ * bzw. leer sein.
+ */
+function pruefePreset(roh: unknown, wo: string): void {
+  if (!roh || typeof roh !== 'object' || Array.isArray(roh)) throw new Error(`${wo}: kein Objekt.`);
+  const p = roh as Record<string, unknown>;
+  if (!Number.isInteger(p.number) || (p.number as number) < 0) {
+    throw new Error(`${wo}: Feld „number" ist keine ganze Zahl ab 0.`);
+  }
+  if (typeof p.name !== 'string') throw new Error(`${wo}: Feld „name" ist kein Text.`);
+  if (typeof p.savedAt !== 'string' || p.savedAt.trim() === '') {
+    throw new Error(`${wo}: Feld „savedAt" fehlt.`);
+  }
+  for (const feld of ['pan', 'tilt', 'focalMm', 'focusM'] as const) {
+    if (p[feld] === undefined) throw new Error(`${wo}: Feld „${feld}" fehlt.`);
+  }
+  pruefeText(p, ['segment'], wo);
+  pruefeZahl(p, ['pan', 'tilt', 'focusM'], wo);
+  pruefePositiv(p, ['focalMm'], wo);
+  if ((p.focusM as number) < 0) throw new Error(`${wo}: Feld „focusM" ist kleiner als 0.`);
 }
 
 function pruefeText(o: Record<string, unknown>, felder: string[], wo: string): void {
