@@ -1,5 +1,5 @@
 import type { Lens } from '../types';
-import { libraryLenses } from '../library/registry';
+import { libraryLenses } from '../library/registry.ts';
 
 export const LENSES: Lens[] = [
   // ══════════════════════════════════════════════

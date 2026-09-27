@@ -201,3 +201,44 @@ describe('eigene Kameras/Optiken im Projekt — über den Store', () => {
     expect(b.useStore.getState().customCameras.map((c) => c.id)).toEqual([a.kameraId]);
   });
 });
+
+// ── Eintraege der Geraetebibliothek im Projekt ──────────────────────────────
+
+describe('Bibliothekseintraege im Projekt — über den Store', () => {
+  beforeEach(() => {
+    for (const key of Object.keys(speicher)) delete speicher[key];
+    vi.resetModules();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => speicher[key] ?? null,
+      setItem: (key: string, value: string) => { speicher[key] = value; },
+      removeItem: (key: string) => { delete speicher[key]; },
+    });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const bibKamera = eigeneKamera({ id: 'devlib-eigenbau-testkamera', model: 'Aus der Bibliothek' });
+
+  it('reisen in der .mcplan mit und rechnen auf Rechner B ohne Bibliothek — ohne dessen Cache zu fuellen', async () => {
+    const a = await laden();
+    const reg = await import('../library/registry');
+    reg.setLibraryCatalog({ cameras: [bibKamera], lenses: [] });
+    a.useStore.getState().addCamera();
+    const id = a.useStore.getState().cameras[0].id;
+    a.useStore.getState().updateCamera(id, { cameraId: bibKamera.id });
+    const datei = JSON.parse(JSON.stringify(a.buildProjectFile(a.useStore.getState()))) as ProjectFile;
+    expect(datei.libraryCameras?.map((c) => c.id)).toEqual([bibKamera.id]);
+    expect(datei.customCameras).toBeUndefined();
+
+    for (const key of Object.keys(speicher)) delete speicher[key];
+    vi.resetModules();
+    const b = await laden();
+    b.useStore.getState().applyProjectFile(datei);
+    expect(b.getCameraById(bibKamera.id, b.useStore.getState().customCameras)?.model).toBe('Aus der Bibliothek');
+    expect(b.useStore.getState().customCameras).toEqual([]);
+    expect(speicher['multicam-device-library-cache']).toBeUndefined();
+
+    // Das naechste Projekt bringt sie nicht mehr mit.
+    b.useStore.getState().newProject();
+    expect(b.getCameraById(bibKamera.id)).toBeUndefined();
+  });
+});

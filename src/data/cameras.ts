@@ -1,5 +1,5 @@
 import type { Camera, SensorSize, AdapterInfo, Lens } from '../types';
-import { libraryCameras } from '../library/registry';
+import { libraryCameras } from '../library/registry.ts';
 
 // ── Standard sensor sizes ──
 export const SENSORS: Record<string, SensorSize> = {

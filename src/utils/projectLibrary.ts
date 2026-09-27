@@ -24,6 +24,8 @@ import type { Camera, Lens, VenueCamera } from '../types';
 export interface ProjectLibrary {
   customCameras?: Camera[];
   customLenses?: Lens[];
+  libraryCameras?: Camera[];
+  libraryLenses?: Lens[];
 }
 
 /** Die eigenen Kameras und Optiken, die platzierte Kameras benutzen. Leere
@@ -32,15 +34,48 @@ export function pickProjectLibrary(
   cameras: VenueCamera[],
   customCameras: Camera[],
   customLenses: Lens[],
+  library: { cameras: readonly Camera[]; lenses: readonly Lens[] } = { cameras: [], lenses: [] },
 ): ProjectLibrary {
   const kameraIds = new Set(cameras.map((c) => c.cameraId));
   const optikIds = new Set(cameras.map((c) => c.lensId));
   const benutzteKameras = customCameras.filter((c) => kameraIds.has(c.id));
   const benutzteOptiken = customLenses.filter((l) => optikIds.has(l.id));
+  // Bibliothekseintraege nur, wo keine eigene Kopie (gleiche Id) sie verdeckt:
+  // mit der rechnet das Projekt, und die reist schon oben mit.
+  const eigenK = new Set(customCameras.map((c) => c.id));
+  const eigenO = new Set(customLenses.map((l) => l.id));
+  const bibKameras = library.cameras.filter((c) => kameraIds.has(c.id) && !eigenK.has(c.id));
+  const bibOptiken = library.lenses.filter((l) => optikIds.has(l.id) && !eigenO.has(l.id));
   return {
     ...(benutzteKameras.length > 0 ? { customCameras: benutzteKameras } : {}),
     ...(benutzteOptiken.length > 0 ? { customLenses: benutzteOptiken } : {}),
+    ...(bibKameras.length > 0 ? { libraryCameras: bibKameras } : {}),
+    ...(bibOptiken.length > 0 ? { libraryLenses: bibOptiken } : {}),
   };
+}
+
+/**
+ * Die mitgebrachten Bibliothekseintraege einer Projektdatei, geprueft wie
+ * eigene. Nur Ids der Bibliothek (`devlib-`): eine Datei soll auf diesem Weg
+ * keine eingebaute oder eigene Kamera ersetzen koennen.
+ */
+export function readCarriedLibrary(file: { libraryCameras?: unknown; libraryLenses?: unknown }): {
+  cameras: Camera[];
+  lenses: Lens[];
+  invalid: number;
+} {
+  let invalid = 0;
+  const nimm = <T extends { id: string }>(liste: unknown, gueltig: (v: unknown) => v is T): T[] => {
+    if (!Array.isArray(liste)) return [];
+    return liste.filter((v): v is T => {
+      const ok = gueltig(v) && v.id.startsWith('devlib-');
+      if (!ok) invalid += 1;
+      return ok;
+    });
+  };
+  const cameras = nimm(file.libraryCameras, istKamera);
+  const lenses = nimm(file.libraryLenses, istOptik);
+  return { cameras, lenses, invalid };
 }
 
 export interface LibraryMerge {

@@ -1,7 +1,7 @@
 // ───────────────────────────────────────────────────────────────────────────
 // Das multicam-Facet der Geraetebibliothek (devices.zumpelars.de).
 //
-// FORMAT — beim Einreichen und beim Import dasselbe:
+// FORMAT — beim Hochladen und beim Import dasselbe:
 //
 //   { kind: 'camera', version: 1, camera: <Camera ohne id> }
 //   { kind: 'lens',   version: 1, lens:   <Lens ohne id und isCustom> }
@@ -26,7 +26,7 @@
 // ───────────────────────────────────────────────────────────────────────────
 import type { Camera, Lens } from '../types';
 import type { ProposalCore, SyncDevice } from '../utils/deviceLibraryClient';
-import { istKamera, istOptik } from '../utils/projectLibrary';
+import { istKamera, istOptik } from '../utils/projectLibrary.ts';
 
 export const FACET_VERSION = 1;
 export const LIBRARY_ID_PREFIX = 'devlib-';
@@ -55,17 +55,21 @@ export function lensToFacet(lens: Lens): MulticamFacet {
   return { kind: 'lens', version: FACET_VERSION, lens: ohneLeeres(rest) };
 }
 
-/** Der gemeinsame Kern eines Vorschlags. Der Datenblattlink ist Pflicht —
- *  ohne ihn lehnt der Server ab; vorbelegt wird er mit `manufacturerUrl`. */
+/** Der gemeinsame Kern eines Uploads. Der Datenblattlink ist Pflicht — ohne
+ *  ihn blockiert der Server; er kommt aus `manufacturerUrl`. */
 export function proposalCore(item: LibraryItem, sourceUrl: string): ProposalCore {
   const entry = item.kind === 'camera' ? item.camera : item.lens;
-  return {
+  const core: ProposalCore = {
     manufacturer: entry.manufacturer.trim(),
     model: entry.model.trim(),
     category: item.kind === 'camera' ? 'Camera' : 'Lens',
     sourceUrl: sourceUrl.trim(),
     ...(entry.notes ? { description: entry.notes } : {}),
   };
+  // Ohne Link kein leeres Feld: der Server meldet dann `no-source`, und das
+  // ist die Auskunft, die der Nutzer braucht.
+  if (!core.sourceUrl) delete (core as Partial<ProposalCore>).sourceUrl;
+  return core;
 }
 
 const istObjekt = (v: unknown): v is Record<string, unknown> =>

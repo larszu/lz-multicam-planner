@@ -4,6 +4,7 @@ import { format, useTranslation } from '../../i18n';
 import { deviceUrl } from '../../utils/deviceLibraryClient';
 import { useDeviceLibrary } from '../../library/store';
 import { isLibraryId } from '../../library/facet';
+import { isCarriedByProject } from '../../library/registry';
 import type { LibraryEntry } from '../../library/sync';
 
 export default function LibraryBadge({ id }: { id: string | undefined }) {
@@ -12,7 +13,15 @@ export default function LibraryBadge({ id }: { id: string | undefined }) {
   const entry = useDeviceLibrary((s) =>
     isLibraryId(id) ? s.cache.entries.find((e) => (e.kind === 'camera' ? e.camera.id : e.lens.id) === id) : undefined,
   );
-  if (!entry) return null;
+  if (!entry) {
+    // Aus der Projektdatei, nicht aus dem eigenen Abgleich: rechnet mit dem
+    // Stand, den der Absender hatte.
+    return id && isLibraryId(id) && isCarriedByProject(id) ? (
+      <div className="mt-0.5 text-[11px] text-bc-muted">
+        {t('library.badge.carried', 'Device library entry carried in the project file — not in your synced library.')}
+      </div>
+    ) : null;
+  }
 
   const STATUS: Record<LibraryEntry['status'], string> = {
     verified: t('library.status.verified', 'verified'),

@@ -11,7 +11,9 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [master]
+    # Seit 2026-09-23 ist `main` der Default-Branch; hier stand bis dahin
+    # `master`, und ein Push auf den Default lief ohne Pruefung.
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -37,6 +39,13 @@ jobs:
         run: npm test
       - name: Build (inkl. Type-Check)
         run: npm run build
+
+      # Der Katalog-Upload (`library-publish.yml`) liest die .ts-Dateien mit
+      # Node-Type-Stripping; ein Wert-Import ohne `.ts`-Endung braeche ihn
+      # erst beim Veroeffentlichen — und nur dort, wo das Secret gesetzt ist.
+      # Der Trockenlauf braucht keinen Schluessel und faellt hier auf.
+      - name: Katalog-Upload laesst sich laden (Trockenlauf)
+        run: npm run library:publish -- --dry-run
 
       # Beide Dokumente unter docs/ waren bis 2026-09-04 von keiner
       # Einstiegsseite aus verlinkt. Ein Dokument, das nur findet, wer den
