@@ -11,6 +11,7 @@ import {
 import { useDeviceLibrary } from '../../library/store';
 import LibraryErrorLine from '../Library/LibraryErrorLine';
 import { usesKeychain } from '../../library/tokenStore';
+import { uploadBucket } from '../../library/upload';
 
 const feld = 'block w-full border border-bc-border bg-bc-dark text-xs text-bc-text-bright';
 const knopf = 'border border-bc-border text-xs text-bc-text transition-colors hover:bg-bc-panel-raised disabled:opacity-50';
@@ -28,7 +29,7 @@ export default function DeviceLibrarySection() {
 
   const busy = lib.phase === 'signing-in' || lib.phase === 'checking' || lib.phase === 'syncing' || lib.phase === 'uploading';
   const records = Object.values(lib.uploads.records);
-  const zaehle = (...states: string[]) => records.filter((r) => states.includes(r.state)).length;
+  const zaehle = (bucket: ReturnType<typeof uploadBucket>) => records.filter((r) => uploadBucket(r) === bucket).length;
   const cameras = lib.cache.entries.filter((e) => e.kind === 'camera').length;
   const lenses = lib.cache.entries.length - cameras;
 
@@ -224,12 +225,12 @@ export default function DeviceLibrarySection() {
         {records.length > 0 && (
           <p className="mt-1 text-xs text-bc-muted">
             {format(
-              t('library.upload.summary', 'Own entries: {live} live or in sync, {waiting} waiting for moderation, {blocked} blocked, {failed} failed.'),
+              t('library.upload.summary', 'Own entries: {live} live, {waiting} waiting for moderation, {blocked} blocked, {failed} failed.'),
               {
-                live: zaehle('approved', 'in-sync'),
-                waiting: zaehle('created', 'edit-proposed', 'pending-updated'),
+                live: zaehle('live'),
+                waiting: zaehle('waiting'),
                 blocked: zaehle('blocked'),
-                failed: zaehle('error'),
+                failed: zaehle('failed'),
               },
             )}
           </p>

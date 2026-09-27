@@ -224,7 +224,7 @@ describe('store against a mocked server', () => {
     fetchMock
       .mockResolvedValueOnce(json({ user: { id: 'u', email: 'a@b.de', username: 'l' } }, { 'set-auth-token': 'T' }))
       .mockResolvedValueOnce(json({ planner: 'multicam', results: [
-        { localId: eigeneKamera.id, state: 'edit-proposed', slug: 'sony-pxw-fx9' },
+        { localId: eigeneKamera.id, state: 'edit-proposed', slug: 'sony-pxw-fx9', moderation: 'pending' },
         { localId: 'custom-lens-1', state: 'blocked', findings: [{ kind: 'no-source', blocking: true }] },
       ] }))
       .mockResolvedValueOnce(json(antwort(0, [])));
@@ -247,19 +247,27 @@ describe('store against a mocked server', () => {
     expect(r['custom-lens-1']).toMatchObject({ state: 'blocked', findings: ['no-source'] });
     expect(JSON.parse(speicher['multicam-device-library-uploads']).records[eigeneKamera.id].state).toBe('edit-proposed');
 
-    // … unveraendert geht automatisch nichts erneut hoch, nur der Abgleich:
+    // … automatisch geht unveraendert nur noch mit, was in der Moderation
+    // wartet (die Kamera), nicht das Blockierte — und die Freigabe kommt an:
+    fetchMock
+      .mockResolvedValueOnce(json({ results: [{ localId: eigeneKamera.id, state: 'in-sync', moderation: 'approved' }] }))
+      .mockResolvedValueOnce(json(antwort(0, [])));
+    await useDeviceLibrary.getState().syncAll();
+    expect(JSON.parse(String((fetchMock.mock.calls[3][1] as RequestInit).body)).items.map((i: { localId: string }) => i.localId)).toEqual([eigeneKamera.id]);
+    expect(useDeviceLibrary.getState().uploads.records[eigeneKamera.id]).toMatchObject({ state: 'in-sync', moderation: 'approved', slug: 'sony-pxw-fx9' });
+
+    // … danach, freigegeben und unveraendert, nur noch der Abgleich:
     fetchMock.mockResolvedValueOnce(json(antwort(0, [])));
     await useDeviceLibrary.getState().syncAll();
-    expect(fetchMock.mock.calls[3][0]).toContain('/api/sync');
+    expect(fetchMock.mock.calls[5][0]).toContain('/api/sync');
 
     // … „Sync now" schickt alles, dann erst den Abgleich.
     fetchMock
-      .mockResolvedValueOnce(json({ results: [{ localId: eigeneKamera.id, state: 'in-sync' }, { localId: 'custom-lens-1', state: 'blocked' }] }))
+      .mockResolvedValueOnce(json({ results: [{ localId: eigeneKamera.id, state: 'in-sync', moderation: 'approved' }, { localId: 'custom-lens-1', state: 'blocked' }] }))
       .mockResolvedValueOnce(json(antwort(0, [])));
     await useDeviceLibrary.getState().syncAll({ manual: true });
-    expect(fetchMock.mock.calls[4][0]).toContain('/api/upload');
-    expect(fetchMock.mock.calls[5][0]).toContain('/api/sync');
-    expect(useDeviceLibrary.getState().uploads.records[eigeneKamera.id]).toMatchObject({ state: 'in-sync', slug: 'sony-pxw-fx9' });
+    expect(fetchMock.mock.calls[6][0]).toContain('/api/upload');
+    expect(fetchMock.mock.calls[7][0]).toContain('/api/sync');
   });
 
   it('automatic upload can be switched off; manual sync still uploads', async () => {
@@ -324,7 +332,10 @@ describe('upload ledger', () => {
     const { pendingUploads, applyUploadResults, emptyLedger, hashOf, toUploadItem } = await import('../library/upload');
     const erst = pendingUploads([kamera], emptyLedger('https://s'));
     expect(erst).toHaveLength(1);
-    const ledger = applyUploadResults(emptyLedger('https://s'), erst, [{ localId: eigeneKamera.id, state: 'created', slug: 'x' }], '2026-09-27T00:00:00Z');
+    const wartend = applyUploadResults(emptyLedger('https://s'), erst, [{ localId: eigeneKamera.id, state: 'created', slug: 'x', moderation: 'pending' }], '2026-09-27T00:00:00Z');
+    // Wartet in der Moderation: geht erneut mit, damit die Freigabe ankommt.
+    expect(pendingUploads([kamera], wartend)).toHaveLength(1);
+    const ledger = applyUploadResults(wartend, erst, [{ localId: eigeneKamera.id, state: 'in-sync', moderation: 'approved' }], '2026-09-27T00:00:00Z');
     expect(pendingUploads([kamera], ledger)).toHaveLength(0);
     expect(pendingUploads([kamera], ledger, true)).toHaveLength(1);
     const umsortiert = Object.fromEntries(Object.entries(eigeneKamera).reverse()) as unknown as Camera;
@@ -334,6 +345,17 @@ describe('upload ledger', () => {
     expect(pendingUploads([kamera], fehler)).toHaveLength(1);
     expect(fehler.records[eigeneKamera.id].slug).toBe('x');
     expect(hashOf({ a: 1, b: 2 })).toBe(hashOf({ b: 2, a: 1 }));
+  });
+
+  it('display bucket follows moderation, older records fall back to the state', async () => {
+    const { uploadBucket } = await import('../library/upload');
+    const r = (state: string, moderation?: 'pending' | 'approved') => ({ hash: 'h', state, at: 'z', ...(moderation ? { moderation } : {}) }) as never;
+    expect(uploadBucket(r('in-sync', 'pending'))).toBe('waiting');
+    expect(uploadBucket(r('in-sync', 'approved'))).toBe('live');
+    expect(uploadBucket(r('created'))).toBe('waiting');
+    expect(uploadBucket(r('in-sync'))).toBe('live');
+    expect(uploadBucket(r('blocked', 'pending'))).toBe('blocked');
+    expect(uploadBucket(r('error'))).toBe('failed');
   });
 
   it('a ledger of another server is not reused; deleted entries fall out', async () => {
