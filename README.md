@@ -89,9 +89,12 @@ MultiCam Planner is designed for quick, intuitive camera planning with essential
   next version instead of a second device. *Upload own devices
   automatically* (Settings, on by default) uploads on start and a few seconds
   after a change; *Sync now* uploads everything. Unchanged entries (by hash of
-  what was sent last) are not re-sent automatically. Under the selector every
-  own entry shows its last result — waiting for moderation, live, in sync,
-  blocked (with the reason, e.g. *datasheet link missing*) or failed — and
+  what was sent last) are not re-sent automatically — except those still
+  waiting for moderation: the server reports `moderation: pending | approved`
+  with every result (also `in-sync`), so the status turns *live* once a
+  moderator approves. Under the selector every own entry shows its last
+  result — waiting for moderation, live, blocked (with the reason, e.g.
+  *datasheet link missing*) or failed — and
   *Upload…*, which asks for the datasheet link, stores it on the entry
   (`manufacturerUrl`) and uploads at once. Not signed in, it leads to the
   sign-in. Changed community guidelines (`guidelines-outdated`) have to be

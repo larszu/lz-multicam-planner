@@ -7,6 +7,10 @@ type T = (key: string, en: string) => string;
 export function uploadStateText(t: T, r: UploadRecord | undefined, changed: boolean): string {
   if (!r) return t('library.upload.none', 'Not in the device library yet.');
   if (changed) return t('library.upload.changed', 'Changed since the last upload — goes up with the next sync.');
+  if (r.state === 'in-sync' || r.state === 'approved') {
+    if (r.moderation === 'pending') return t('library.upload.inSyncPending', 'Uploaded — still waiting for moderation.');
+    if (r.moderation === 'approved') return t('library.upload.approved', 'Live in the device library.');
+  }
   const TEXT: Record<UploadState, string> = {
     created: t('library.upload.created', 'Uploaded as a new device — waiting for moderation.'),
     'edit-proposed': t('library.upload.editProposed', 'Uploaded as the next version of an existing device — waiting for moderation.'),

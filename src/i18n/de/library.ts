@@ -63,13 +63,14 @@ export const library: Record<string, string> = {
   'library.autoUpload.hint':
     'Eigene und geänderte Kameras und Objektive gehen beim Start und wenige Sekunden nach jeder Änderung hoch; die Bibliothek ordnet sie über Hersteller und Modell zu.',
   'library.upload.summary':
-    'Eigene Einträge: {live} live oder abgeglichen, {waiting} warten auf Moderation, {blocked} blockiert, {failed} fehlgeschlagen.',
+    'Eigene Einträge: {live} live, {waiting} warten auf Moderation, {blocked} blockiert, {failed} fehlgeschlagen.',
   'library.upload.none': 'Noch nicht in der Gerätebibliothek.',
   'library.upload.changed': 'Seit dem letzten Hochladen geändert — geht beim nächsten Abgleich hoch.',
   'library.upload.created': 'Als neues Gerät hochgeladen — wartet auf Moderation.',
   'library.upload.editProposed': 'Als nächste Version eines vorhandenen Geräts hochgeladen — wartet auf Moderation.',
   'library.upload.pendingUpdated': 'Der wartende Upload wurde durch diese Fassung ersetzt.',
   'library.upload.approved': 'Live in der Gerätebibliothek.',
+  'library.upload.inSyncPending': 'Hochgeladen — wartet noch auf Moderation.',
   'library.upload.inSync': 'Die Gerätebibliothek führt genau diesen Stand.',
   'library.upload.blocked': 'Von den Prüfungen der Bibliothek blockiert.',
   'library.upload.error': 'Hochladen fehlgeschlagen.',

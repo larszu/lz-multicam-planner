@@ -8,8 +8,11 @@
 // Version, statt doppelt angelegt zu werden.
 //
 // Je Eintrag merkt sich das Protokoll den Hash dessen, was zuletzt ankam.
-// Erneut geschickt wird nur, was sich seitdem geaendert hat oder mit
-// `error` endete — `blocked` mit gleichem Inhalt waere wieder blockiert. Der
+// Erneut geschickt wird nur, was sich seitdem geaendert hat, mit `error`
+// endete oder noch in der Moderation wartet — Letzteres, damit die Anzeige
+// „live" wird, sobald jemand freigegeben hat (der Server antwortet dann
+// `in-sync` mit `moderation: 'approved'`). `blocked` mit gleichem Inhalt
+// waere wieder blockiert. Der
 // Knopf „Sync now" schickt trotzdem alles (`force`): der Server antwortet bei
 // Unveraendertem mit `in-sync`, und eine inzwischen geaenderte Pruefung auf
 // dem Server wird so sichtbar.
@@ -23,6 +26,8 @@ export interface UploadRecord {
   hash: string;
   state: UploadState;
   slug?: string;
+  /** Stand in der Moderation, wie der Server ihn meldet — auch bei `in-sync`. */
+  moderation?: 'pending' | 'approved';
   at: string;
   error?: string;
   /** Warum blockiert — wie der Server es sagt (`kind` je Befund). */
@@ -74,8 +79,17 @@ export function pendingUploads(items: LibraryItem[], ledger: UploadLedger, force
   return items.map(toUploadItem).filter((u) => {
     if (force) return true;
     const r = ledger.records[u.localId];
-    return !r || r.hash !== u.hash || r.state === 'error';
+    return !r || r.hash !== u.hash || r.state === 'error' || uploadBucket(r) === 'waiting';
   });
+}
+
+/** Wohin ein Ergebnis fuer die Anzeige gehoert. Aeltere Protokolle ohne
+ *  `moderation` schliessen aus dem Zustand. */
+export function uploadBucket(r: UploadRecord): 'live' | 'waiting' | 'blocked' | 'failed' {
+  if (r.state === 'blocked') return 'blocked';
+  if (r.state === 'error') return 'failed';
+  if (r.moderation) return r.moderation === 'approved' ? 'live' : 'waiting';
+  return r.state === 'approved' || r.state === 'in-sync' ? 'live' : 'waiting';
 }
 
 const befunde = (f: unknown): string[] | undefined =>
@@ -100,6 +114,7 @@ export function applyUploadResults(
       state: r.state,
       // `in-sync` ohne Slug (unveraendert, Server nannte ihn nicht): den alten behalten.
       ...((r.slug ?? vorher?.slug) ? { slug: r.slug ?? vorher?.slug } : {}),
+      ...(r.moderation ? { moderation: r.moderation } : {}),
       at,
       ...(r.error ? { error: r.error } : {}),
       ...(befunde(r.findings)?.length ? { findings: befunde(r.findings) } : {}),
