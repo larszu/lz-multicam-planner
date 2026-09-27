@@ -919,4 +919,12 @@ export interface ProjectFile {
    */
   customCameras?: Camera[];
   customLenses?: Lens[];
+  /**
+   * Eintraege der Geraetebibliothek (`devlib-<slug>`), die platzierte Kameras
+   * benutzen. Auf einem Rechner ohne sie (kein Konto, anderer Server, Cache
+   * leer) rechnet das Projekt mit diesen; der Bibliotheks-Cache bleibt
+   * unberuehrt — siehe `library/registry.ts`.
+   */
+  libraryCameras?: Camera[];
+  libraryLenses?: Lens[];
 }

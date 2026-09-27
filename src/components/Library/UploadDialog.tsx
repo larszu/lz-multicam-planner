@@ -1,27 +1,27 @@
-// Eine eigene Kamera oder Optik der Geraetebibliothek vorschlagen. Der
-// Vorschlag geht in die Moderation; der Datenblattlink ist Pflicht, weil
-// eine Zahl ohne Beleg dort genauso wenig gilt wie hier (`specSource`).
+// Einen eigenen Eintrag sofort hochladen. Der Datenblattlink ist Pflicht und
+// wird am Eintrag selbst gespeichert (`manufacturerUrl`) — so geht er bei
+// jedem spaeteren automatischen Upload mit, statt nur dieses eine Mal.
 import { useEffect, useState } from 'react';
 import { FiX } from 'react-icons/fi';
 import { format, useTranslation } from '../../i18n';
-import { LibraryError, deviceUrl, type LibraryErrorCode } from '../../utils/deviceLibraryClient';
+import { deviceUrl } from '../../utils/deviceLibraryClient';
 import { useDeviceLibrary } from '../../library/store';
-import LibraryErrorLine from './LibraryErrorLine';
+import { useStore } from '../../store/useStore';
 import type { LibraryItem } from '../../library/facet';
+import { findingText, uploadStateText } from '../../library/uploadText';
+import LibraryErrorLine from './LibraryErrorLine';
 import { openSettings } from '../Settings/openSettings';
 
 const istLink = (s: string) => /^https?:\/\/\S+\.\S+$/i.test(s.trim());
 
-export default function ProposeDialog({ item, onClose }: { item: LibraryItem; onClose: () => void }) {
+export default function UploadDialog({ item, onClose }: { item: LibraryItem; onClose: () => void }) {
   const { t } = useTranslation();
-  const signedIn = useDeviceLibrary((s) => s.signedIn);
-  const server = useDeviceLibrary((s) => s.server);
-  const propose = useDeviceLibrary((s) => s.propose);
+  const lib = useDeviceLibrary();
   const entry = item.kind === 'camera' ? item.camera : item.lens;
   const [sourceUrl, setSourceUrl] = useState(entry.manufacturerUrl ?? '');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<{ code: LibraryErrorCode; detail?: string } | null>(null);
-  const [done, setDone] = useState<{ slug: string; state: string } | null>(null);
+  const [sent, setSent] = useState(false);
+  const record = lib.uploads.records[entry.id];
+  const busy = lib.phase === 'uploading' || lib.phase === 'syncing';
 
   useEffect(() => {
     const esc = (e: KeyboardEvent) => {
@@ -34,16 +34,26 @@ export default function ProposeDialog({ item, onClose }: { item: LibraryItem; on
   const name = `${entry.manufacturer} ${entry.model}`.trim();
   const knopf = 'border border-bc-border text-xs text-bc-text transition-colors hover:bg-bc-panel-raised disabled:opacity-50';
 
+  const hochladen = async () => {
+    const url = sourceUrl.trim();
+    if (url !== (entry.manufacturerUrl ?? '')) {
+      if (item.kind === 'camera') useStore.getState().updateCustomCamera(entry.id, { manufacturerUrl: url });
+      else useStore.getState().updateCustomLens(entry.id, { manufacturerUrl: url });
+    }
+    await lib.uploadOwn({ only: [entry.id], force: true });
+    setSent(true);
+  };
+
   return (
     <div className="fixed inset-0 z-[250] flex items-center justify-center bg-bc-scrim p-4">
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={t('library.propose.title', 'Submit to device library')}
+        aria-label={t('library.upload.title', 'Upload to device library')}
         className="flex w-full max-w-[480px] flex-col border border-bc-border bg-bc-panel"
       >
         <div className="bc-panel-head justify-between">
-          <span className="text-sm font-bold text-bc-text-bright">{t('library.propose.title', 'Submit to device library')}</span>
+          <span className="text-sm font-bold text-bc-text-bright">{t('library.upload.title', 'Upload to device library')}</span>
           <button type="button" onClick={onClose} className="text-bc-muted hover:text-bc-text-bright" aria-label={t('library.close', 'Close')}>
             <FiX size={16} />
           </button>
@@ -57,20 +67,17 @@ export default function ProposeDialog({ item, onClose }: { item: LibraryItem; on
               { name },
             )}
           </p>
+          <p className="mt-1 text-bc-muted">
+            {t(
+              'library.upload.matchHint',
+              'If the library already has this manufacturer and model, your data becomes its next version instead of a second device.',
+            )}
+          </p>
 
-          {done ? (
-            <div style={{ marginTop: '12px' }}>
-              <p className="text-bc-green">
-                {t('library.propose.done', 'Submitted. Others see it once a moderator has approved it.')}
-              </p>
-              <a href={deviceUrl(server, done.slug)} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-bc-accent hover:underline">
-                {t('library.propose.open', 'Open in the library')}
-              </a>
-            </div>
-          ) : !signedIn ? (
+          {!lib.signedIn ? (
             <div style={{ marginTop: '12px' }}>
               <p className="text-bc-muted">
-                {t('library.propose.signInFirst', 'Submitting needs an account at the device library. Sign in first.')}
+                {t('library.propose.signInFirst', 'Uploading needs an account at the device library. Sign in first.')}
               </p>
               <button
                 type="button"
@@ -89,14 +96,7 @@ export default function ProposeDialog({ item, onClose }: { item: LibraryItem; on
               style={{ marginTop: '12px' }}
               onSubmit={(e) => {
                 e.preventDefault();
-                setBusy(true);
-                setError(null);
-                propose(item, sourceUrl)
-                  .then(setDone)
-                  .catch((err: unknown) =>
-                    setError(err instanceof LibraryError ? { code: err.code, detail: err.message !== err.code ? err.message : undefined } : { code: 'server' }),
-                  )
-                  .finally(() => setBusy(false));
+                void hochladen();
               }}
             >
               <label className="block text-bc-muted">
@@ -119,14 +119,29 @@ export default function ProposeDialog({ item, onClose }: { item: LibraryItem; on
                 style={{ padding: '6px 12px' }}
                 disabled={busy || !istLink(sourceUrl)}
               >
-                {busy ? t('library.propose.sending', 'Submitting…') : t('library.propose.submit', 'Submit')}
+                {busy ? t('library.propose.sending', 'Uploading…') : t('library.upload.submit', 'Upload')}
               </button>
             </form>
           )}
 
-          {error && (
-            <LibraryErrorLine code={error.code} detail={error.detail} />
+          {sent && record && (
+            <div style={{ marginTop: '12px' }}>
+              <p className={record.state === 'blocked' || record.state === 'error' ? 'text-bc-red' : 'text-bc-green'}>
+                {uploadStateText(t, record, false)}
+                {record.state === 'blocked' && record.findings?.length
+                  ? ` (${record.findings.map((k) => findingText(t, k)).join(', ')})`
+                  : ''}
+                {record.state === 'error' && record.error ? ` (${record.error})` : ''}
+              </p>
+              {record.slug && (
+                <a href={deviceUrl(lib.server, record.slug)} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-bc-accent hover:underline">
+                  {t('library.propose.open', 'Open in the library')}
+                </a>
+              )}
+            </div>
           )}
+
+          {lib.error && <LibraryErrorLine code={lib.error} />}
         </div>
       </div>
     </div>

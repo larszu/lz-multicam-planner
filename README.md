@@ -64,8 +64,9 @@ MultiCam Planner is designed for quick, intuitive camera planning with essential
   sign-out, and links to *Create account* / *Forgot password* on the library's
   website (registration happens there, not in the planner). Every build talks
   to the default server unless the address is changed.
-- **Sync**: on start (while signed in) and on *Sync now*. Incremental — only
-  what changed since the last `latestSeq`. Library cameras appear in the camera
+- **Sync**: on start (while signed in) and on *Sync now* — first up (own
+  entries, see below), then down. Down is incremental: only what changed
+  since the last `latestSeq`. Library cameras appear in the camera
   list under *Device library*, library lenses in the lens list with
   *· library*; both are read-only (editing creates a local *modified* copy,
   like a built-in). A device marked `removed` leaves the catalog. Every entry
@@ -74,18 +75,39 @@ MultiCam Planner is designed for quick, intuitive camera planning with essential
   storage and survives sign-out, so placed library cameras keep working
   offline. Under the selector a library entry shows its status, its number of
   confirmations and a link to its page.
-  Library entries do **not** travel inside the project file (custom ones do):
-  a project that uses one needs the library, or its cache, on the other
-  machine as well.
-- **Submit**: a custom camera or lens (or a modified built-in) has *Submit to
-  device library…*. A datasheet link is required (pre-filled from the entry's
-  manufacturer URL); the proposal goes into moderation. Not signed in, the
-  dialog leads to the sign-in. A device whose manufacturer and model are
-  already in the library is refused (`exists`); changed community guidelines
-  (`guidelines-outdated`) have to be accepted again on the website — the
-  message links to `<server>/guidelines`.
+- **Library entries travel in the project file**: the ones placed cameras use
+  are written into the `.mcplan` (and the `.avplan` cameras slot) as
+  `libraryCameras` / `libraryLenses`. On a machine without them — no
+  account, another server, empty cache — the project calculates with the
+  file's copy; the sync cache is never written from a file, and where the
+  cache has the same id, the cache wins. Such an entry is marked *carried in
+  the project file* under the selector.
+- **Upload of own devices**: every custom camera or lens — including a
+  *modified* copy of a built-in or a library entry — goes to the library
+  (`POST /api/upload`) in the facet format below. The library matches by
+  manufacturer and model: an existing device gets this planner's data as its
+  next version instead of a second device. *Upload own devices
+  automatically* (Settings, on by default) uploads on start and a few seconds
+  after a change; *Sync now* uploads everything. Unchanged entries (by hash of
+  what was sent last) are not re-sent automatically. Under the selector every
+  own entry shows its last result — waiting for moderation, live, in sync,
+  blocked (with the reason, e.g. *datasheet link missing*) or failed — and
+  *Upload…*, which asks for the datasheet link, stores it on the entry
+  (`manufacturerUrl`) and uploads at once. Not signed in, it leads to the
+  sign-in. Changed community guidelines (`guidelines-outdated`) have to be
+  accepted again on the website — the message links to
+  `<server>/guidelines`.
+- **Built-in catalog**: `npm run library:publish` uploads `src/data/cameras.ts`
+  and `src/data/lenses.ts` with an admin API key (`DEVICE_LIBRARY_KEY=dlk_…`,
+  optional `DEVICE_LIBRARY_URL`); admin uploads go live at once. Entries
+  without a datasheet link are listed and left out. `--dry-run` sends
+  nothing. `.github/workflows/library-publish.yml` runs it after every push to
+  `main` that touches the catalog (and by hand); without the repository
+  secret `DEVICE_LIBRARY_KEY` it ends green with a notice. CI runs the dry run,
+  so the script stays loadable (Node reads the `.ts` files directly — value
+  imports in the modules it loads carry the `.ts` extension).
 - **Facet format** (the `multicam` part of a library device, identical for
-  submit and import):
+  upload and import):
   `{ kind: 'camera', version: 1, camera: <Camera without id> }` or
   `{ kind: 'lens', version: 1, lens: <Lens without id and isCustom> }` — the
   planner's native catalog entry, including `deviceTypeId` (the device-type
@@ -105,7 +127,7 @@ MultiCam Planner is designed for quick, intuitive camera planning with essential
   address must be added there, otherwise every request is blocked and the
   settings report the server as unreachable. Changing the address signs out
   at the old server, forgets the token (it must never reach another server)
-  and starts an empty cache. Only `https://` is accepted (`http://` for
+  and starts an empty cache and upload record. Only `https://` is accepted (`http://` for
   localhost).
 - Client: `src/utils/deviceLibraryClient.ts`, an unchanged copy of
   `larszu/av-device-library` `clients/deviceLibraryClient.ts` — changes go
@@ -255,6 +277,7 @@ page. It can also be triggered manually via the Actions tab for testing.
 | npm run lint       | Run ESLint linter                                 |
 | npm run ci:complete| Assert every `*:check` script is actually run by CI |
 | npm run katalog:cable-ids | Refresh the snapshot of the Cable Planner camera catalog (GUIDs) |
+| npm run library:publish | Upload the built-in catalog to the device library (`DEVICE_LIBRARY_KEY`, `--dry-run`) |
 
 ---
 

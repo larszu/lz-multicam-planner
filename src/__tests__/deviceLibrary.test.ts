@@ -212,36 +212,86 @@ describe('store against a mocked server', () => {
     expect(useDeviceLibrary.getState().signedIn).toBe(true);
   });
 
-  it('proposes the native entry as the multicam facet', async () => {
+  const anmelden = () =>
     fetchMock
       .mockResolvedValueOnce(json({ user: { id: 'u', email: 'a@b.de', username: 'l' } }, { 'set-auth-token': 'T' }))
-      .mockResolvedValueOnce(json(antwort(0, [])))
-      .mockResolvedValueOnce(json({ slug: 'sony-pxw-fx9', state: 'pending' }));
-    const { useDeviceLibrary } = await import('../library/store');
+      .mockResolvedValueOnce(json(antwort(0, [])));
+
+  it('sync now uploads own entries first (native facet), then pulls; the result is kept per entry', async () => {
+    const { useDeviceLibrary, registerOwnItems } = await import('../library/store');
+    registerOwnItems(() => [{ kind: 'camera', camera: eigeneKamera }, { kind: 'lens', lens: { ...eigeneOptik, manufacturerUrl: undefined } }]);
+    // Anmelden laedt schon automatisch hoch (Vorgabe an) …
+    fetchMock
+      .mockResolvedValueOnce(json({ user: { id: 'u', email: 'a@b.de', username: 'l' } }, { 'set-auth-token': 'T' }))
+      .mockResolvedValueOnce(json({ planner: 'multicam', results: [
+        { localId: eigeneKamera.id, state: 'edit-proposed', slug: 'sony-pxw-fx9' },
+        { localId: 'custom-lens-1', state: 'blocked', findings: [{ kind: 'no-source', blocking: true }] },
+      ] }))
+      .mockResolvedValueOnce(json(antwort(0, [])));
     await useDeviceLibrary.getState().signIn('a@b.de', 'pw');
-    const r = await useDeviceLibrary.getState().propose({ kind: 'camera', camera: eigeneKamera }, 'https://pro.sony/fx9.pdf');
-    expect(r.slug).toBe('sony-pxw-fx9');
-    const [url, init] = fetchMock.mock.calls[2] as [string, RequestInit];
-    expect(url).toBe('https://devices.zumpelars.de/api/proposals');
+
+    const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(url).toBe('https://devices.zumpelars.de/api/upload');
     const body = JSON.parse(String(init.body));
-    expect(body.data).toMatchObject({ manufacturer: 'Sony', category: 'Camera', sourceUrl: 'https://pro.sony/fx9.pdf' });
-    expect(body.data.planners.multicam).toEqual(JSON.parse(JSON.stringify(cameraToFacet(eigeneKamera))));
+    expect(body.planner).toBe('multicam');
+    expect(body.items[0]).toEqual(JSON.parse(JSON.stringify({
+      localId: eigeneKamera.id,
+      core: { manufacturer: 'Sony', model: 'PXW-FX9 (eigene)', category: 'Camera', sourceUrl: fx9.manufacturerUrl, description: fx9.notes },
+      facet: cameraToFacet(eigeneKamera),
+    })));
+    expect(body.items[1].core.sourceUrl).toBeUndefined();
+    expect(fetchMock.mock.calls[2][0]).toContain('/api/sync?planner=multicam');
+
+    const r = useDeviceLibrary.getState().uploads.records;
+    expect(r[eigeneKamera.id]).toMatchObject({ state: 'edit-proposed', slug: 'sony-pxw-fx9' });
+    expect(r['custom-lens-1']).toMatchObject({ state: 'blocked', findings: ['no-source'] });
+    expect(JSON.parse(speicher['multicam-device-library-uploads']).records[eigeneKamera.id].state).toBe('edit-proposed');
+
+    // … unveraendert geht automatisch nichts erneut hoch, nur der Abgleich:
+    fetchMock.mockResolvedValueOnce(json(antwort(0, [])));
+    await useDeviceLibrary.getState().syncAll();
+    expect(fetchMock.mock.calls[3][0]).toContain('/api/sync');
+
+    // … „Sync now" schickt alles, dann erst den Abgleich.
+    fetchMock
+      .mockResolvedValueOnce(json({ results: [{ localId: eigeneKamera.id, state: 'in-sync' }, { localId: 'custom-lens-1', state: 'blocked' }] }))
+      .mockResolvedValueOnce(json(antwort(0, [])));
+    await useDeviceLibrary.getState().syncAll({ manual: true });
+    expect(fetchMock.mock.calls[4][0]).toContain('/api/upload');
+    expect(fetchMock.mock.calls[5][0]).toContain('/api/sync');
+    expect(useDeviceLibrary.getState().uploads.records[eigeneKamera.id]).toMatchObject({ state: 'in-sync', slug: 'sony-pxw-fx9' });
   });
 
-  it('409 on proposal is `exists`, guidelines-outdated keeps the sign-in', async () => {
+  it('automatic upload can be switched off; manual sync still uploads', async () => {
+    const { useDeviceLibrary, registerOwnItems } = await import('../library/store');
+    expect(useDeviceLibrary.getState().autoUpload).toBe(true);
+    useDeviceLibrary.getState().setAutoUpload(false);
+    registerOwnItems(() => [{ kind: 'camera', camera: eigeneKamera }]);
+    anmelden();
+    await useDeviceLibrary.getState().signIn('a@b.de', 'pw');
+    expect(fetchMock.mock.calls.map((c) => c[0])).not.toContain('https://devices.zumpelars.de/api/upload');
     fetchMock
-      .mockResolvedValueOnce(json({ user: { id: 'u', email: 'a@b.de', username: 'l' } }, { 'set-auth-token': 'T' }))
-      .mockResolvedValueOnce(json(antwort(0, [])))
-      .mockResolvedValueOnce(json({ error: 'exists' }, {}, 409))
-      .mockResolvedValueOnce(json({ error: 'guidelines-outdated' }, {}, 403));
-    const { useDeviceLibrary } = await import('../library/store');
+      .mockResolvedValueOnce(json({ results: [{ localId: eigeneKamera.id, state: 'created', slug: 's' }] }))
+      .mockResolvedValueOnce(json(antwort(0, [])));
+    await useDeviceLibrary.getState().syncAll({ manual: true });
+    expect(fetchMock.mock.calls[2][0]).toBe('https://devices.zumpelars.de/api/upload');
+  });
+
+  it('409 is `exists`, guidelines-outdated keeps the sign-in', async () => {
+    const { useDeviceLibrary, registerOwnItems } = await import('../library/store');
     const { libraryErrorText } = await import('../library/messages');
     const messageText = (c: 'exists' | 'guidelines-outdated') => libraryErrorText((_k, en) => en, c);
+    useDeviceLibrary.getState().setAutoUpload(false);
+    registerOwnItems(() => [{ kind: 'camera', camera: eigeneKamera }]);
+    anmelden();
     await useDeviceLibrary.getState().signIn('a@b.de', 'pw');
-    const item = { kind: 'camera' as const, camera: eigeneKamera };
-    await expect(useDeviceLibrary.getState().propose(item, 'https://x.example/a.pdf')).rejects.toMatchObject({ code: 'exists', status: 409 });
-    await expect(useDeviceLibrary.getState().propose(item, 'https://x.example/a.pdf')).rejects.toMatchObject({ code: 'guidelines-outdated' });
+    fetchMock.mockResolvedValueOnce(json({ error: 'guidelines-outdated' }, {}, 403));
+    await useDeviceLibrary.getState().uploadOwn({ force: true });
+    expect(useDeviceLibrary.getState().error).toBe('guidelines-outdated');
     expect(useDeviceLibrary.getState().signedIn).toBe(true);
+    fetchMock.mockResolvedValueOnce(json({ error: 'exists' }, {}, 409));
+    await useDeviceLibrary.getState().uploadOwn({ force: true });
+    expect(useDeviceLibrary.getState().error).toBe('exists');
     expect(messageText('exists')).toMatch(/already in the library/);
     expect(messageText('guidelines-outdated')).toMatch(/guidelines/);
   });
@@ -264,5 +314,65 @@ describe('store against a mocked server', () => {
     const { guidelinesUrl } = await import('../library/messages');
     expect(guidelinesUrl('https://devices.zumpelars.de')).toBe('https://devices.zumpelars.de/guidelines');
     expect(guidelinesUrl('http://localhost:8080/')).toBe('http://localhost:8080/guidelines');
+  });
+});
+
+describe('upload ledger', () => {
+  const kamera = { kind: 'camera' as const, camera: eigeneKamera };
+
+  it('only changed or failed entries go up again; key order does not count as a change', async () => {
+    const { pendingUploads, applyUploadResults, emptyLedger, hashOf, toUploadItem } = await import('../library/upload');
+    const erst = pendingUploads([kamera], emptyLedger('https://s'));
+    expect(erst).toHaveLength(1);
+    const ledger = applyUploadResults(emptyLedger('https://s'), erst, [{ localId: eigeneKamera.id, state: 'created', slug: 'x' }], '2026-09-27T00:00:00Z');
+    expect(pendingUploads([kamera], ledger)).toHaveLength(0);
+    expect(pendingUploads([kamera], ledger, true)).toHaveLength(1);
+    const umsortiert = Object.fromEntries(Object.entries(eigeneKamera).reverse()) as unknown as Camera;
+    expect(toUploadItem({ kind: 'camera', camera: umsortiert }).hash).toBe(toUploadItem(kamera).hash);
+    expect(pendingUploads([{ kind: 'camera', camera: { ...eigeneKamera, notes: 'neu' } }], ledger)).toHaveLength(1);
+    const fehler = applyUploadResults(ledger, erst, [{ localId: eigeneKamera.id, state: 'error', error: 'x' }], 'z');
+    expect(pendingUploads([kamera], fehler)).toHaveLength(1);
+    expect(fehler.records[eigeneKamera.id].slug).toBe('x');
+    expect(hashOf({ a: 1, b: 2 })).toBe(hashOf({ b: 2, a: 1 }));
+  });
+
+  it('a ledger of another server is not reused; deleted entries fall out', async () => {
+    const { readLedger, pruneLedger, emptyLedger } = await import('../library/upload');
+    const l = { server: 'https://a', records: { x: { hash: 'h', state: 'created' as const, at: 'z' } } };
+    expect(readLedger(l, 'https://a').records.x).toBeDefined();
+    expect(readLedger(l, 'https://b')).toEqual(emptyLedger('https://b'));
+    expect(pruneLedger(l, new Set()).records).toEqual({});
+  });
+});
+
+describe('library entries travel in the project file', () => {
+  it('used library entries are written, custom copies take precedence', async () => {
+    const { pickProjectLibrary } = await import('../utils/projectLibrary');
+    const bib = { ...eigeneKamera, id: 'devlib-a' };
+    const bibOptik = { ...ua107, id: 'devlib-l' };
+    const placed = [{ cameraId: 'devlib-a', lensId: 'devlib-l' }, { cameraId: 'devlib-b', lensId: 'x' }] as never;
+    expect(pickProjectLibrary(placed, [], [], { cameras: [bib, { ...bib, id: 'devlib-unused' }], lenses: [bibOptik] })).toEqual({
+      libraryCameras: [bib],
+      libraryLenses: [bibOptik],
+    });
+    expect(pickProjectLibrary(placed, [bib], [], { cameras: [bib], lenses: [] })).toEqual({ customCameras: [bib] });
+  });
+
+  it('read back only as devlib entries that pass the check; the cache wins over the file', async () => {
+    vi.resetModules();
+    const { readCarriedLibrary } = await import('../utils/projectLibrary');
+    const reg = await import('../library/registry');
+    const r = readCarriedLibrary({
+      libraryCameras: [{ ...eigeneKamera, id: 'devlib-a' }, { ...eigeneKamera, id: 'sony-fx9' }, { id: 'devlib-kaputt' }],
+      libraryLenses: 'kein Array',
+    });
+    expect(r.cameras.map((c) => c.id)).toEqual(['devlib-a']);
+    expect(r.invalid).toBe(2);
+    reg.setProjectLibraryEntries(r);
+    expect(reg.libraryCameras().find((c) => c.id === 'devlib-a')?.model).toBe('PXW-FX9 (eigene)');
+    expect(reg.isCarriedByProject('devlib-a')).toBe(true);
+    reg.setLibraryCatalog({ cameras: [{ ...eigeneKamera, id: 'devlib-a', model: 'aus dem Cache' }], lenses: [] });
+    expect(reg.libraryCameras().filter((c) => c.id === 'devlib-a').map((c) => c.model)).toEqual(['aus dem Cache']);
+    expect(reg.isCarriedByProject('devlib-a')).toBe(false);
   });
 });

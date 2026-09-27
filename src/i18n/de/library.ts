@@ -5,7 +5,7 @@ export const library: Record<string, string> = {
   'settings.tab.library': 'Gerätebibliothek',
 
   'library.intro':
-    'Die gemeinsame Gerätebibliothek ergänzt den Katalog um Kameras und Objektive als schreibgeschützte Quelle und nimmt eigene Einträge als Vorschlag entgegen. Sie braucht ein Konto.',
+    'Die gemeinsame Gerätebibliothek ergänzt den Katalog um Kameras und Objektive als schreibgeschützte Quelle und führt auch die eigenen Einträge. Sie braucht ein Konto.',
   'library.server': 'Server',
   'library.server.aria': 'Adresse des Gerätebibliothek-Servers',
   'library.server.apply': 'Übernehmen',
@@ -57,7 +57,33 @@ export const library: Record<string, string> = {
   'library.syncNow': 'Jetzt abgleichen',
   'library.syncing': 'Gleiche ab…',
   'library.sync.hint':
-    'Die App gleicht beim Start ab, solange eine Anmeldung besteht. Der Zwischenspeicher bleibt beim Abmelden erhalten, damit platzierte Bibliothekskameras offline weiter funktionieren.',
+    '„Jetzt abgleichen“ lädt zuerst die eigenen Einträge hoch und holt dann die Aktualisierungen. Die App gleicht außerdem beim Start ab, solange eine Anmeldung besteht. Der Zwischenspeicher bleibt beim Abmelden erhalten, damit platzierte Bibliothekskameras offline weiter funktionieren.',
+  'library.uploading': 'Lade hoch…',
+  'library.autoUpload': 'Eigene Geräte automatisch hochladen',
+  'library.autoUpload.hint':
+    'Eigene und geänderte Kameras und Objektive gehen beim Start und wenige Sekunden nach jeder Änderung hoch; die Bibliothek ordnet sie über Hersteller und Modell zu.',
+  'library.upload.summary':
+    'Eigene Einträge: {live} live oder abgeglichen, {waiting} warten auf Moderation, {blocked} blockiert, {failed} fehlgeschlagen.',
+  'library.upload.none': 'Noch nicht in der Gerätebibliothek.',
+  'library.upload.changed': 'Seit dem letzten Hochladen geändert — geht beim nächsten Abgleich hoch.',
+  'library.upload.created': 'Als neues Gerät hochgeladen — wartet auf Moderation.',
+  'library.upload.editProposed': 'Als nächste Version eines vorhandenen Geräts hochgeladen — wartet auf Moderation.',
+  'library.upload.pendingUpdated': 'Der wartende Upload wurde durch diese Fassung ersetzt.',
+  'library.upload.approved': 'Live in der Gerätebibliothek.',
+  'library.upload.inSync': 'Die Gerätebibliothek führt genau diesen Stand.',
+  'library.upload.blocked': 'Von den Prüfungen der Bibliothek blockiert.',
+  'library.upload.error': 'Hochladen fehlgeschlagen.',
+  'library.upload.button': 'Hochladen…',
+  'library.upload.buttonTitle': 'Diesen Eintrag jetzt in die gemeinsame Gerätebibliothek hochladen',
+  'library.upload.title': 'In die Gerätebibliothek hochladen',
+  'library.upload.submit': 'Hochladen',
+  'library.upload.matchHint':
+    'Führt die Bibliothek Hersteller und Modell schon, werden die eigenen Daten dessen nächste Version statt eines zweiten Geräts.',
+  'library.finding.noSource': 'Datenblattlink fehlt',
+  'library.finding.sourceNotLink': 'Datenblattlink ist kein Link',
+  'library.finding.noManufacturer': 'Hersteller fehlt',
+  'library.finding.noModel': 'Modell fehlt',
+  'library.badge.carried': 'Eintrag der Gerätebibliothek aus der Projektdatei — nicht im eigenen Abgleich.',
 
   'library.status.verified': 'geprüft',
   'library.status.confirmed': 'bestätigt',
@@ -66,22 +92,15 @@ export const library: Record<string, string> = {
   'library.badge': 'Gerätebibliothek · {status} · {n} Bestätigungen',
   'library.badge.open': 'Ansehen',
 
-  'library.propose.title': 'An die Gerätebibliothek senden',
   'library.propose.camera': 'Kamera „{name}“ mit Sensor, Mounts, Adaptern und Belegen.',
   'library.propose.lens': 'Objektiv „{name}“ mit Brennweitenbereich, Blende, Mount und Bildkreis.',
-  'library.propose.done': 'Eingereicht. Andere sehen den Eintrag, sobald die Moderation ihn freigegeben hat.',
   'library.propose.open': 'In der Bibliothek öffnen',
-  'library.propose.signInFirst': 'Einreichen braucht ein Konto bei der Gerätebibliothek. Zuerst anmelden.',
+  'library.propose.signInFirst': 'Hochladen braucht ein Konto bei der Gerätebibliothek. Zuerst anmelden.',
   'library.propose.goSignIn': 'Anmelden…',
   'library.propose.source': 'Link zum Datenblatt (Pflicht)',
   'library.propose.sourceInvalid': 'Einen vollständigen Link (https://…) zum Herstellerdatenblatt eingeben.',
-  'library.propose.submit': 'Einreichen',
-  'library.propose.sending': 'Wird eingereicht…',
+  'library.propose.sending': 'Wird hochgeladen…',
 
   'sidebar.cam.libraryGroup': '── Gerätebibliothek ──',
   'sidebar.cam.tagLibrary': ' · Bibliothek',
-  'sidebar.cam.propose': 'An die Gerätebibliothek senden…',
-  'sidebar.cam.proposeTitle': 'Diese Kamera der gemeinsamen Gerätebibliothek vorschlagen',
-  'sidebar.cam.proposeLens': 'Objektiv an die Gerätebibliothek senden…',
-  'sidebar.cam.proposeLensTitle': 'Dieses Objektiv der gemeinsamen Gerätebibliothek vorschlagen',
 };

@@ -23,7 +23,7 @@ import {
   CARD_FINDING_LABEL,
   cardFindings,
 } from '../../utils/cameraCardExtras';
-import { FiPlus, FiTrash2, FiCopy, FiChevronDown, FiChevronUp, FiEye, FiEyeOff, FiUpload, FiUser, FiMap, FiMaximize2, FiLock, FiUnlock, FiStar, FiEdit2, FiRotateCcw, FiHome, FiImage, FiColumns, FiUsers, FiVideo, FiTarget, FiUploadCloud } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiCopy, FiChevronDown, FiChevronUp, FiEye, FiEyeOff, FiUpload, FiUser, FiMap, FiMaximize2, FiLock, FiUnlock, FiStar, FiEdit2, FiRotateCcw, FiHome, FiImage, FiColumns, FiUsers, FiVideo, FiTarget } from 'react-icons/fi';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { BackgroundPlan, StageObjectType, Camera, CameraMountType, VenueCamera, WallFit, WallPattern } from '../../types';
 
@@ -36,7 +36,9 @@ import { FieldRow, Group, Note, Readout, ValueSlider } from './fields';
 // direkte Zahleneingabe. Zwei Implementierungen waeren zwei Bedienungen.
 import LensSlider from '../Preview/LensSlider';
 import LibraryBadge from '../Library/LibraryBadge';
-import ProposeDialog from '../Library/ProposeDialog';
+import UploadDialog from '../Library/UploadDialog';
+import UploadStatus from '../Library/UploadStatus';
+import { libraryCameras, libraryLenses } from '../../library/registry';
 import { useDeviceLibrary } from '../../library/store';
 import { isLibraryId, type LibraryItem } from '../../library/facet';
 import {
@@ -239,9 +241,11 @@ function CameraCard({
 
   const { customCameras, addCustomCamera, libraryStorageFull } = useStore();
   // Geraetebibliothek: schreibgeschuetzte dritte Quelle neben eingebaut und eigen.
-  const bibEntries = useDeviceLibrary((s) => s.cache.entries);
-  const bibCameras = bibEntries.flatMap((e) => (e.kind === 'camera' ? [e.camera] : []));
-  const bibLenses = bibEntries.flatMap((e) => (e.kind === 'lens' ? [e.lens] : []));
+  // Abonniert fuer das Neuzeichnen; gelesen aus dem Register, das auch die
+  // Eintraege traegt, die das offene Projekt in seiner Datei mitbringt.
+  useDeviceLibrary((s) => s.cache.entries);
+  const bibCameras = [...libraryCameras()];
+  const bibLenses = [...libraryLenses()];
   const [proposal, setProposal] = useState<LibraryItem | null>(null);
   const camDef = getCameraById(cam.cameraId, customCameras);
   const lensDef = getLensById(cam.lensId) ?? customLenses.find((l) => l.id === cam.lensId);
@@ -618,17 +622,9 @@ function CameraCard({
           </label>
           <LibraryBadge id={camDef?.id} />
           {camDef && isCustomEntry(camDef.id) && (
-            <button
-              type="button"
-              onClick={() => setProposal({ kind: 'camera', camera: camDef })}
-              className="mt-0.5 flex items-center gap-1 text-[11px] text-bc-dim hover:text-bc-accent"
-              title={t('sidebar.cam.proposeTitle', 'Propose this camera to the shared device library')}
-            >
-              <FiUploadCloud size={12} />
-              {t('sidebar.cam.propose', 'Submit to device library…')}
-            </button>
+            <UploadStatus item={{ kind: 'camera', camera: camDef }} onUpload={() => setProposal({ kind: 'camera', camera: camDef })} />
           )}
-          {proposal && <ProposeDialog item={proposal} onClose={() => setProposal(null)} />}
+          {proposal && <UploadDialog item={proposal} onClose={() => setProposal(null)} />}
 
           {/* Der Speicher ist voll — die eigene Kamera/Optik steht in der Liste,
               aber nicht auf der Platte. Dieselbe Meldung wie bei den
@@ -836,15 +832,7 @@ function CameraCard({
           </label>
           <LibraryBadge id={lensDef?.id} />
           {lensDef?.isCustom && (
-            <button
-              type="button"
-              onClick={() => setProposal({ kind: 'lens', lens: lensDef })}
-              className="mt-0.5 flex items-center gap-1 text-[11px] text-bc-dim hover:text-bc-accent"
-              title={t('sidebar.cam.proposeLensTitle', 'Propose this lens to the shared device library')}
-            >
-              <FiUploadCloud size={12} />
-              {t('sidebar.cam.proposeLens', 'Submit lens to device library…')}
-            </button>
+            <UploadStatus item={{ kind: 'lens', lens: lensDef }} onUpload={() => setProposal({ kind: 'lens', lens: lensDef })} />
           )}
           {/* Custom lens: delete button for active custom lens */}
           {lensDef?.isCustom && (

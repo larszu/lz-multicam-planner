@@ -20,23 +20,33 @@ import {
   DEFAULT_DEVICE_LIBRARY_URL,
   LibraryError,
   currentUser,
-  propose as proposeRequest,
   signIn as signInRequest,
   signOut as signOutRequest,
   sync as syncRequest,
+  upload as uploadRequest,
   verifySecondFactor,
   type LibraryErrorCode,
   type LibraryUser,
   type SignInResult,
 } from '../utils/deviceLibraryClient';
 import { loadJSON, saveJSON } from '../utils/storage';
-import { cameraToFacet, lensToFacet, proposalCore, type LibraryItem } from './facet';
+import type { LibraryItem } from './facet';
+import { applyUploadResults, emptyLedger, pendingUploads, pruneLedger, readLedger, type UploadLedger } from './upload';
 import { setLibraryCatalog } from './registry';
 import { emptyCache, mergeSync, readCache, type LibraryCache, type SyncStats } from './sync';
 import { clearToken, loadToken, saveToken } from './tokenStore';
 
 const SERVER_KEY = 'multicam-device-library-server';
 const CACHE_KEY = 'multicam-device-library-cache';
+const LEDGER_KEY = 'multicam-device-library-uploads';
+const AUTO_KEY = 'multicam-device-library-auto-upload';
+
+/** Die eigenen Eintraege liefert der Katalog-Store; hier nur die Frage danach,
+ *  damit dieser Store den grossen nicht importieren muss. */
+let ownItems: () => LibraryItem[] = () => [];
+export const registerOwnItems = (fn: () => LibraryItem[]) => {
+  ownItems = fn;
+};
 
 /** Bereinigte Adresse oder `null`, wenn sie nicht taugt. */
 export function normaliseServerUrl(input: string): string | null {
@@ -57,7 +67,7 @@ export function loadServer(): string {
   return (v && normaliseServerUrl(v)) || DEFAULT_DEVICE_LIBRARY_URL;
 }
 
-export type LibraryPhase = 'idle' | 'checking' | 'signing-in' | 'second-factor' | 'syncing';
+export type LibraryPhase = 'idle' | 'checking' | 'signing-in' | 'second-factor' | 'uploading' | 'syncing';
 
 interface LibraryState {
   server: string;
@@ -69,6 +79,10 @@ interface LibraryState {
   sessionOnly: boolean;
   cache: LibraryCache;
   lastSync: { at: string; stats: SyncStats } | null;
+  /** Was mit jedem eigenen Eintrag zuletzt beim Hochladen geschah. */
+  uploads: UploadLedger;
+  /** Eigene Geraete automatisch hochladen (Start, nach Aendern). Vorgabe an. */
+  autoUpload: boolean;
 
   init: () => Promise<void>;
   setServer: (url: string) => Promise<boolean>;
@@ -77,7 +91,11 @@ interface LibraryState {
   cancelSecondFactor: () => void;
   signOut: () => Promise<void>;
   syncNow: () => Promise<void>;
-  propose: (item: LibraryItem, sourceUrl: string) => Promise<{ slug: string; state: string }>;
+  /** Eigene Eintraege hochladen; `force` schickt auch Unveraendertes. */
+  uploadOwn: (opts?: { force?: boolean; only?: string[] }) => Promise<void>;
+  /** Erst hoch (wenn `manual` oder automatisch erlaubt), dann runter. */
+  syncAll: (opts?: { manual?: boolean }) => Promise<void>;
+  setAutoUpload: (on: boolean) => void;
 }
 
 let token: string | null = null;
@@ -111,7 +129,13 @@ export const useDeviceLibrary = create<LibraryState>()((set, get) => {
     challenge = null;
     const dauerhaft = await saveToken({ server: get().server, token: r.token });
     set({ signedIn: true, user: r.user, phase: 'idle', error: null, sessionOnly: !dauerhaft });
-    await get().syncNow();
+    await get().syncAll();
+  };
+
+  const abgemeldetWenn = async (e: unknown) => {
+    const code = e instanceof LibraryError ? e.code : 'server';
+    if (code === 'not-signed-in' || code === 'wrong-credentials') await vergiss();
+    return code === 'wrong-credentials' ? 'not-signed-in' : code;
   };
 
   return {
@@ -123,6 +147,8 @@ export const useDeviceLibrary = create<LibraryState>()((set, get) => {
     sessionOnly: false,
     cache: initialCache(initialServer),
     lastSync: null,
+    uploads: readLedger(loadJSON<unknown>(LEDGER_KEY, null), initialServer),
+    autoUpload: loadJSON<boolean>(AUTO_KEY, true) !== false,
 
     init: async () => {
       const gespeichert = await loadToken();
@@ -146,7 +172,7 @@ export const useDeviceLibrary = create<LibraryState>()((set, get) => {
         set({ phase: 'idle', error: e instanceof LibraryError ? e.code : 'offline' });
         return;
       }
-      await get().syncNow();
+      await get().syncAll();
     },
 
     setServer: async (url) => {
@@ -160,7 +186,9 @@ export const useDeviceLibrary = create<LibraryState>()((set, get) => {
       const cache = emptyCache(neu);
       saveJSON(CACHE_KEY, cache);
       publish(cache);
-      set({ server: neu, cache, lastSync: null, error: null, phase: 'idle' });
+      const uploads = emptyLedger(neu);
+      saveJSON(LEDGER_KEY, uploads);
+      set({ server: neu, cache, uploads, lastSync: null, error: null, phase: 'idle' });
       return true;
     },
 
@@ -212,24 +240,55 @@ export const useDeviceLibrary = create<LibraryState>()((set, get) => {
         publish(r.cache);
         set({ cache: r.cache, lastSync: { at: new Date().toISOString(), stats: r.stats }, phase: 'idle' });
       } catch (e) {
-        const code = e instanceof LibraryError ? e.code : 'server';
-        if (code === 'not-signed-in' || code === 'wrong-credentials') await vergiss();
-        set({ phase: 'idle', error: code === 'wrong-credentials' ? 'not-signed-in' : code });
+        set({ phase: 'idle', error: await abgemeldetWenn(e) });
       }
     },
 
-    propose: async (item, sourceUrl) => {
-      if (!token) throw new LibraryError('not-signed-in');
-      const facet = item.kind === 'camera' ? cameraToFacet(item.camera) : lensToFacet(item.lens);
-      try {
-        return await proposeRequest(get().server, token, 'multicam', proposalCore(item, sourceUrl), facet);
-      } catch (e) {
-        if (e instanceof LibraryError && (e.code === 'not-signed-in' || e.code === 'wrong-credentials')) {
-          await vergiss();
-          throw new LibraryError('not-signed-in', e.status);
-        }
-        throw e;
+    uploadOwn: async (opts = {}) => {
+      if (!token) {
+        set({ error: 'not-signed-in' });
+        return;
       }
+      const alle = ownItems();
+      const ids = new Set(alle.map((i) => (i.kind === 'camera' ? i.camera.id : i.lens.id)));
+      const ledger = pruneLedger(get().uploads, ids);
+      const auswahl = opts.only ? alle.filter((i) => opts.only!.includes(i.kind === 'camera' ? i.camera.id : i.lens.id)) : alle;
+      const offen = pendingUploads(auswahl, ledger, opts.force);
+      if (offen.length === 0) {
+        if (ledger !== get().uploads) {
+          saveJSON(LEDGER_KEY, ledger);
+          set({ uploads: ledger });
+        }
+        return;
+      }
+      set({ phase: 'uploading', error: null });
+      try {
+        const ergebnis = await uploadRequest(
+          get().server,
+          token,
+          'multicam',
+          offen.map(({ hash: _h, ...item }) => item),
+        );
+        const uploads = applyUploadResults(ledger, offen, ergebnis, new Date().toISOString());
+        saveJSON(LEDGER_KEY, uploads);
+        set({ uploads, phase: 'idle' });
+      } catch (e) {
+        set({ phase: 'idle', error: await abgemeldetWenn(e) });
+      }
+    },
+
+    syncAll: async (opts = {}) => {
+      if (!token) {
+        set({ error: 'not-signed-in' });
+        return;
+      }
+      if (opts.manual || get().autoUpload) await get().uploadOwn({ force: opts.manual });
+      if (token) await get().syncNow();
+    },
+
+    setAutoUpload: (on) => {
+      saveJSON(AUTO_KEY, on);
+      set({ autoUpload: on });
     },
   };
 });
