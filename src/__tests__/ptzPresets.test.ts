@@ -237,11 +237,15 @@ describe('was die Dateien NICHT tun', () => {
     expect(ohneKommentare(quelle)).not.toMatch(/visca|onvif|fetch\(|axios|XMLHttpRequest/i);
   });
 
-  it('schmuggelt die Presets NICHT in das eingefrorene camera-list-Format', () => {
-    // `camera-list` v1 ist in zwei Repos byte-identisch eingefroren
-    // (`cameraListContract.test.ts`). Ein neues Feld dort waere ein
-    // Schema-Bruch ohne Versionssprung.
-    expect(cameraExportQuelle).not.toMatch(/presets/);
+  it('nimmt die Presets nur MIT Versionssprung in die camera-list auf', () => {
+    // Bis 2026-09-27 stand hier „schmuggelt die Presets NICHT in das
+    // eingefrorene Format": `camera-list` ist in zwei Repos eingefroren
+    // (`cameraListContract.test.ts`), und ein neues Feld waere ein
+    // Schema-Bruch ohne Versionssprung gewesen. Seit v3 stehen sie drin —
+    // MIT Sprung und mit beiden Vertraegen nachgezogen. Die Bedingung bleibt
+    // dieselbe: Presets im Format nur zusammen mit einer Version ab 3.
+    expect(cameraExportQuelle).toMatch(/presets/);
+    expect(cameraExportQuelle).toMatch(/CAMERA_LIST_VERSION = [3-9] as const/);
   });
 });
 

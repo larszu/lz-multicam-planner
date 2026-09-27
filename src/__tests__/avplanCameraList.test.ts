@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { parseAvPlan } from '../utils/avplan';
-import { parseCameraList } from '../utils/cameraExport';
+import { CAMERA_LIST_VERSION, parseCameraList } from '../utils/cameraExport';
 import type { ProjectFile, VenueCamera } from '../types';
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -48,14 +48,14 @@ const plan: ProjectFile = {
 };
 
 describe('.avplan: die Kamera-Liste im eigenen Slot', () => {
-  it('der Export trägt eine vollständige camera-list v2 mit der Projekt-Id', async () => {
+  it('der Export trägt eine vollständige camera-list (v3) mit der Projekt-Id', async () => {
     const { useStore, buildAvPlanExport } = await laden();
     useStore.getState().applyProjectFile(plan);
     const slot = buildAvPlanExport(useStore.getState(), '2026-09-24T12:00:00.000Z').domains.cameras as Slot;
 
     expect(slot.projectId).toBe('projekt-halle-1');
     const liste = parseCameraList(JSON.stringify(slot.cameraList));
-    expect(liste.formatVersion).toBe(2);
+    expect(liste.formatVersion).toBe(CAMERA_LIST_VERSION);
     expect(liste.projectId).toBe('projekt-halle-1');
     expect(liste.cameras.map((c) => c.label)).toEqual(['CAM 1', 'CAM 2']);
     expect(liste.cameras[0]).toMatchObject({
