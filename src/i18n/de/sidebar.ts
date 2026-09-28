@@ -75,6 +75,10 @@ export const sidebar: Record<string, string> = {
   'sidebar.form.cancel': 'Abbrechen',
   'sidebar.form.manufacturer': 'Hersteller',
   'sidebar.form.model': 'Modell',
+  // #145 — die Anschluss-Vorlage einer eigenen Kamera.
+  'sidebar.form.portTemplate': 'Anschluss-Vorlage aus dem Katalog',
+  'sidebar.form.portTemplateNone': 'Keine — Anschlüsse unbekannt',
+  'sidebar.form.portTemplateTitle': 'Der Cable-Planner gibt dieser Kamera die Anschlüsse des gewählten Katalog-Geräts. Nur ein Gerät wählen, dessen Anschlussfeld zu diesem Body passt.',
   'sidebar.form.sensor': 'Sensor',
   'sidebar.form.customSize': 'Eigene Größe…',
   'sidebar.form.name': 'Name',

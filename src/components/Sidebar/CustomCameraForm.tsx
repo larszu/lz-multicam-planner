@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FiPlus, FiTrash2, FiKey, FiZap, FiX } from 'react-icons/fi';
 import { SENSORS } from '../../data/cameras';
+import { CABLE_CAMERA_IDS } from '../../data/cableCameraCatalogIds';
 import type { Camera, SensorSize } from '../../types';
 import { isEstimate } from '../../types';
 import { useTranslation } from '../../i18n';
@@ -66,6 +67,11 @@ export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, tit
   const resolvedTitle = title ?? t('sidebar.form.newCamera', 'New Custom Camera');
   const [manufacturer, setManufacturer] = useState(initial?.manufacturer ?? '');
   const [model, setModel] = useState(initial?.model ?? '');
+  // Anschluss-Vorlage (#145): eine eigene Kamera bekommt ihre Ports im
+  // cable-planner nur ueber eine GUID aus dessen Katalog. Gewaehlt wird sie
+  // von Hand und nie aus dem Namen erschlossen — ein gleich klingendes Modell
+  // hat nicht zwingend dasselbe Anschlussfeld.
+  const [deviceTypeId, setDeviceTypeId] = useState(initial?.deviceTypeId ?? '');
   // Mount: the initial value might be a known mount or a custom one (e.g. "Z",
   // "PV", "M43-Box"). We track which mode we're in so the UI shows either the
   // dropdown or the free-text input.
@@ -145,6 +151,7 @@ export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, tit
       type,
       sensorModes: parsedModes.length > 0 ? parsedModes : undefined,
       specSource: aiSources,
+      deviceTypeId: deviceTypeId || undefined,
     });
   };
 
@@ -321,6 +328,25 @@ export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, tit
           onChange={(e) => setModel(e.target.value)}
         />
       </div>
+
+      <label className="block" title={t('sidebar.form.portTemplateTitle', 'The Cable Planner gives this camera the connectors of the chosen catalog device. Only choose a device whose connector panel matches this body.')}>
+        <span className="text-bc-dim text-[10px]">{t('sidebar.form.portTemplate', 'Port template from catalog')}</span>
+        <select
+          className="block w-full bg-bc-panel border border-bc-border px-1 py-0.5 text-bc-text-bright text-xs"
+          value={deviceTypeId}
+          onChange={(e) => setDeviceTypeId(e.target.value)}
+        >
+          <option value="">{t('sidebar.form.portTemplateNone', 'None — connectors unknown')}</option>
+          {CABLE_CAMERA_IDS.map((e) => (
+            <option key={e.deviceTypeId} value={e.deviceTypeId}>{e.name}</option>
+          ))}
+          {/* Eine GUID, die der aktuelle Abzug nicht mehr kennt, bleibt
+              waehlbar stehen, statt beim naechsten Speichern still zu fallen. */}
+          {deviceTypeId && !CABLE_CAMERA_IDS.some((e) => e.deviceTypeId === deviceTypeId) && (
+            <option value={deviceTypeId}>{deviceTypeId}</option>
+          )}
+        </select>
+      </label>
 
       <label className="block">
         <span className="text-bc-dim text-[10px]">{t('sidebar.form.sensor', 'Sensor')}</span>

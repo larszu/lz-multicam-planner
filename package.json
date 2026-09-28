@@ -18,6 +18,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "katalog:cable-ids": "node scripts/cable-kamera-ids.mjs",
+    "library:publish": "node scripts/library-publish.mjs",
     "docs:reachable": "node scripts/docs-reachable.mjs",
     "lang:check": "node scripts/quellsprache-check.mjs",
     "i18n:check": "node scripts/i18n-rueckweg-check.mjs",

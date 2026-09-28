@@ -35,21 +35,35 @@
 // Suite-Shell gesetzt. Wer MultiCam allein benutzt — als Web-Seite oder als
 // Electron-App —, hatte keinen Weg zu ihr. Genau das ist der Punkt eines
 // Einstellungen-Dialogs an einer festen Stelle.
+//
+// DER SCHNITT folgt dem Cable Planner (SettingsBody): links die Bereiche,
+// rechts Titel, Schliessen und der scrollende Inhalt. Seit der
+// Geraetebibliothek sind es zwei Bereiche; der Knopf „Anmelden" beim
+// Einreichen oeffnet den Dialog direkt auf „Device library"
+// (`initialSection`).
 // ───────────────────────────────────────────────────────────────────────────
 import { useEffect, useState } from 'react';
-import { FiX } from 'react-icons/fi';
+import { FiDatabase, FiSliders, FiX } from 'react-icons/fi';
 import { APP_VERSION } from '../../store/useStore';
 import { useTranslation, type Language } from '../../i18n';
 import { liesThema, setzeThema, type Thema } from '../../lib/thema';
+import DeviceLibrarySection from './DeviceLibrarySection';
+import type { SettingsSection } from './openSettings';
 
 const LANGUAGES: { id: Language; label: string }[] = [
   { id: 'en', label: 'English' },
   { id: 'de', label: 'Deutsch' },
 ];
 
-export default function SettingsDialog({ onClose }: { onClose: () => void }) {
+export default function SettingsDialog({ onClose, initialSection = 'general' }: { onClose: () => void; initialSection?: SettingsSection }) {
   const { t, language, setLanguage } = useTranslation();
   const [thema, setThema] = useState<Thema>(liesThema);
+  const [section, setSection] = useState<SettingsSection>(initialSection);
+  const SECTIONS: { id: SettingsSection; label: string; icon: typeof FiX }[] = [
+    { id: 'general', label: t('settings.tab.general', 'General'), icon: FiSliders },
+    { id: 'library', label: t('settings.tab.library', 'Device library'), icon: FiDatabase },
+  ];
+  const aktiv = SECTIONS.find((s) => s.id === section) ?? SECTIONS[0];
 
   /* Drei Zustaende, weil „System" keine Umschreibung fuer „dunkel" ist. */
   const THEMEN: { id: Thema; label: string; hint: string }[] = [
@@ -70,8 +84,9 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
     <div
       className="fixed inset-0 z-[250] flex items-center justify-center bg-bc-scrim p-4"
       /* B-44 — Klick auf den Hintergrund schliesst. Hier ohne Schutzabfrage:
-         in diesem Dialog gibt es kein ungesichertes Eingabefeld, jede
-         Auswahl wirkt sofort. */
+         jede Auswahl wirkt sofort. Die einzigen Eingabefelder sind Server
+         und Anmeldung — sie tragen keinen Entwurf, den man nicht in Sekunden
+         neu tippt. */
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -80,10 +95,34 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-label={t('settings.title', 'Settings')}
-        className="flex max-h-[80vh] w-full max-w-[520px] flex-col border border-bc-border bg-bc-panel"
+        className="flex h-[80vh] min-h-0 w-full max-w-[760px] flex-col overflow-hidden border border-bc-border bg-bc-panel sm:flex-row"
       >
+        <aside
+          className="flex shrink-0 flex-row gap-1 overflow-x-auto border-b border-bc-border sm:w-48 sm:flex-col sm:border-b-0 sm:border-r"
+          style={{ padding: '12px' }}
+        >
+          <h3 className="hidden text-xs font-bold uppercase tracking-wider text-bc-muted sm:block" style={{ padding: '0 8px 8px' }}>
+            {t('settings.title', 'Settings')}
+          </h3>
+          {SECTIONS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setSection(id)}
+              style={{ padding: '8px 12px' }}
+              className={`flex w-full items-center gap-2 text-left text-xs transition-colors ${
+                section === id ? 'bg-bc-accent text-bc-accent-text' : 'text-bc-text hover:bg-bc-panel-raised'
+              }`}
+            >
+              <Icon size={14} />
+              <span className="whitespace-nowrap">{label}</span>
+            </button>
+          ))}
+        </aside>
+
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="bc-panel-head justify-between">
-          <span className="text-sm font-bold text-bc-text-bright">{t('settings.title', 'Settings')}</span>
+          <span className="text-sm font-bold text-bc-text-bright">{aktiv.label}</span>
           <button
             type="button"
             onClick={onClose}
@@ -95,7 +134,9 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Der Rumpf scrollt, der Kopf bleibt — ADR-007 Abschnitt 6. */}
-        <div className="flex-1 overflow-y-auto" style={{ padding: '16px' }}>
+        <div className="min-h-0 flex-1 overflow-y-auto" style={{ padding: '16px' }}>
+          {section === 'library' && <DeviceLibrarySection />}
+          {section === 'general' && (<>
           <section>
             <h3 className="text-xs font-bold uppercase tracking-wider text-bc-muted">
               {t('settings.language', 'Language')}
@@ -173,7 +214,9 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
               )}
             </p>
           </section>
+          </>)}
         </div>
+        </main>
       </div>
     </div>
   );

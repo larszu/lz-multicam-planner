@@ -45,14 +45,125 @@ MultiCam Planner is designed for quick, intuitive camera planning with essential
   XCD, integrated …
 - Adapter system: automatic adapter detection with T-stop light loss, sensor crop info, Speed Booster support (e.g., EF→MFT)
 - Custom lens support: create and save your own lenses
+- **Custom cameras and lenses travel with the project:** the ones the placed
+  cameras use are written into the `.mcplan` (and the `.avplan` cameras slot)
+  and added to the local library when the project is opened on another
+  machine. An entry that already exists there with the same id but different
+  data is never overwritten — the local one is kept, and a notice names it.
 - Favorites: star cameras and lenses for quick access
-- **Every catalogue entry carries a stable device-type GUID** (`src/data/geraetetypIds.ts`,
-  generated). A camera exported to the cable planner resolves there to its own
-  datasheet entry instead of being matched on its model name — a name goes stale
-  when something is renamed, and exists in two spellings. Before this, 368 of the
-  377 cameras went across with no identity at all. The nine hand-set GUIDs in
-  `cameras.ts` still win: they are older, and saved plans point at them.
-  Regenerate from the cable planner with `npm run katalog:uebernahme`.
+- **Connectors in the Cable Planner:** a camera whose manufacturer and model
+  match an entry of the Cable Planner's camera catalog *exactly* (case, spaces
+  and dashes aside) carries that entry's device-type GUID, and the Cable
+  Planner resolves it to the real connector panel. Similar names do not count —
+  a wrong GUID would be trusted blindly over there. Four Blackmagic bodies
+  whose names differ only by wording (*Pocket Cinema 6K G2* / *Pocket Cinema
+  Camera 6K G2* and the like) are assigned by hand, with the reason next to
+  them in `cameras.ts`. Today 16 of 377 cameras (the catalog lists 20
+  devices). A custom camera can pick a catalog device as its **port template**.
+  The catalog identities are a frozen snapshot in
+  `src/data/cableCameraCatalogIds.ts`; `npm run katalog:cable-ids` refreshes it
+  from a `cable-planner` checkout next to this repo, and `npm test` then names
+  every camera whose GUID has to be added or removed.
+
+### 🗄 Device library (devices.zumpelars.de)
+- **Settings → Device library**: server address (default
+  `https://devices.zumpelars.de`, changeable, *Reset* returns to it), sign-in
+  with email or username and password, a second step for the two-factor code,
+  sign-out, and links to *Create account* / *Forgot password* on the library's
+  website (registration happens there, not in the planner). Every build talks
+  to the default server unless the address is changed.
+- **Sync**: on start (while signed in) and on *Sync now* — first up (own
+  entries, see below), then down. Down is incremental: only what changed
+  since the last `latestSeq`. Library cameras appear in the camera
+  list under *Device library*, library lenses in the lens list with
+  *· library*; both are read-only (editing creates a local *modified* copy,
+  like a built-in). A device marked `removed` leaves the catalog. Every entry
+  goes through the same check as cameras/lenses carried in a project file; one
+  that fails is skipped and counted in the sync line. The cache lives in local
+  storage and survives sign-out, so placed library cameras keep working
+  offline.
+- **Offline contract** (shared by every planner, `syncFrom` in the client):
+  the cache changes only on a successful response — offline, a timeout
+  (15 s per request, 120 s per upload batch), a server error, an expired
+  sign-in or signing out leave the last synced devices usable. Every server
+  address has its own cache slot under the same storage key; a single cache
+  from an older version is read as the slot of its server. When the server
+  reports a lower `latestSeq` than remembered (set up anew, restored from a
+  backup), the whole stand is fetched again and replaces the cache — unless it
+  is empty: then the sync fails with *server was set up anew … devices were
+  kept*, and nothing is deleted. Under the selector a library entry shows its status, its number of
+  confirmations and a link to its page.
+- **Library entries travel in the project file**: the ones placed cameras use
+  are written into the `.mcplan` (and the `.avplan` cameras slot) as
+  `libraryCameras` / `libraryLenses`. On a machine without them — no
+  account, another server, empty cache — the project calculates with the
+  file's copy; the sync cache is never written from a file, and where the
+  cache has the same id, the cache wins. Such an entry is marked *carried in
+  the project file* under the selector.
+- **Upload of own devices**: every custom camera or lens — including a
+  *modified* copy of a built-in or a library entry — goes to the library
+  (`POST /api/upload`) in the facet format below. The library matches by
+  manufacturer and model: an existing device gets this planner's data as its
+  next version instead of a second device. *Upload own devices
+  automatically* (Settings, on by default) uploads on start and a few seconds
+  after a change; *Sync now* uploads everything. Unchanged entries (by hash of
+  what was sent last) are not re-sent automatically — except those still
+  waiting for moderation: the server reports `moderation: pending | approved`
+  with every result (also `in-sync`), so the status turns *live* once a
+  moderator approves. Under the selector every own entry shows its last
+  result — waiting for moderation, live, blocked (with the reason, e.g.
+  *datasheet link missing*) or failed — and
+  *Upload…*, which asks for the datasheet link, stores it on the entry
+  (`manufacturerUrl`) and uploads at once. Not signed in, it leads to the
+  sign-in. Changed community guidelines (`guidelines-outdated`) have to be
+  accepted again on the website — the message links to
+  `<server>/guidelines`.
+- **Built-in catalog**: `npm run library:publish` uploads `src/data/cameras.ts`
+  and `src/data/lenses.ts` with an admin API key (`DEVICE_LIBRARY_KEY=dlk_…`,
+  optional `DEVICE_LIBRARY_URL`); admin uploads go live at once. Entries
+  without a datasheet link are listed and left out. `--dry-run` sends
+  nothing. `.github/workflows/library-publish.yml` runs it after every push to
+  `main` that touches the catalog (and by hand); without the repository
+  secret `DEVICE_LIBRARY_KEY` it ends green with a notice. CI runs the dry run,
+  so the script stays loadable (Node reads the `.ts` files directly — value
+  imports in the modules it loads carry the `.ts` extension).
+- **Facet format** (the `multicam` part of a library device, identical for
+  upload and import):
+  `{ kind: 'camera', version: 1, camera: <Camera without id> }` or
+  `{ kind: 'lens', version: 1, lens: <Lens without id and isCustom> }` — the
+  planner's native catalog entry, including `deviceTypeId` (the device-type
+  GUID the Cable Planner resolves to ports), `manufacturerUrl` and
+  `specSource` (datasheet evidence per field). Nested, because the server
+  strips top-level private keys such as `id` and `notes` from every facet.
+  Imported entries get the id `devlib-<slug>`; the core's `category` is
+  `Camera` or `Lens`. Mapping: `src/library/facet.ts`.
+- **Token storage**: the desktop app keeps the sign-in token in the system
+  keychain (`safeStorage`, via `electron/preload.cjs`); without a keychain it
+  is kept for the session only, never in plain text. The web build uses local
+  storage — a browser offers a page nothing safer; signing out revokes the
+  token on the server. The token is never written to a project file, the
+  autosave or a log.
+- **Another server**: the content security policy (`index.html`,
+  `electron/main.cjs`) allows only `https://devices.zumpelars.de`. A different
+  address must be added there, otherwise every request is blocked and the
+  settings report the server as unreachable. Changing the address signs out
+  at the old server, forgets the token (it must never reach another server)
+  and switches to that server's cache slot and a fresh upload record; the
+  previous server's cache stays stored and is back when you switch back. Only `https://` is accepted (`http://` for
+  localhost).
+- Client: `src/utils/deviceLibraryClient.ts`, an unchanged copy of
+  `larszu/av-device-library` `clients/deviceLibraryClient.ts` — changes go
+  there first.
+- **Every catalogue entry also carries a DERIVED device-type GUID**
+  (`src/data/geraetetypIds.ts`, generated). The bullet above describes the
+  hand-set and exactly-name-matched ones: 16 of 377. The other 361 went across
+  with no identity at all, so the cable planner fell back to comparing
+  manufacturer and model as strings — the very thing the GUID was meant to
+  abolish. The derived id closes that gap for all of them; a hand-set one still
+  wins, because it is older and saved plans point at it. It is derived, not
+  invented: UUIDv5 over `avplan:camera:<id>`, so the same catalogue entry yields
+  the same id in every app, and it says *this catalogue entry*, never *these
+  ports*. Regenerate from the cable planner with `npm run katalog:uebernahme`.
 
 ### 🗺 2D Venue Planner
 - Top-down drag & drop camera placement with real-time FOV cones
@@ -89,6 +200,28 @@ MultiCam Planner is designed for quick, intuitive camera planning with essential
 
 ### 💾 Project & Layout
 - Save/load projects as JSON with version tracking and unsaved changes detection
+- **Autosave:** the open project is kept in the browser's local storage one
+  second after the last change (and at once when the page is left) and comes
+  back on the next start — including whether it has unsaved changes. The start
+  screen then offers *Continue last project*; opening a file or starting a new
+  project replaces it, and asks first if it has unsaved changes. If the storage is full, the
+  status bar says so; the project stays open and can still be saved as a file.
+- **Stable project id:** every project gets a UUID when it is created and keeps
+  it through every save. An older file without one gets an id derived from the
+  file (save time and venue name), so opening the same file twice gives the
+  same id. The
+  Cable Planner uses it to recognise a project it has seen before.
+- **Camera list for the Cable Planner** (`*.cameras.json`, format `camera-list`
+  v3): every placed camera with manufacturer, model, device-type GUID, position
+  and height, pan and tilt, the active mount, the set focal length, an engaged
+  extender, the lens (manufacturer, model, zoom range, mount) and its saved PTZ
+  presets (number, shot, segment, pan, tilt, focal length, focus, saved at).
+  A field MultiCam does not know stays out — no default that would read like a
+  measurement over there. v1 and v2 files are still read; a reader that only
+  knows v2 refuses a v3 file by name instead of silently dropping the presets. The `.avplan` export carries the same list inside
+  MultiCam's own slot (`domains.cameras.cameraList`), so the Cable Planner
+  does not need to know MultiCam's project format; it is rebuilt on every
+  export and dropped on import.
 - Dockable panel system (FlexLayout): drag, split, tab, resize
 - Layout modes: Focus (single tab) and Grid (2×2)
 - Customizable layout presets (save/load/delete)
@@ -175,6 +308,8 @@ page. It can also be triggered manually via the Actions tab for testing.
 | npm run preview    | Preview production build                          |
 | npm run lint       | Run ESLint linter                                 |
 | npm run ci:complete| Assert every `*:check` script is actually run by CI |
+| npm run katalog:cable-ids | Refresh the snapshot of the Cable Planner camera catalog (GUIDs) |
+| npm run library:publish | Upload the built-in catalog to the device library (`DEVICE_LIBRARY_KEY`, `--dry-run`) |
 
 ---
 

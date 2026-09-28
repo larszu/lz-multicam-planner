@@ -183,6 +183,8 @@ export default function App() {
   const { sidebarCollapsed, setSidebarCollapsed } = useStore();
   const idRepairCount = useStore((state) => state.lastIdRepair);
   const dismissIdRepair = useStore((state) => state.dismissIdRepair);
+  const libraryMerge = useStore((state) => state.lastLibraryMerge);
+  const dismissLibraryMerge = useStore((state) => state.dismissLibraryMerge);
   const [sidebarTab, setSidebarTab] = useState<'cameras' | 'templates'>('cameras');
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [model, setModel] = useLayoutModel(t);
@@ -490,6 +492,49 @@ export default function App() {
             type="button"
             onClick={dismissIdRepair}
             className="bg-amber-800/60 px-2 py-0.5 text-xs hover:bg-amber-700/60"
+          >
+            {t('common.ok', 'OK')}
+          </button>
+        </div>
+      )}
+      {/* cable-planner#917 — was die Projektdatei an eigenen Kameras/Optiken
+          mitbrachte und NICHT uebernommen wurde. Bei gleicher Id mit anderem
+          Inhalt gilt der eigene Eintrag; das Projekt rechnet dann mit ihm,
+          und das muss man wissen, statt es an abweichenden Bildwinkeln zu
+          bemerken. */}
+      {libraryMerge !== null && (
+        <div
+          role="status"
+          className="flex items-start gap-3 border-b border-bc-yellow bg-bc-panel px-4 py-2 text-sm text-bc-text"
+        >
+          <div className="flex-1 space-y-0.5">
+            {libraryMerge.conflicts.length > 0 && (
+              <div>
+                <strong className="font-semibold">
+                  {format(
+                    t('load.libraryConflict.title', '{count} custom camera(s)/lens(es) from the project were not taken over.'),
+                    { count: libraryMerge.conflicts.length },
+                  )}
+                </strong>{' '}
+                {format(
+                  t('load.libraryConflict.hint', 'This library already holds an entry with the same id and different data. The local one was kept, and the project now calculates with it: {names}'),
+                  { names: libraryMerge.conflicts.join(', ') },
+                )}
+              </div>
+            )}
+            {libraryMerge.invalid > 0 && (
+              <div>
+                {format(
+                  t('load.libraryInvalid', '{count} custom camera(s)/lens(es) in the project file could not be read and were skipped.'),
+                  { count: libraryMerge.invalid },
+                )}
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={dismissLibraryMerge}
+            className="border border-bc-border px-2 py-0.5 text-xs hover:bg-bc-hover"
           >
             {t('common.ok', 'OK')}
           </button>

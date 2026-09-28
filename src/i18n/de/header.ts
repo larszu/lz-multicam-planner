@@ -116,6 +116,8 @@ export const header: Record<string, string> = {
   'header.welcome.close': 'Schließen',
   'header.welcome.title': 'Willkommen beim MultiCam Planner',
   'header.welcome.intro': 'Wie möchten Sie beginnen?',
+  'header.welcome.continue.title': 'Letztes Projekt fortsetzen',
+  'header.welcome.continue.desc': 'Das zuletzt bearbeitete Projekt, aus der automatischen Sicherung wiederhergestellt',
   'header.welcome.load.title': 'Plan laden',
   'header.welcome.load.desc': 'Eine bestehende .mcplan-Datei öffnen und direkt zur Kamerabearbeitung springen',
   'header.welcome.new.title': 'Neuer Plan',

@@ -1,0 +1,60 @@
+name: Katalog in die Geraetebibliothek
+
+# Der eingebaute Katalog (Kameras, Objektive) soll auch auf
+# devices.zumpelars.de stehen. Nach jedem Push auf main, der ihn aendert,
+# laedt dieser Lauf ihn mit dem API-Schluessel eines Admins hoch; die
+# Bibliothek antwortet je Eintrag (`in-sync` fuer Unveraendertes), und
+# Admin-Uploads gehen sofort live.
+#
+# Ohne das Secret DEVICE_LIBRARY_KEY endet der Lauf mit einem Hinweis und
+# GRUEN: ein Fork oder ein Repo ohne Schluessel ist kein Fehler, und ein
+# Lauf, der bis zu einem Klick rot bleibt, den niemand macht, lehrt, Rot zu
+# uebersehen.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/data/cameras.ts'
+      - 'src/data/lenses.ts'
+      - 'src/library/**'
+      - 'src/utils/deviceLibraryClient.ts'
+      - 'src/utils/projectLibrary.ts'
+      - 'scripts/library-publish.mjs'
+      - '.github/workflows/library-publish.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: library-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      DEVICE_LIBRARY_KEY: ${{ secrets.DEVICE_LIBRARY_KEY }}
+      DEVICE_LIBRARY_URL: ${{ vars.DEVICE_LIBRARY_URL }}
+    steps:
+      - name: Schluessel vorhanden?
+        id: key
+        run: |
+          if [ -z "$DEVICE_LIBRARY_KEY" ]; then
+            echo "::notice::DEVICE_LIBRARY_KEY ist nicht gesetzt — Katalog nicht veroeffentlicht. Schluessel unter devices.zumpelars.de > Konto > Sicherheit anlegen und als Repository-Secret eintragen."
+            echo "Katalog **nicht** veroeffentlicht: Secret \`DEVICE_LIBRARY_KEY\` fehlt." >> "$GITHUB_STEP_SUMMARY"
+            echo "set=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "set=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v5
+        if: steps.key.outputs.set == 'true'
+      - uses: actions/setup-node@v5
+        if: steps.key.outputs.set == 'true'
+        with:
+          node-version: '24'
+      # Keine Abhaengigkeiten: der Lauf braucht nur Node und die Quelldateien.
+      - name: Katalog hochladen
+        if: steps.key.outputs.set == 'true'
+        run: npm run library:publish

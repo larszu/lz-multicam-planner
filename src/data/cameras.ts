@@ -1,4 +1,5 @@
 import type { Camera, SensorSize, AdapterInfo, Lens } from '../types';
+import { libraryCameras } from '../library/registry.ts';
 
 // ── Standard sensor sizes ──
 export const SENSORS: Record<string, SensorSize> = {
@@ -116,6 +117,13 @@ export const CAMERAS: Camera[] = [
   { id: 'pana-aw-ue150', manufacturerUrl: 'https://pro-av.panasonic.net/en/products/aw-ue150/spec.html', manufacturer: 'Panasonic', model: 'AW-UE150', sensor: SENSORS.ONE_INCH, mount: 'integrated', resolutions: ['4K', 'HD'], type: 'ptz' },
 
   // ── Blackmagic Design ──
+  // Vier GUIDs von Hand, weil der Katalog-Abzug nur woertlich zuordnet und der
+  // cable-planner diese Modelle unter dem Namen mit „Camera"/„4.6K" fuehrt:
+  // „Pocket Cinema 6K G2" (techspecs W-CIN-19) = „Pocket Cinema Camera 6K G2",
+  // „Pocket Cinema 4K" (W-CIN-12) = „Pocket Cinema Camera 4K", „URSA Mini Pro
+  // G2" (W-URSA-34) = „URSA Mini Pro 4.6K G2", „URSA Mini Pro 4.6K" (Vorstellung
+  // 2017) = „URSA Mini Pro". „Studio Camera 4K Plus" bleibt ohne: drueben steht
+  // nur der Nachfolger „4K Plus G2", und dessen Anschluesse sind andere.
   { id: 'bmd-ursa-broadcast-g2', manufacturerUrl: 'https://www.blackmagicdesign.com/products/blackmagicursabroadcast/techspecs', manufacturer: 'Blackmagic', model: 'URSA Broadcast G2', sensor: { name: 'BMD 6K (23.1×12.99)', widthMm: 23.1, heightMm: 12.99, cropFactor: 1.56 }, mount: 'B4', adaptedMounts: ['EF', 'PL'], resolutions: ['6K', '4K', 'HD'], type: 'broadcast', notes: 'B4 native, EF/PL via adapter. Broadcast camera with cinema sensor.', sensorModes: [
     { name: '6K Full (23.1×12.99)', widthMm: 23.1, heightMm: 12.99, cropFactor: 1.56 },
     { name: '4K UHD S16 crop (12.4×6.97)', widthMm: 12.4, heightMm: 6.97, cropFactor: 2.91 },
@@ -124,7 +132,7 @@ export const CAMERAS: Camera[] = [
     EF: { name: 'URSA Mini EF Mount Plate', lightLossStops: 0, notes: 'Removes the B4 relay so the full 6K image area is available. EF lenses sit native — no light loss, no extra crop.' },
     PL: { name: 'URSA Mini PL Mount Plate', lightLossStops: 0, notes: 'Removes the B4 relay so the full 6K image area is available. PL cine lenses sit native — no light loss, no extra crop.' },
   } },
-  { id: 'bmd-ursa-12k', manufacturerUrl: 'https://www.blackmagicdesign.com/products/blackmagicursaminipro/techspecs/W-URSA-36', manufacturer: 'Blackmagic', model: 'URSA Mini Pro 12K', sensor: SENSORS.S35, mount: 'PL', adaptedMounts: ['EF'], resolutions: ['12K', '8K', '4K'], type: 'cinema', sensorModes: [
+  { id: 'bmd-ursa-12k', manufacturerUrl: 'https://www.blackmagicdesign.com/products/blackmagicursaminipro/techspecs/W-URSA-36', deviceTypeId: '1b94e2d9-f987-4b76-8827-f555d88a2e10', manufacturer: 'Blackmagic', model: 'URSA Mini Pro 12K', sensor: SENSORS.S35, mount: 'PL', adaptedMounts: ['EF'], resolutions: ['12K', '8K', '4K'], type: 'cinema', sensorModes: [
     { name: '12K Full S35 (27.03×14.25)', widthMm: 27.03, heightMm: 14.25, cropFactor: 1.33 },
     { name: '12K 8:1 Open Gate (27.03×19.04)', widthMm: 27.03, heightMm: 19.04, cropFactor: 1.30 },
     { name: '8K S16 crop (18.0×9.5)', widthMm: 18.0, heightMm: 9.5, cropFactor: 2.0 },
@@ -132,15 +140,15 @@ export const CAMERAS: Camera[] = [
   ], mountAdapters: {
     EF: { name: 'URSA Mini EF Mount Plate', lightLossStops: 0, notes: 'Mechanical swap of the PL block for the EF block — no optical relay, no light loss. The same full sensor area is available; choose the desired crop via the Sensor Mode dropdown.' },
   } },
-  { id: 'bmd-ursa-g2', manufacturerUrl: 'https://www.blackmagicdesign.com/products/blackmagicursaminipro/techspecs/W-URSA-34', manufacturer: 'Blackmagic', model: 'URSA Mini Pro G2', sensor: SENSORS.S35, mount: 'PL', adaptedMounts: ['EF'], resolutions: ['4.6K', '4K', 'HD'], type: 'cinema', mountAdapters: {
+  { id: 'bmd-ursa-g2', manufacturerUrl: 'https://www.blackmagicdesign.com/products/blackmagicursaminipro/techspecs/W-URSA-34', deviceTypeId: '841e8039-0e83-4734-904f-bf4ffcdb8882', manufacturer: 'Blackmagic', model: 'URSA Mini Pro G2', sensor: SENSORS.S35, mount: 'PL', adaptedMounts: ['EF'], resolutions: ['4.6K', '4K', 'HD'], type: 'cinema', mountAdapters: {
     EF: { name: 'URSA Mini EF Mount Plate', lightLossStops: 0, notes: 'Passive mechanical mount-plate swap. Full Super-35 sensor area available either way.' },
   } },
-  { id: 'bmd-ursa-46k', manufacturerUrl: 'https://www.blackmagicdesign.com/media/release/20170302-01', manufacturer: 'Blackmagic', model: 'URSA Mini Pro 4.6K', sensor: SENSORS.S35, mount: 'PL', adaptedMounts: ['EF'], resolutions: ['4.6K', '4K', 'HD'], type: 'cinema', mountAdapters: {
+  { id: 'bmd-ursa-46k', manufacturerUrl: 'https://www.blackmagicdesign.com/media/release/20170302-01', deviceTypeId: '26557b2a-6df5-449c-bcef-29a24e4a811e', manufacturer: 'Blackmagic', model: 'URSA Mini Pro 4.6K', sensor: SENSORS.S35, mount: 'PL', adaptedMounts: ['EF'], resolutions: ['4.6K', '4K', 'HD'], type: 'cinema', mountAdapters: {
     EF: { name: 'URSA Mini EF Mount Plate', lightLossStops: 0, notes: 'Passive mechanical mount-plate swap. Full Super-35 sensor area available either way.' },
   } },
   { id: 'bmd-pocket6kpro', manufacturerUrl: 'https://www.blackmagicdesign.com/products/blackmagicpocketcinemacamera/techspecs', manufacturer: 'Blackmagic', model: 'Pocket Cinema 6K Pro', sensor: SENSORS.S35, mount: 'EF', resolutions: ['6K', '4K', 'HD'], type: 'cinema' },
-  { id: 'bmd-pocket6k', manufacturerUrl: 'https://www.blackmagicdesign.com/products/blackmagicpocketcinemacamera/techspecs/W-CIN-19', manufacturer: 'Blackmagic', model: 'Pocket Cinema 6K G2', sensor: SENSORS.S35, mount: 'EF', resolutions: ['6K', '4K', 'HD'], type: 'cinema' },
-  { id: 'bmd-pocket4k', manufacturerUrl: 'https://www.blackmagicdesign.com/products/blackmagicpocketcinemacamera/techspecs/W-CIN-12', manufacturer: 'Blackmagic', model: 'Pocket Cinema 4K', sensor: SENSORS.MFT, mount: 'MFT', resolutions: ['4K', 'HD'], type: 'cinema' },
+  { id: 'bmd-pocket6k', manufacturerUrl: 'https://www.blackmagicdesign.com/products/blackmagicpocketcinemacamera/techspecs/W-CIN-19', deviceTypeId: 'd073d39d-9d61-492c-8022-93676460c668', manufacturer: 'Blackmagic', model: 'Pocket Cinema 6K G2', sensor: SENSORS.S35, mount: 'EF', resolutions: ['6K', '4K', 'HD'], type: 'cinema' },
+  { id: 'bmd-pocket4k', manufacturerUrl: 'https://www.blackmagicdesign.com/products/blackmagicpocketcinemacamera/techspecs/W-CIN-12', deviceTypeId: 'ea3ea3d8-3a1c-4087-ab03-1ce394ec1ea5', manufacturer: 'Blackmagic', model: 'Pocket Cinema 4K', sensor: SENSORS.MFT, mount: 'MFT', resolutions: ['4K', 'HD'], type: 'cinema' },
   { id: 'bmd-cinema-camera-6k', manufacturerUrl: 'https://www.blackmagicdesign.com/products/blackmagiccinemacamera/techspecs', manufacturer: 'Blackmagic', model: 'Cinema Camera 6K', sensor: SENSORS.FF, mount: 'L', adaptedMounts: ['EF', 'PL', 'NF'], resolutions: ['6K', '4K', 'HD'], type: 'cinema', notes: 'Full-frame, L-mount native; EF/PL/Nikon F via adapter', mountAdapters: {
     EF: { name: 'EF → L Adapter', lightLossStops: 0, notes: 'Passive EF-to-L adapter (Sigma MC-21, Novoflex, etc.). Mechanical only — full-frame sensor area available, no light loss.' },
     PL: { name: 'PL → L Adapter', lightLossStops: 0, notes: 'Passive PL-to-L adapter. PL has a longer flange distance than L, so an empty barrel fits between them. No optical penalty.' },
@@ -151,7 +159,7 @@ export const CAMERAS: Camera[] = [
     EF: { name: 'PYXIS EF Mount (interchangeable)', lightLossStops: 0, notes: 'Passive EF mount block for the PYXIS 6K. Electronic aperture control is supported. No optical penalty.' },
   } },
   { id: 'bmd-studio4kplus', manufacturerUrl: 'https://www.blackmagicdesign.com/products/blackmagicstudiocamera', manufacturer: 'Blackmagic', model: 'Studio Camera 4K Plus', sensor: SENSORS.MFT, mount: 'MFT', resolutions: ['4K', 'HD'], type: 'broadcast' },
-  { id: 'bmd-studio4kpro', manufacturerUrl: 'https://www.blackmagicdesign.com/products/blackmagicstudiocamera/techspecs/W-CST-12', manufacturer: 'Blackmagic', model: 'Studio Camera 4K Pro G2', sensor: SENSORS.MFT, mount: 'MFT', resolutions: ['4K', 'HD'], type: 'broadcast' },
+  { id: 'bmd-studio4kpro', manufacturerUrl: 'https://www.blackmagicdesign.com/products/blackmagicstudiocamera/techspecs/W-CST-12', deviceTypeId: 'ca069b86-a1ce-438e-a390-28c3445254c0', manufacturer: 'Blackmagic', model: 'Studio Camera 4K Pro G2', sensor: SENSORS.MFT, mount: 'MFT', resolutions: ['4K', 'HD'], type: 'broadcast' },
   { id: 'bmd-studio6kpro', manufacturerUrl: 'https://www.blackmagicdesign.com/products/blackmagicstudiocamera/techspecs/W-CST-11', manufacturer: 'Blackmagic', model: 'Studio Camera 6K Pro', sensor: SENSORS.S35, mount: 'EF', resolutions: ['6K', '4K', 'HD'], type: 'broadcast' },
   { id: 'bmd-micro-studio-4k-g2', manufacturerUrl: 'https://www.blackmagicdesign.com/products/blackmagicmicrostudiocamera/techspecs', manufacturer: 'Blackmagic', model: 'Micro Studio Camera 4K G2', sensor: SENSORS.MFT, mount: 'MFT', adaptedMounts: ['EF'], resolutions: ['4K', 'HD'], type: 'broadcast', notes: 'Micro form factor, MFT native, EF via adapter or EF Speedbooster', mountAdapters: {
     EF: { name: 'EF → MFT Adapter (passive)', lightLossStops: 0, notes: 'Standard EF-to-MFT adapter — purely mechanical, no glass, manual aperture control only. For light gain + wider FOV, enable Speed Booster instead.' },
@@ -425,7 +433,7 @@ export const CAMERAS: Camera[] = [
   { id: 'dji-pocket-3', manufacturerUrl: 'https://www.dji.com/osmo-pocket-3/specs', manufacturer: 'DJI', model: 'Osmo Pocket 3', sensor: SENSORS.ONE_INCH, mount: 'integrated', resolutions: ['4K', 'HD'], type: 'camcorder', notes: 'Gimbal-Cam' },
   { id: 'insta360-x4', manufacturerUrl: 'https://onlinemanual.insta360.com/x4/en-us/specs/hardware', manufacturer: 'Insta360', model: 'X4', sensor: { name: '1/2" (6.4×4.8)', widthMm: 6.4, heightMm: 4.8, cropFactor: 5.41 }, mount: 'integrated', resolutions: ['8K', '5.7K', '4K'], type: 'camcorder', notes: '360°' },
   // ── Camcorder (Ausbau) ──
-  { id: 'sony-pxw-z280', manufacturerUrl: 'https://pro.sony/ue_US/products/handheld-camcorders/pxw-z280', manufacturer: 'Sony', model: 'PXW-Z280', sensor: SENSORS.HALF_INCH, mount: 'integrated', resolutions: ['4K', 'HD'], type: 'camcorder', notes: '3×1/2" Exmor R CMOS (Quelle: pro.sony PXW-Z280)' },
+  { id: 'sony-pxw-z280', manufacturerUrl: 'https://pro.sony/ue_US/products/handheld-camcorders/pxw-z280', deviceTypeId: 'd82a344a-ba04-4b38-99da-fb7aa1df9a39', manufacturer: 'Sony', model: 'PXW-Z280', sensor: SENSORS.HALF_INCH, mount: 'integrated', resolutions: ['4K', 'HD'], type: 'camcorder', notes: '3×1/2" Exmor R CMOS (Quelle: pro.sony PXW-Z280)' },
   { id: 'canon-xa60', manufacturerUrl: 'https://en.canon-cna.com/video-cameras/xa60b/', manufacturer: 'Canon', model: 'XA60', sensor: { name: '1/2.3" (6.17×4.55)', widthMm: 6.17, heightMm: 4.55, cropFactor: 5.64 }, mount: 'integrated', resolutions: ['4K', 'HD'], type: 'camcorder' },
   { id: 'panasonic-hc-x2', manufacturerUrl: 'https://www.panasonic.com/my/consumer/camera-camcorder/camcorder/4k-full-hd-camcorder/hc-x2.specs.html', manufacturer: 'Panasonic', model: 'HC-X2', sensor: SENSORS.ONE_INCH, mount: 'integrated', resolutions: ['4K', 'HD'], type: 'camcorder' },
   { id: 'panasonic-ag-cx10', manufacturerUrl: 'https://pro-av.panasonic.net/en/products/ag-cx10/', manufacturer: 'Panasonic', model: 'AG-CX10', sensor: { name: '1/2.5" (5.76×4.29)', widthMm: 5.76, heightMm: 4.29, cropFactor: 6.25 }, mount: 'integrated', resolutions: ['4K', 'HD'], type: 'camcorder' },
@@ -570,13 +578,13 @@ export const CAMERAS: Camera[] = [
   { id: 'datavideo-ptc-305', manufacturerUrl: 'https://datavideo.com/product/PTC-305', manufacturer: 'Datavideo', model: 'PTC-305', sensor: { name: '1/1.8" (7.44×5.58)', widthMm: 7.44, heightMm: 5.58, cropFactor: 4.84 }, mount: 'integrated', resolutions: ['4K','HD'], type: 'ptz' },
   { id: 'datavideo-ptc-145', manufacturerUrl: 'https://datavideo.com/product/PTC-145', manufacturer: 'Datavideo', model: 'PTC-145', sensor: { name: '1/2.8" (5.37×4.04)', widthMm: 5.37, heightMm: 4.04, cropFactor: 6.7 }, mount: 'integrated', resolutions: ['HD'], type: 'ptz' },
   { id: 'avonic-cm93-ip', manufacturerUrl: 'https://avonic.com/cm93/', manufacturer: 'Avonic', model: 'CM93-IP', sensor: { name: '1/1.8" (7.44×5.58)', widthMm: 7.44, heightMm: 5.58, cropFactor: 4.84 }, mount: 'integrated', resolutions: ['4K','HD'], type: 'ptz' },
-  { id: 'sony-srg-a30-b', manufacturer: 'Sony', model: 'SRG-XB25', sensor: { name: '1/2.5" (5.76×4.29)', widthMm: 5.76, heightMm: 4.29, cropFactor: 6.25 }, mount: 'integrated', resolutions: ['4K','HD'], type: 'ptz' },
-  { id: 'canon-cr-n300w', manufacturer: 'Canon', model: 'CR-N300 (weiß)', sensor: { name: '1/2.3" (6.17×4.55)', widthMm: 6.17, heightMm: 4.55, cropFactor: 5.64 }, mount: 'integrated', resolutions: ['4K','HD'], type: 'ptz' },
+  { id: 'sony-srg-a30-b', manufacturerUrl: 'https://pro.sony/ue_US/products/ptz-network-cameras/srg-xb25', manufacturer: 'Sony', model: 'SRG-XB25', sensor: { name: '1/2.5" (5.76×4.29)', widthMm: 5.76, heightMm: 4.29, cropFactor: 6.25 }, mount: 'integrated', resolutions: ['4K','HD'], type: 'ptz' },
+  { id: 'canon-cr-n300w', manufacturerUrl: 'https://www.canon-europe.com/ptz-cameras/cr-n300/specifications/', manufacturer: 'Canon', model: 'CR-N300 (weiß)', sensor: { name: '1/2.3" (6.17×4.55)', widthMm: 6.17, heightMm: 4.55, cropFactor: 5.64 }, mount: 'integrated', resolutions: ['4K','HD'], type: 'ptz' },
   { id: 'ptzoptics-move-4k-ndi', manufacturerUrl: 'https://docs.ptzoptics.com/docs/cameras/move-4k/technical-specs', manufacturer: 'PTZOptics', model: 'Move 4K SDI', sensor: { name: '1/2.5" (5.76×4.29)', widthMm: 5.76, heightMm: 4.29, cropFactor: 6.25 }, mount: 'integrated', resolutions: ['4K','HD'], type: 'ptz' },
   { id: 'lumens-vc-b11u', manufacturerUrl: 'https://www.mylumens.com/en/Products_detail/1047/VC-B11U-Video-Conference-Camera', manufacturer: 'Lumens', model: 'VC-B11U', sensor: { name: '1/2.8" (5.37×4.04)', widthMm: 5.37, heightMm: 4.04, cropFactor: 6.7 }, mount: 'integrated', resolutions: ['4K','HD'], type: 'ptz' },
   { id: 'marshall-cv730-ndi', manufacturerUrl: 'https://marshall-usa.com/cameras/CV730-NDI/', manufacturer: 'Marshall', model: 'CV730-NDI', sensor: { name: '1/1.8" (7.44×5.58)', widthMm: 7.44, heightMm: 5.58, cropFactor: 4.84 }, mount: 'integrated', resolutions: ['4K','HD'], type: 'ptz' },
-  { id: 'aida-uhd-100a', manufacturer: 'AIDA', model: 'UHD-100A', sensor: { name: '1/2.5" (5.76×4.29)', widthMm: 5.76, heightMm: 4.29, cropFactor: 6.25 }, mount: 'C/CS', resolutions: ['4K','HD'], type: 'broadcast' },
-  { id: 'aida-ptz4k-ndi', manufacturer: 'AIDA', model: 'PTZ4K-NDI-X30', sensor: { name: '1/1.8" (7.44×5.58)', widthMm: 7.44, heightMm: 5.58, cropFactor: 4.84 }, mount: 'integrated', resolutions: ['4K','HD'], type: 'ptz' },
+  { id: 'aida-uhd-100a', manufacturerUrl: 'https://aidaimaging.com/uhd-100a/', manufacturer: 'AIDA', model: 'UHD-100A', sensor: { name: '1/2.5" (5.76×4.29)', widthMm: 5.76, heightMm: 4.29, cropFactor: 6.25 }, mount: 'C/CS', resolutions: ['4K','HD'], type: 'broadcast' },
+  { id: 'aida-ptz4k-ndi', manufacturerUrl: 'https://aidaimaging.com/ptz4k-ndi-x30/', manufacturer: 'AIDA', model: 'PTZ4K-NDI-X30', sensor: { name: '1/1.8" (7.44×5.58)', widthMm: 7.44, heightMm: 5.58, cropFactor: 4.84 }, mount: 'integrated', resolutions: ['4K','HD'], type: 'ptz' },
 
   // ── Marshall POV ──
   { id: 'marshall-cv568', manufacturerUrl: 'https://marshall-usa.com/cameras/CV568/', manufacturer: 'Marshall', model: 'CV568', sensor: { name: '1/1.8" (7.44×5.58)', widthMm: 7.44, heightMm: 5.58, cropFactor: 4.84 }, mount: 'M12', resolutions: ['HD'], type: 'broadcast', notes: 'POV camera, global shutter' },
@@ -585,7 +593,8 @@ export const CAMERAS: Camera[] = [
 export function getCameraById(id: string, customCameras?: Camera[]): Camera | undefined {
   // Custom entries take precedence — when the user edits a built-in we shadow
   // it with a customCameras entry that has the same id, and that should win.
-  return customCameras?.find((c) => c.id === id) ?? CAMERAS.find((c) => c.id === id);
+  // The device library comes last: a read-only source, never a shadow.
+  return customCameras?.find((c) => c.id === id) ?? CAMERAS.find((c) => c.id === id) ?? libraryCameras().find((c) => c.id === id);
 }
 
 export function getCamerasByType(type: Camera['type']): Camera[] {

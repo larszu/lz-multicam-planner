@@ -33,19 +33,38 @@ export default function StartupAssistant() {
   const dismiss = useCallback(() => { markSeen(); setPhase('done'); }, [markSeen]);
 
   const startWizard = useCallback(() => {
+    // Seit der automatischen Sicherung (cable-planner#908) steht hier beim
+    // Start das zuletzt bearbeitete Projekt, nicht mehr ein leeres. „Neuer
+    // Plan" muss es deshalb wirklich ersetzen — und fragen, wenn dabei
+    // Arbeit verlorenginge, die in keiner Datei liegt.
+    // `hasUnsavedChanges` vergleicht Projektstaende und sieht damit JEDE
+    // Aenderung seit dem letzten Speichern — auch eine, die nur Buehnen oder
+    // Raummasse betrifft. Eine Inhaltsliste daneben uebersah genau die.
+    const s = useStore.getState();
+    if (s.hasUnsavedChanges()
+      && !window.confirm(t('header.new.confirm', 'New project — the current one is replaced. Continue?'))) return;
+    s.newProject();
     markSeen();
     setStepIndex(0);
     setEditMode(WIZARD_STEPS[0].mode);
     setPhase('wizard');
-  }, [markSeen, setEditMode, WIZARD_STEPS]);
+  }, [markSeen, setEditMode, WIZARD_STEPS, t]);
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // Derselbe Schutz wie bei „Neuer Plan": seit der automatischen Sicherung
+    // steht hier das zuletzt bearbeitete Projekt, und ein Laden ohne Frage
+    // ueberschriebe eine Sekunde spaeter auch die Sicherung.
+    if (file && useStore.getState().hasUnsavedChanges()
+      && !window.confirm(t('header.open.confirm', 'Open a plan — the current one is replaced and it has unsaved changes. Continue?'))) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
     if (file) await loadProject(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
     setEditMode('cameras'); // an existing plan jumps straight to camera editing
     dismiss();
-  }, [loadProject, setEditMode, dismiss]);
+  }, [loadProject, setEditMode, dismiss, t]);
 
   const nextStep = useCallback(() => {
     setStepIndex((i) => {
@@ -96,6 +115,11 @@ export default function StartupAssistant() {
   }
 
   // phase === 'choose'
+  // Wiederhergestellt aus der automatischen Sicherung und nicht leer: dann
+  // ist Weiterarbeiten die naheliegende Wahl und steht oben.
+  const st = useStore.getState();
+  const fortsetzen =
+    st.cameras.length > 0 || st.persons.length > 0 || st.walls.length > 0 || st.backgroundPlan !== null || st.hasUnsavedChanges();
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-bc-scrim backdrop-blur-sm">
       <div className="w-[440px] max-w-[92vw] border border-bc-border bg-bc-panel p-6 relative">
@@ -105,6 +129,20 @@ export default function StartupAssistant() {
         <h2 className="text-bc-text-bright font-bold text-lg">{t('header.welcome.title', 'Welcome to MultiCam Planner')}</h2>
         <p className="text-bc-muted text-sm mt-1">{t('header.welcome.intro', 'How would you like to start?')}</p>
         <div className="grid grid-cols-1 gap-3 mt-5">
+          {fortsetzen && (
+            <button
+              onClick={dismiss}
+              className="flex items-center gap-3 border border-bc-accent bg-bc-dark px-4 py-3 text-left hover:border-bc-accent transition-colors"
+            >
+              <FiArrowRight size={20} className="text-bc-accent shrink-0" />
+              <span>
+                <span className="block text-bc-text-bright text-sm font-medium">{t('header.welcome.continue.title', 'Continue last project')}</span>
+                <span className="block text-bc-dim text-xs">
+                  {t('header.welcome.continue.desc', 'The project you last worked on, restored from the automatic backup')}
+                </span>
+              </span>
+            </button>
+          )}
           <button
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-3 border border-bc-border bg-bc-dark px-4 py-3 text-left hover:border-bc-accent transition-colors"

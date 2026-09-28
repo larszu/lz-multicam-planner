@@ -62,7 +62,7 @@ const HARMLOS = new Set(
     // Englisch und Bezeichner, die als Text auftauchen
     'venueexchange', 'importvenueexchange', 'parsevenueexchange', 'venue',
     'returndue', 'due', 'value', 'values', 'postovalue', 'valuetopos',
-    'cornflowerblue', 'blue', 'true', 'issue', 'unique', 'query', 'request',
+    'cornflowerblue', 'blue', 'true', 'issue', 'unique', 'query', 'request', 'requested',
     'does', 'goes', 'sequence', 'continue', 'guess', 'guessed', 'guesses',
     // Ein Paar fuer sich ist nie ein deutsches Wort — es kommt aus einer
     // UUID, einer Farbe oder einem Pfad.

@@ -39,6 +39,7 @@ export default function StatusBar() {
   // MIT den eigenen Kameras: ohne sie faellt der Name einer selbst
   // angelegten Kamera aus der Leiste, und die Auswahl saehe namenlos aus.
   const customCameras = useStore((s) => s.customCameras);
+  const autosaveStorageFull = useStore((s) => s.autosaveStorageFull);
 
   const gewaehlt = cameras.find((c) => c.id === selectedCameraId);
   const kamera = gewaehlt ? getCameraById(gewaehlt.cameraId, customCameras) : undefined;
@@ -70,6 +71,14 @@ export default function StatusBar() {
         {format(t('status.walls', '{count} walls'), { count: walls.length })}
       </span>
       <span className="flex-1" />
+      {/* Eine Meldung im Sinne des ADR: die automatische Sicherung haelt den
+          Stand gerade NICHT — wer jetzt schliesst, verliert, was seit dem
+          letzten Speichern als Datei geaendert wurde. */}
+      {autosaveStorageFull && (
+        <span className="truncate text-bc-red" role="status">
+          {t('status.autosaveFull', 'Autosave failed — storage is full. Save the project to a file.')}
+        </span>
+      )}
       {gewaehlt && (
         <span className="truncate">
           {gewaehlt.label}

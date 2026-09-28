@@ -8,6 +8,12 @@ export const common: Record<string, string> = {
   'load.idRepair.title': '{count} doppelte Id(s) in der Projektdatei repariert.',
   'load.idRepair.hint':
     'Betroffene Objekte haben eine neue Id bekommen. Verweise darauf — Shots, Takes, Presets und Fokus-Sperren — zeigen jetzt auf das jeweils erste Objekt mit der alten Id und sind zu prüfen.',
+  // cable-planner#917 — mitgebrachte eigene Kameras/Optiken, die nicht
+  // uebernommen wurden. {count}/{names} ersetzt der Aufrufer.
+  'load.libraryConflict.title': '{count} eigene Kamera(s)/Optik(en) aus dem Projekt nicht übernommen.',
+  'load.libraryConflict.hint':
+    'Diese Bibliothek hat schon einen Eintrag mit derselben Id und anderen Daten. Der eigene wurde behalten, und das Projekt rechnet jetzt mit ihm: {names}',
+  'load.libraryInvalid': '{count} eigene Kamera(s)/Optik(en) in der Projektdatei waren nicht lesbar und wurden übersprungen.',
 
   // Die Auffangseite. Sie ist der einzige Ort, an dem der Nutzer nach einem
   // Absturz noch etwas liest — englischer Text an dieser Stelle waere die

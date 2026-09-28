@@ -1,5 +1,40 @@
-const { app, BrowserWindow, shell, session } = require('electron');
+const { app, BrowserWindow, shell, session, ipcMain, safeStorage } = require('electron');
 const path = require('path');
+const fs = require('fs');
+
+// Anmelde-Token der Geraetebibliothek (devices.zumpelars.de). Verschluesselt
+// mit dem Schluesselbund des Betriebssystems; ohne Schluesselbund nur im
+// Speicher dieser Sitzung — nie im Klartext auf der Platte. Der Inhalt wird
+// nirgends geloggt.
+const tokenFile = () => path.join(app.getPath('userData'), 'device-library-token.bin');
+let sessionToken = null;
+
+ipcMain.handle('device-library-token:get', () => {
+  if (sessionToken !== null) return sessionToken;
+  try {
+    if (!safeStorage.isEncryptionAvailable()) return null;
+    return safeStorage.decryptString(fs.readFileSync(tokenFile()));
+  } catch {
+    return null;
+  }
+});
+
+ipcMain.handle('device-library-token:set', (_event, value) => {
+  sessionToken = String(value);
+  try {
+    if (!safeStorage.isEncryptionAvailable()) return false;
+    fs.writeFileSync(tokenFile(), safeStorage.encryptString(sessionToken), { mode: 0o600 });
+    sessionToken = null;
+    return true;
+  } catch {
+    return false;
+  }
+});
+
+ipcMain.handle('device-library-token:clear', () => {
+  sessionToken = null;
+  try { fs.unlinkSync(tokenFile()); } catch { /* war nicht da */ }
+});
 
 const ALLOWED_EXTERNAL_PROTOCOLS = ['https:', 'mailto:'];
 
@@ -22,6 +57,7 @@ function createMainWindow() {
     webPreferences: {
       contextIsolation: true,
       sandbox: true,
+      preload: path.join(__dirname, 'preload.cjs'),
     },
   });
 
@@ -50,7 +86,7 @@ function createMainWindow() {
         ...details.responseHeaders,
         'Content-Security-Policy': [
           "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-          "img-src 'self' data: blob:; connect-src 'self' https://generativelanguage.googleapis.com https://api.openai.com https://api.anthropic.com https://api.mistral.ai https://api.x.ai data:; " +
+          "img-src 'self' data: blob:; connect-src 'self' https://generativelanguage.googleapis.com https://api.openai.com https://api.anthropic.com https://api.mistral.ai https://api.x.ai https://devices.zumpelars.de data:; " +
           "font-src 'self' data:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
         ],
       },

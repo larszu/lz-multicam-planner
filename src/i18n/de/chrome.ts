@@ -13,6 +13,7 @@ export const chrome: Record<string, string> = {
   // ── Datei ──
   'header.new': 'Neues Projekt',
   'header.new.note': 'Leerer Raum, keine Kameras',
+  'header.open.confirm': 'Plan öffnen — das aktuelle Projekt wird ersetzt und hat ungesicherte Änderungen. Fortfahren?',
   'header.new.confirm': 'Neues Projekt — das aktuelle wird ersetzt. Fortfahren?',
   'header.open': 'Öffnen…',
   'header.save': 'Speichern',
@@ -62,4 +63,5 @@ export const chrome: Record<string, string> = {
   'status.mode.stage': 'Bearbeiten: Bühne',
   'status.mode.objects': 'Bearbeiten: Objekte',
   'status.mode.cameras': 'Bearbeiten: Kameras',
+  'status.autosaveFull': 'Automatische Sicherung fehlgeschlagen — der Speicher ist voll. Das Projekt als Datei speichern.',
 };

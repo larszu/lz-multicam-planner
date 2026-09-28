@@ -23,6 +23,10 @@ import {
   mergeOwnPersonFields,
 } from '../utils/venueExchange';
 import { pickUnknownDomains, type AvPlan } from '../utils/avplan';
+import type { AvPlanCamerasSlot } from './avplanExport';
+import { newProjectId, isProjectId, legacyProjectId } from '../utils/projectId';
+import { pickProjectLibrary, mergeProjectLibrary, readCarriedLibrary } from '../utils/projectLibrary';
+import { libraryCameras, libraryLenses, setProjectLibraryEntries } from '../library/registry';
 import { translate } from '../i18n';
 
 // Injected by Vite from package.json. In a release build that came through
@@ -47,6 +51,7 @@ export function defaultProjectFileName(project: { venue: { name: string }; proje
 
 export function buildProjectFile(s: {
   projectVersion: number;
+  projectId?: string;
   venue: Venue;
   cameras: VenueCamera[];
   persons: ReferencePerson[];
@@ -57,11 +62,14 @@ export function buildProjectFile(s: {
   floorPlanForeign: ForeignFloorPlanFields;
   wallForeign: Record<string, ForeignWallFields>;
   personForeign: Record<string, ForeignPersonFields>;
+  customCameras?: Camera[];
+  customLenses?: Lens[];
 }): ProjectFile {
   return {
     formatVersion: 1,
     appVersion: APP_VERSION,
     projectVersion: s.projectVersion,
+    ...(s.projectId ? { projectId: s.projectId } : {}),
     savedAt: new Date().toISOString(),
     venue: s.venue,
     cameras: s.cameras,
@@ -87,6 +95,11 @@ export function buildProjectFile(s: {
     ...(Object.keys(s.personForeign ?? {}).length > 0
       ? { personForeign: s.personForeign }
       : {}),
+    // cable-planner#917 — die benutzten eigenen Kameras/Optiken reisen mit.
+    ...pickProjectLibrary(s.cameras, s.customCameras ?? [], s.customLenses ?? [], {
+      cameras: libraryCameras(),
+      lenses: libraryLenses(),
+    }),
   };
 }
 
@@ -128,6 +141,7 @@ interface AppState {
   customLenses: Lens[];
   addCustomLens: (lens: Omit<Lens, 'id' | 'isCustom'>) => string;
   removeCustomLens: (id: string) => void;
+  updateCustomLens: (id: string, updates: Partial<Omit<Lens, 'id' | 'isCustom'>>) => void;
 
   // Custom cameras
   customCameras: Camera[];
@@ -270,8 +284,17 @@ interface AppState {
   renameRigTake: (id: string, name: string) => void;
 
   // Project versioning
+  /** Stabile Id des Projekts (cable-planner#908) — siehe `utils/projectId.ts`. */
+  projectId: string;
   projectVersion: number;
   lastSavedVersion: number;
+  /**
+   * Die letzte automatische Sicherung (`store/autosave.ts`) ist an der
+   * localStorage-Quota gescheitert. Nicht fatal — das Projekt steht weiter im
+   * Speicher und laesst sich als Datei sichern —, aber gesagt: wer sich auf
+   * die Sicherung verlaesst, verliert sonst beim Schliessen still den Stand.
+   */
+  autosaveStorageFull: boolean;
   hasUnsavedChanges: () => boolean;
   bumpVersion: () => void;
   /** Ohne Namen: der Vorgabename aus Venue und Projektstand. Mit Namen:
@@ -298,6 +321,11 @@ interface AppState {
    *  beschreibt einen Ladevorgang, nicht das Projekt. */
   lastIdRepair: number | null;
   dismissIdRepair: () => void;
+  /** cable-planner#917 — was beim letzten Laden aus der mitgebrachten
+   *  Bibliothek NICHT uebernommen wurde, `null` wenn alles aufging. Nicht
+   *  persistiert, wie `lastIdRepair`: das beschreibt einen Ladevorgang. */
+  lastLibraryMerge: { conflicts: string[]; invalid: number } | null;
+  dismissLibraryMerge: () => void;
   /** Importiert ein .avplan-Gesamtprojekt: laedt den cameras-Slot nativ,
    *  ueberlagert den geteilten Raum und bewahrt lighting/cabling verlustfrei. */
   importAvPlan: (avplan: AvPlan) => void;
@@ -559,6 +587,18 @@ export const useStore = create<AppState>((set, get) => ({
   removeCustomLens: (id) => {
     set((s) => {
       const updated = s.customLenses.filter((l) => l.id !== id);
+      return {
+        customLenses: updated,
+        projectVersion: s.projectVersion + 1,
+        libraryStorageFull: !saveCustomLensesStorage(updated),
+      };
+    });
+  },
+
+  updateCustomLens: (id, updates) => {
+    set((s) => {
+      if (!s.customLenses.some((l) => l.id === id)) return {};
+      const updated = s.customLenses.map((l) => (l.id === id ? { ...l, ...updates } : l));
       return {
         customLenses: updated,
         projectVersion: s.projectVersion + 1,
@@ -1054,8 +1094,10 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   // ── Project versioning ──
+  projectId: newProjectId(),
   projectVersion: 1,
   lastSavedVersion: 0,
+  autosaveStorageFull: false,
   hasUnsavedChanges: () => {
     const s = get();
     return s.projectVersion !== s.lastSavedVersion;
@@ -1103,6 +1145,7 @@ export const useStore = create<AppState>((set, get) => ({
       formatVersion: 1,
       appVersion: APP_VERSION,
       projectVersion: 0,
+      projectId: newProjectId(),
       savedAt: new Date().toISOString(),
       venue: defaultVenue,
       cameras: [],
@@ -1180,6 +1223,24 @@ export const useStore = create<AppState>((set, get) => ({
     const stagesFixed = dedupeIds(loadedStages, stageUid);
     const cameras = camerasFixed.items;
 
+    // cable-planner#917 — die mitgebrachten eigenen Kameras/Optiken. Nur
+    // geschrieben, wenn etwas hinzukam: sonst setzte jedes Oeffnen die
+    // Speicher-voll-Meldung der Bibliothek zurueck, ohne geschrieben zu haben.
+    const bibliothek = mergeProjectLibrary(
+      { customCameras: get().customCameras, customLenses: get().customLenses },
+      project,
+    );
+    // Mitgebrachte Eintraege der Geraetebibliothek: nur Lueckenfueller, der
+    // Cache bleibt, wie er ist. Jede Datei ersetzt die der vorigen.
+    const mitgebracht = readCarriedLibrary(project);
+    setProjectLibraryEntries(mitgebracht);
+    let bibliothekVoll = get().libraryStorageFull;
+    if (bibliothek.addedCameras > 0 || bibliothek.addedLenses > 0) {
+      const kamerasOk = bibliothek.addedCameras === 0 || saveCustomCamerasStorage(bibliothek.customCameras);
+      const optikenOk = bibliothek.addedLenses === 0 || saveCustomLensesStorage(bibliothek.customLenses);
+      bibliothekVoll = !(kamerasOk && optikenOk);
+    }
+
     let bgPlan = project.backgroundPlan;
     if (bgPlan && 'scale' in bgPlan && !('scaleX' in bgPlan)) {
       const legacy = bgPlan as BackgroundPlan & { scale?: number };
@@ -1196,6 +1257,9 @@ export const useStore = create<AppState>((set, get) => ({
       walls: wallsFixed.items,
       projectVersion: project.projectVersion,
       lastSavedVersion: project.projectVersion,
+      // Eine Datei ohne Id (vor cable-planner#908 gespeichert) bekommt hier
+      // ihre — und behaelt sie ab dem naechsten Speichern.
+      projectId: isProjectId(project.projectId) ? project.projectId : legacyProjectId(project),
       // ADR-005 — was die Datei an fremden Domaenen mitbringt, kommt zurueck in
       // den Store, damit der naechste .avplan-Export es wieder mitgibt. Eine
       // Datei ohne sie setzt zurueck: sonst leckten die Domaenen des zuletzt
@@ -1222,6 +1286,13 @@ export const useStore = create<AppState>((set, get) => ({
       lastIdRepair:
         camerasFixed.repaired + personsFixed.repaired +
           wallsFixed.repaired + stagesFixed.repaired || null,
+      customCameras: bibliothek.customCameras,
+      customLenses: bibliothek.customLenses,
+      libraryStorageFull: bibliothekVoll,
+      lastLibraryMerge:
+        bibliothek.conflicts.length > 0 || bibliothek.invalid + mitgebracht.invalid > 0
+          ? { conflicts: bibliothek.conflicts, invalid: bibliothek.invalid + mitgebracht.invalid }
+          : null,
     });
 
   },
@@ -1263,9 +1334,18 @@ export const useStore = create<AppState>((set, get) => ({
   personForeign: {},
   lastIdRepair: null,
   dismissIdRepair: () => set({ lastIdRepair: null }),
+  lastLibraryMerge: null,
+  dismissLibraryMerge: () => set({ lastLibraryMerge: null }),
   importAvPlan: (avplan) => {
-    const cameras = avplan.domains.cameras as ProjectFile | undefined;
-    if (cameras) get().applyProjectFile(cameras);
+    const slot = avplan.domains.cameras as AvPlanCamerasSlot | undefined;
+    if (slot) {
+      // Die Kamera-Liste im Slot ist ABGELEITET und wird bei jedem Export
+      // neu erzeugt. Sie gehoert nicht ins Projekt: mitgeschleppt, stuende
+      // beim naechsten Speichern eine Liste im .mcplan, die schon beim
+      // naechsten Verschieben einer Kamera nicht mehr stimmt.
+      const { cameraList: _abgeleitet, ...projekt } = slot;
+      get().applyProjectFile(projekt);
+    }
     // Geteilten Raum kanonisch aus der .avplan ueberlagern.
     get().importVenueExchange({
       kind: 'venue-exchange', formatVersion: 1, app: avplan.app,

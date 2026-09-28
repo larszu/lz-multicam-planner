@@ -1,10 +1,8 @@
 import { useStore, APP_VERSION, buildProjectFile, defaultProjectFileName } from '../../store/useStore';
 import { FiCamera, FiBox, FiSliders, FiSave, FiUpload, FiDownload, FiX, FiCheck, FiMapPin, FiPlus, FiSettings } from 'react-icons/fi';
 import { toVenueExchange, parseVenueExchange } from '../../utils/venueExchange';
-import { toCameraList } from '../../utils/cameraExport';
-import { getCameraById } from '../../data/cameras';
-import { makeAvPlan, parseAvPlan } from '../../utils/avplan';
-import type { ProjectFile } from '../../types';
+import { cameraListOf, buildAvPlanExport } from '../../store/avplanExport';
+import { parseAvPlan } from '../../utils/avplan';
 import { useRef, useCallback, useState, useEffect, useMemo } from 'react';
 import type { ExportMode } from '../Export/ExportPanel';
 import type { EditMode } from '../../types';
@@ -12,6 +10,7 @@ import { useTranslation, format } from '../../i18n';
 import ZoomControl from './ZoomControl';
 import { Menu, MenuItem, MenuSeparator, MenuHeading } from './Menu';
 import SettingsDialog from '../Settings/SettingsDialog';
+import { OPEN_SETTINGS_EVENT, type SettingsSection } from '../Settings/openSettings';
 import { TABS, type TabDef } from './tabs';
 
 // Die Uebersetzungsfunktion, wie sie `useTranslation` liefert.
@@ -68,7 +67,12 @@ export default function Header({
   const unsaved = projectVersion !== lastSavedVersion;
   const [savePresetName, setSavePresetName] = useState('');
   const [showSaveInput, setShowSaveInput] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState<SettingsSection | null>(null);
+  useEffect(() => {
+    const oeffnen = (e: Event) => setSettingsOpen((e as CustomEvent<SettingsSection>).detail ?? 'general');
+    window.addEventListener(OPEN_SETTINGS_EVENT, oeffnen);
+    return () => window.removeEventListener(OPEN_SETTINGS_EVENT, oeffnen);
+  }, []);
   const saveInputRef = useRef<HTMLInputElement>(null);
 
   // DIE VIER AUSSENKLICK-EFFEKTE SIND WEG. Preset-, Export-, Austausch- und
@@ -155,11 +159,7 @@ export default function Header({
   // (dort werden sie zu verkabelbaren Equipment-Nodes).
   const handleExportCameras = useCallback(() => {
     const s = useStore.getState();
-    const ex = toCameraList(
-      s.cameras,
-      (id) => getCameraById(id, s.customCameras),
-      { appVersion: APP_VERSION, exportedAt: new Date().toISOString() },
-    );
+    const ex = cameraListOf(s, new Date().toISOString());
     const blob = new Blob([JSON.stringify(ex, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -173,31 +173,7 @@ export default function Header({
   // Slot nativ und reicht lighting/cabling 1:1 durch.
   const handleExportAvplan = useCallback(() => {
     const s = useStore.getState();
-    const now = new Date().toISOString();
-    const cameraDoc: ProjectFile = {
-      formatVersion: 1, appVersion: APP_VERSION, projectVersion: s.projectVersion,
-      savedAt: now, venue: s.venue, cameras: s.cameras, persons: s.persons,
-      walls: s.walls ?? [], backgroundPlan: s.backgroundPlan,
-    };
-    const venue = toVenueExchange({
-      venue: s.venue, persons: s.persons, walls: s.walls, backgroundPlan: s.backgroundPlan,
-      appVersion: APP_VERSION, exportedAt: now,
-      stageForeign: s.stageForeign,
-      floorPlanForeign: s.floorPlanForeign,
-      wallForeign: s.wallForeign,
-      personForeign: s.personForeign,
-    }).venue;
-    const avplan = makeAvPlan({
-      app: 'multicam-planner', appVersion: APP_VERSION, exportedAt: now, venue,
-      domains: {
-        // Fremde Slots zuerst: so kann ein gleichnamiger fremder Slot nie den
-        // eigenen ueberschreiben.
-        ...(s.avForeign.unknownDomains ?? {}),
-        cameras: cameraDoc,
-        lighting: s.avForeign.lighting,
-        cabling: s.avForeign.cabling,
-      },
-    });
+    const avplan = buildAvPlanExport(s, new Date().toISOString());
     const blob = new Blob([JSON.stringify(avplan, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -543,7 +519,7 @@ export default function Header({
         {/* ── Help ── */}
         <Menu label={t('app.menu.help', 'Help')}>
           {(close) => (
-            <MenuItem onClick={() => { close(); setSettingsOpen(true); }}>
+            <MenuItem onClick={() => { close(); setSettingsOpen('general'); }}>
               {t('header.about', 'About MultiCam Planner…')}
             </MenuItem>
           )}
@@ -557,7 +533,7 @@ export default function Header({
           <ZoomControl />
           <button
             type="button"
-            onClick={() => setSettingsOpen(true)}
+            onClick={() => setSettingsOpen('general')}
             style={{ padding: '4px 8px' }}
             className="flex items-center gap-1 text-xs text-bc-text transition-colors hover:bg-bc-panel-raised hover:text-bc-text-bright"
             title={t('settings.title', 'Settings')}
@@ -596,7 +572,7 @@ export default function Header({
         <span className="ml-auto shrink-0 text-xs text-bc-muted">v{APP_VERSION}</span>
       </nav>
 
-      {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && <SettingsDialog initialSection={settingsOpen} onClose={() => setSettingsOpen(null)} />}
     </>
   );
 }
