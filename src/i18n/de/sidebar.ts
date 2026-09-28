@@ -194,7 +194,11 @@ export const sidebar: Record<string, string> = {
 
   // ── Sidebar sections (sidebar.*) ──
   'sidebar.pdfTooLarge': 'PDF zu groß ({size} MB). Maximum ist 50 MB.',
-  'sidebar.pdfTooManyPages': 'PDF hat {pages} Seiten (max {max}). Verwende einen einseitigen Grundriss.',
+  'sidebar.imageTooLarge': 'Bild zu groß ({size} MB). Maximum ist {max} MB.',
+  'sidebar.imageReadFailed': 'Das Bild „{name}“ ließ sich nicht lesen.',
+  'sidebar.planDrop.unsuitable': '„{name}“ taugt nicht als Grundriss. Zieh ein Bild (PNG, JPEG, WebP …) oder ein PDF hierher.',
+  'sidebar.planDrop.release': 'Loslassen, um den Grundriss zu laden',
+  'sidebar.planDrop.hint': 'oder ein Bild oder PDF hierher oder auf den 2D-Plan ziehen',
   'sidebar.unknownError': 'Unbekannter Fehler',
   'sidebar.pdfRenderFailed': 'PDF konnte nicht gerendert werden: {msg}',
   'sidebar.venueSettings': 'Veranstaltungsort',

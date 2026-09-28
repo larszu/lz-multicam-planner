@@ -24,6 +24,7 @@
 export const venue: Record<string, string> = {
   // Venue2D-Kontextmenü
   'venue.duplicate': 'Duplizieren',
+  'venue.planDrop.release': 'Loslassen, um das Bild oder PDF als Grundriss zu laden',
   'venue.lockPosition': 'Position sperren',
   'venue.unlockPosition': 'Position entsperren',
   'venue.delete': '{kind} löschen',

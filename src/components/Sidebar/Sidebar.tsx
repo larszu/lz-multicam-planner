@@ -25,7 +25,7 @@ import {
 } from '../../utils/cameraCardExtras';
 import { FiPlus, FiTrash2, FiCopy, FiChevronDown, FiChevronUp, FiEye, FiEyeOff, FiUpload, FiUser, FiMap, FiMaximize2, FiLock, FiUnlock, FiStar, FiEdit2, FiRotateCcw, FiHome, FiImage, FiColumns, FiUsers, FiVideo, FiTarget } from 'react-icons/fi';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import type { BackgroundPlan, StageObjectType, Camera, CameraMountType, VenueCamera, WallFit, WallPattern } from '../../types';
+import type { StageObjectType, Camera, CameraMountType, VenueCamera, WallFit, WallPattern } from '../../types';
 
 import { rigsForType, trackSectionPlan } from '../../data/rigs';
 import { clampHeight, clampTrack, rigLimits } from '../../utils/rigLimits';
@@ -54,7 +54,8 @@ import {
 import { CustomCameraForm } from './CustomCameraForm';
 import { CalculationBreakdown } from './CalculationBreakdown';
 import AiPlanAnalysis from './AiPlanAnalysis';
-import * as pdfjsLib from 'pdfjs-dist';
+import { planAblage, planAccept } from '../../avplan/floorplan';
+import { usePlanLaden } from '../../lib/usePlanLaden';
 import { useTranslation, format } from '../../i18n';
 import { mountTypeLabel } from '../../i18n/mount';
 import { MOUNT_TYPE_LABELS } from '../../types';
@@ -2077,86 +2078,24 @@ export default function Sidebar() {
   const [autoResize, setAutoResize] = useState(true);
   const [scaleLocked, setScaleLocked] = useState(true);
 
-  const MAX_PDF_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
-  const MAX_PDF_PAGES = 100;
-
-  /** Convert a PDF first page to a data URL at 2× DPI */
-  const pdfToDataUrl = useCallback(async (file: File): Promise<{ dataUrl: string; width: number; height: number }> => {
-    if (file.size > MAX_PDF_SIZE_BYTES) {
-      throw new Error(format(t('sidebar.pdfTooLarge', 'PDF too large ({size} MB). Maximum is 50 MB.'), { size: (file.size / 1024 / 1024).toFixed(1) }));
-    }
-    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
-    const arrayBuf = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuf, isEvalSupported: false } as Parameters<typeof pdfjsLib.getDocument>[0]).promise;
-    if (pdf.numPages > MAX_PDF_PAGES) {
-      throw new Error(format(t('sidebar.pdfTooManyPages', 'PDF has {pages} pages (max {max}). Use a single-page floor plan.'), { pages: pdf.numPages, max: MAX_PDF_PAGES }));
-    }
-    const page = await pdf.getPage(1);
-    const scale = 2;
-    const viewport = page.getViewport({ scale });
-    const canvas = document.createElement('canvas');
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    await page.render({ canvas, viewport }).promise;
-    return { dataUrl: canvas.toDataURL('image/png'), width: viewport.width, height: viewport.height };
-    // `t` gehoert in die Liste: die beiden Fehlermeldungen darin sind jetzt
-    // uebersetzt, und ein Callback, der die alte Sprache festhaelt, meldet den
-    // Fehler nach einem Sprachwechsel in der vorigen.
-  }, [t, MAX_PDF_SIZE_BYTES]);
+  // Plan laden: Lader aus @avplan/floorplan (ADR-015), derselbe Weg wie die
+  // Ablage auf dem 2D-Plan. Siehe `lib/usePlanLaden.ts`.
+  const { lade: ladePlan, meldeUngeeignet } = usePlanLaden();
+  const [planZiehtDarueber, setPlanZiehtDarueber] = useState(false);
+  const planAblageHandler = planAblage({
+    pdf: true,
+    onDatei: (datei) => { void ladePlan(datei); },
+    onUngeeignet: meldeUngeeignet,
+    onAktiv: setPlanZiehtDarueber,
+  });
 
   const handleBgUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-    const isImage = file.type.startsWith('image/');
-    if (!isPdf && !isImage) return;
-
-    if (isPdf) {
-      try {
-        const { dataUrl, width, height } = await pdfToDataUrl(file);
-        const s = venue.widthM / width;
-        const plan: BackgroundPlan = {
-          dataUrl,
-          scaleX: s,
-          scaleY: s,
-          offsetX: 0,
-          offsetY: 0,
-          opacity: 0.3,
-          widthPx: width,
-          heightPx: height,
-        };
-        setBackgroundPlan(plan);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : t('sidebar.unknownError', 'Unknown error');
-        alert(format(t('sidebar.pdfRenderFailed', 'Failed to render PDF: {msg}'), { msg }));
-      }
-    } else {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const dataUrl = ev.target?.result as string;
-        const img = new Image();
-        img.onload = () => {
-          const s = venue.widthM / img.width;
-          const plan: BackgroundPlan = {
-            dataUrl,
-            scaleX: s,
-            scaleY: s,
-            offsetX: 0,
-            offsetY: 0,
-            opacity: 0.3,
-            widthPx: img.width,
-            heightPx: img.height,
-          };
-          setBackgroundPlan(plan);
-        };
-        img.src = dataUrl;
-      };
-      reader.readAsDataURL(file);
-    }
     // Reset input so same file can be re-uploaded
     e.target.value = '';
-  }, [venue.widthM, setBackgroundPlan, pdfToDataUrl]);
+    if (!file) return;
+    await ladePlan(file);
+  }, [ladePlan]);
 
   /** Start/stop calibration mode — dispatches custom event to Venue2D */
   const startCalibration = useCallback((axis: 'x' | 'y') => {
@@ -2240,7 +2179,20 @@ export default function Sidebar() {
       </div>
 
       {/* Background plan */}
-      <div className={`border-b border-bc-border/60 ${bgOpen ? 'bg-bc-hover-soft' : ''}`}>
+      {/* Ablageflaeche fuer Plan-Dateien: der ganze Abschnitt, auch zugeklappt.
+          Reagiert nur auf gezogene DATEIEN (ziehtDateien im Paket) — andere
+          Drags laufen unberuehrt durch. */}
+      <div
+        className={`border-b border-bc-border/60 ${planZiehtDarueber ? 'outline-2 outline-dashed -outline-offset-2 outline-bc-accent bg-bc-accent/10' : bgOpen ? 'bg-bc-hover-soft' : ''}`}
+        onDragOver={planAblageHandler.onDragOver}
+        onDragLeave={(e) => {
+          // Beim Wechsel auf ein Kind-Element feuert dragleave ebenfalls;
+          // nur das echte Verlassen des Abschnitts beendet die Hervorhebung.
+          if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+          planAblageHandler.onDragLeave();
+        }}
+        onDrop={planAblageHandler.onDrop}
+      >
         <AccordionHeader
           icon={<FiImage size={14} />}
           title={t('sidebar.floorPlan', 'Floor Plan')}
@@ -2249,13 +2201,18 @@ export default function Sidebar() {
         />
         {bgOpen && (
           <div className="space-y-2 text-xs" style={{ padding: '0 14px 12px' }}>
-            <input ref={fileInputRef} type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={handleBgUpload} />
+            <input ref={fileInputRef} type="file" accept={planAccept({ pdf: true })} className="hidden" onChange={handleBgUpload} />
             <button
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-1 px-2 py-1 bg-bc-accent/20 text-bc-accent text-xs hover:bg-bc-accent/30 w-full justify-center"
             >
               <FiUpload size={12} /> {backgroundPlan ? t('sidebar.replaceImage', 'Replace Image/PDF') : t('sidebar.uploadImage', 'Upload Image or PDF')}
             </button>
+            <p className="text-bc-muted">
+              {planZiehtDarueber
+                ? t('sidebar.planDrop.release', 'Release to load the floor plan')
+                : t('sidebar.planDrop.hint', 'or drop an image or PDF here or onto the 2D plan')}
+            </p>
             {backgroundPlan && (
               <>
                 <label className="block">
