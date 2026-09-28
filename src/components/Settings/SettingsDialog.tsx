@@ -49,6 +49,8 @@ import { useTranslation, type Language } from '../../i18n';
 import { liesThema, setzeThema, type Thema } from '../../lib/thema';
 import DeviceLibrarySection from './DeviceLibrarySection';
 import type { SettingsSection } from './openSettings';
+import hauptlogoDunkel from '../../assets/brand/lzm_hauptlogo_offwhite.svg';
+import hauptlogoHell from '../../assets/brand/lzm_hauptlogo_navy.svg';
 
 const LANGUAGES: { id: Language; label: string }[] = [
   { id: 'en', label: 'English' },
@@ -203,10 +205,13 @@ export default function SettingsDialog({ onClose, initialSection = 'general' }: 
             <h3 className="text-xs font-bold uppercase tracking-wider text-bc-muted">
               {t('settings.about', 'About')}
             </h3>
-            <p className="mt-1 text-xs text-bc-text">MultiCam Planner</p>
+            <img src={hauptlogoDunkel} alt="Lars Zumpe Medienproduktion" className="lz-logo-dunkel mt-3 h-auto" style={{ width: '160px' }} />
+            <img src={hauptlogoHell} alt="Lars Zumpe Medienproduktion" className="lz-logo-hell mt-3 h-auto" style={{ width: '160px' }} />
+            <p className="mt-4 text-xs text-bc-text">LZ Multicam Planner</p>
             {/* Die Version lebt in `package.json` und kommt ueber das
                 Vite-Define herein — nirgends hardgeschrieben. */}
             <p className="mt-0.5 text-xs text-bc-muted">v{APP_VERSION}</p>
+            <p className="mt-0.5 text-xs text-bc-muted">Lars Zumpe Medienproduktion</p>
             <p className="mt-2 text-xs text-bc-muted">
               {t(
                 'settings.about.suite',

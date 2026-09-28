@@ -5,7 +5,7 @@
     "sourceLanguage": "en"
   },
   "version": "4.3.5",
-  "description": "Multicam Broadcast Camera & Lens Planner – FOV/DoF calculator, 2D/3D venue planner, dynamic preview",
+  "description": "LZ Multicam Planner – broadcast camera & lens planning: FOV/DoF calculator, 2D/3D venue planner, dynamic preview",
   "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
@@ -34,7 +34,7 @@
   },
   "build": {
     "appId": "com.larszu.multicamplanner",
-    "productName": "MultiCam Planner",
+    "productName": "LZ Multicam Planner",
     "directories": {
       "output": "release"
     },

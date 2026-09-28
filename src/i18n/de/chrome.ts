@@ -34,7 +34,7 @@ export const chrome: Record<string, string> = {
   'header.layout': 'Anordnung',
 
   // ── Hilfe ──
-  'header.about': 'Über MultiCam Planner…',
+  'header.about': 'Über LZ Multicam Planner…',
 
   // ── Einstellungen ──
   'settings.title': 'Einstellungen',
