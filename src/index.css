@@ -755,3 +755,8 @@ summary,
 [role='button'] {
   min-width: var(--ziel);
 }
+
+/* Unter 640 px schiebt das Signet die Menues aus dem Bild (mobil:check in cable-planner). */
+@media (max-width: 639px) {
+  .lz-logo-dunkel, .lz-logo-hell { display: none !important; }
+}
