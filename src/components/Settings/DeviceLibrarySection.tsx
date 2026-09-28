@@ -102,7 +102,7 @@ export default function DeviceLibrarySection() {
           </p>
         )}
         <p className="mt-1 text-xs text-bc-muted">
-          {t('library.server.hint', 'Changing the server signs you out and starts an empty cache: an account and its devices belong to one server.')}
+          {t('library.server.hint', 'Changing the server signs you out: an account and its devices belong to one server. Each server keeps its own cache — switching back brings its devices back.')}
         </p>
       </section>
 

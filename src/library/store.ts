@@ -9,11 +9,17 @@
 // `DEFAULT_DEVICE_LIBRARY_URL` an. Eine geaenderte Adresse
 //   - meldet am alten Server ab und vergisst das Token — es gehoert zu ihm
 //     und darf nie an einen anderen Server gehen;
-//   - beginnt einen leeren Cache (Slugs gelten je Server);
+//   - wechselt auf den Cache-Platz dieses Servers (Slugs gelten je Server);
+//     der Stand des alten Servers bleibt gespeichert und ist beim
+//     Zurueckwechseln wieder da;
 //   - braucht einen Eintrag in der Content-Security-Policy (`index.html`
 //     und `electron/main.cjs`). Ohne ihn blockiert der Build die Anfrage,
 //     und der Client meldet `offline` — die Einstellungen sagen das dazu.
 // Nur https, ausser fuer localhost: das Token ginge sonst im Klartext.
+//
+// OFFLINE-VERTRAG (`syncFrom` in `deviceLibraryClient.ts`): der Cache aendert
+// sich nur durch eine erfolgreiche Antwort. Offline, Zeitueberschreitung,
+// Serverfehler, abgelaufene Anmeldung, Abmelden: der letzte Stand bleibt.
 // ───────────────────────────────────────────────────────────────────────────
 import { create } from 'zustand';
 import {
@@ -22,7 +28,7 @@ import {
   currentUser,
   signIn as signInRequest,
   signOut as signOutRequest,
-  sync as syncRequest,
+  syncFrom,
   upload as uploadRequest,
   verifySecondFactor,
   type LibraryErrorCode,
@@ -33,7 +39,8 @@ import { loadJSON, saveJSON } from '../utils/storage';
 import type { LibraryItem } from './facet';
 import { applyUploadResults, emptyLedger, pendingUploads, pruneLedger, readLedger, type UploadLedger } from './upload';
 import { setLibraryCatalog } from './registry';
-import { emptyCache, mergeSync, readCache, type LibraryCache, type SyncStats } from './sync';
+import { emptyCache, mergeSync, readCache, writeCache, type LibraryCache, type SyncStats } from './sync';
+import type { LibraryFehler } from './messages';
 import { clearToken, loadToken, saveToken } from './tokenStore';
 
 const SERVER_KEY = 'multicam-device-library-server';
@@ -74,7 +81,7 @@ interface LibraryState {
   signedIn: boolean;
   user: LibraryUser | null;
   phase: LibraryPhase;
-  error: LibraryErrorCode | null;
+  error: LibraryFehler | null;
   /** Token nur fuer diese Sitzung gemerkt (kein Schluesselbund / Speicher voll). */
   sessionOnly: boolean;
   cache: LibraryCache;
@@ -108,6 +115,11 @@ function publish(cache: LibraryCache) {
   });
 }
 
+/** Legt den Stand auf den Platz seines Servers, die anderen bleiben. */
+function speichereCache(cache: LibraryCache) {
+  saveJSON(CACHE_KEY, writeCache(loadJSON<unknown>(CACHE_KEY, null), cache));
+}
+
 function initialCache(server: string): LibraryCache {
   const c = readCache(loadJSON<unknown>(CACHE_KEY, null), server);
   publish(c);
@@ -132,9 +144,10 @@ export const useDeviceLibrary = create<LibraryState>()((set, get) => {
     await get().syncAll();
   };
 
-  const abgemeldetWenn = async (e: unknown) => {
-    const code = e instanceof LibraryError ? e.code : 'server';
+  const abgemeldetWenn = async (e: unknown): Promise<LibraryFehler> => {
+    const code: LibraryErrorCode = e instanceof LibraryError ? e.code : 'server';
     if (code === 'not-signed-in' || code === 'wrong-credentials') await vergiss();
+    if (e instanceof LibraryError && e.message === 'server-empty') return 'server-empty';
     return code === 'wrong-credentials' ? 'not-signed-in' : code;
   };
 
@@ -183,8 +196,8 @@ export const useDeviceLibrary = create<LibraryState>()((set, get) => {
       if (token) await signOutRequest(alt, token);
       await vergiss();
       saveJSON(SERVER_KEY, neu === DEFAULT_DEVICE_LIBRARY_URL ? null : neu);
-      const cache = emptyCache(neu);
-      saveJSON(CACHE_KEY, cache);
+      // Kein Loeschen: der Stand des alten Servers bleibt auf seinem Platz.
+      const cache = readCache(loadJSON<unknown>(CACHE_KEY, null), neu);
       publish(cache);
       const uploads = emptyLedger(neu);
       saveJSON(LEDGER_KEY, uploads);
@@ -234,9 +247,13 @@ export const useDeviceLibrary = create<LibraryState>()((set, get) => {
       set({ phase: 'syncing', error: null });
       try {
         const { server, cache } = get();
-        const antwort = await syncRequest(server, token, 'multicam', cache.latestSeq);
-        const r = mergeSync(cache, antwort);
-        saveJSON(CACHE_KEY, r.cache);
+        // Ob der Server noch derselbe ist, entscheidet `syncFrom` — dieselbe
+        // Regel in jedem Planner. `reset`: die Antwort ist der ganze Stand und
+        // ersetzt den Cache. Ein leerer neuer Server kommt als Fehler an, und
+        // der Stand bleibt.
+        const { reset, response } = await syncFrom(server, token, 'multicam', cache.latestSeq);
+        const r = mergeSync(reset ? emptyCache(server) : cache, response);
+        speichereCache(r.cache);
         publish(r.cache);
         set({ cache: r.cache, lastSync: { at: new Date().toISOString(), stats: r.stats }, phase: 'idle' });
       } catch (e) {
