@@ -215,7 +215,7 @@ export default function SettingsDialog({ onClose, initialSection = 'general' }: 
             <p className="mt-2 text-xs text-bc-muted">
               {t(
                 'settings.about.suite',
-                'Part of the AV Planner suite — camera positions, lenses, coverage and shift handover.',
+                'Part of the LZ Planner Suite — camera positions, lenses, coverage and shift handover.',
               )}
             </p>
           </section>
