@@ -150,7 +150,7 @@ export default function ExportPanel() {
     ctx.textAlign = 'right';
     ctx.fillStyle = '#9ca3af';
     ctx.font = '14px sans-serif';
-    ctx.fillText(format(t('preview.export.headerMeta', '{venue} — Project v{pv} — MultiCam Planner v{av}'), { venue: venue.name, pv: projectVersion, av: APP_VERSION }), EW - padding, 30);
+    ctx.fillText(format(t('preview.export.headerMeta', '{venue} — Project v{pv} — LZ Multicam Planner v{av}'), { venue: venue.name, pv: projectVersion, av: APP_VERSION }), EW - padding, 30);
     ctx.fillText(format(t('preview.export.exportedAt', 'Exported: {when}'), { when: new Date().toLocaleString() }), EW - padding, 50);
     if (adapterInfo) {
       ctx.fillStyle = '#f59e0b';

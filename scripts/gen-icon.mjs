@@ -1,59 +1,34 @@
-// Renders build/icon.svg to multi-resolution PNGs that electron-builder picks up,
-// plus a multi-resolution .ico file for the Windows NSIS installer.
+// Renders the app icons from build/icon.svg (master, with the "lz." signet)
+// and build/favicon.svg (pictogram only). Below 48 px the brand icon drops the
+// signet, so the small .ico sizes come from favicon.svg.
 //
 // Usage: `node scripts/gen-icon.mjs`
-// Requires the optional `sharp` + `png-to-ico` packages — installable with
+// Requires the optional `sharp` + `png-to-ico` packages:
 //   npm install --no-save sharp png-to-ico
-// when regenerating.
 //
 // Outputs:
-//   build/icon.png      (1024×1024 — used by electron-builder build.{win,mac}.icon)
-//   build/icon-512.png  (512×512   — convenience size for Linux / web)
-//   build/icon-256.png  (256×256   — convenience size)
-//   build/icon.ico      (multi-res: 16/24/32/48/64/128/256 — required by NSIS
-//                        for installerIcon / uninstallerIcon / installerHeaderIcon)
+//   build/icon.png              1024, electron-builder mac icon + window icon
+//   build/icon.ico              16…256, NSIS installer (rejects PNGs)
+//   public/favicon.svg          browser tab
+//   public/apple-touch-icon.png 180
 
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, copyFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import sharp from 'sharp';
 import pngToIco from 'png-to-ico';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const buildDir = path.resolve(__dirname, '..', 'build');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const build = (f) => path.join(root, 'build', f);
+const pub = (f) => path.join(root, 'public', f);
 
-await mkdir(buildDir, { recursive: true });
+const gross = await readFile(build('icon.svg'));
+const klein = await readFile(build('favicon.svg'));
+const png = (svg, size) => sharp(svg, { density: 384 }).resize(size, size).png({ compressionLevel: 9 }).toBuffer();
 
-const svg = await readFile(path.join(buildDir, 'icon.svg'));
-
-const pngSizes = [
-  { name: 'icon.png', size: 1024 },
-  { name: 'icon-512.png', size: 512 },
-  { name: 'icon-256.png', size: 256 },
-];
-
-for (const { name, size } of pngSizes) {
-  const png = await sharp(svg, { density: 384 })
-    .resize(size, size, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .png({ compressionLevel: 9 })
-    .toBuffer();
-  await writeFile(path.join(buildDir, name), png);
-  console.log(`  wrote build/${name} (${size}×${size}, ${(png.length / 1024).toFixed(1)} KB)`);
-}
-
-// Generate a multi-resolution .ico. NSIS uses this for the installer chrome and
-// rejects PNGs ("invalid icon file"), so it has to live next to the PNGs.
-const icoBuffers = await Promise.all(
-  [16, 24, 32, 48, 64, 128, 256].map((size) =>
-    sharp(svg, { density: 384 })
-      .resize(size, size, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-      .png({ compressionLevel: 9 })
-      .toBuffer(),
-  ),
-);
-const ico = await pngToIco(icoBuffers);
-await writeFile(path.join(buildDir, 'icon.ico'), ico);
-console.log(`  wrote build/icon.ico (multi-res 16…256, ${(ico.length / 1024).toFixed(1)} KB)`);
-
+await writeFile(build('icon.png'), await png(gross, 1024));
+await writeFile(pub('apple-touch-icon.png'), await png(gross, 180));
+await copyFile(build('favicon.svg'), pub('favicon.svg'));
+const sizes = [16, 24, 32, 48, 64, 128, 256];
+await writeFile(build('icon.ico'), await pngToIco(await Promise.all(sizes.map((n) => png(n < 48 ? klein : gross, n)))));
 console.log('done.');
