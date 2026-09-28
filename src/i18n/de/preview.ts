@@ -54,7 +54,7 @@ export const preview: Record<string, string> = {
 
   // ── ExportPanel: header + tiles ──
   'preview.export.lensLine': 'Objektiv: {mfr} {model} @ {fl}mm',
-  'preview.export.headerMeta': '{venue} — Projekt v{pv} — MultiCam Planner v{av}',
+  'preview.export.headerMeta': '{venue} — Projekt v{pv} — LZ Multicam Planner v{av}',
   'preview.export.exportedAt': 'Exportiert: {when}',
   'preview.export.notAvailable': '{label} — nicht verfügbar',
   'preview.export.tile2d': '2D-Plan',

@@ -185,6 +185,16 @@
   }
 }
 
+/* Brand logo: the contour files come in Navy and Off-White only, so each
+   place carries both and the theme picks one (Off-White on dark, Navy on light). */
+.lz-logo-hell { display: none; }
+:root[data-theme='light'] .lz-logo-dunkel { display: none; }
+:root[data-theme='light'] .lz-logo-hell { display: block; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) .lz-logo-dunkel { display: none; }
+  :root:not([data-theme='dark']) .lz-logo-hell { display: block; }
+}
+
 /* Tastatur-Fokus: 2 px Rot, 3 px Abstand (ADR-007). */
 button:focus-visible,
 a:focus-visible,
@@ -744,4 +754,9 @@ button,
 summary,
 [role='button'] {
   min-width: var(--ziel);
+}
+
+/* Unter 640 px schiebt das Signet die Menues aus dem Bild (mobil:check in cable-planner). */
+@media (max-width: 639px) {
+  .lz-logo-dunkel, .lz-logo-hell { display: none !important; }
 }

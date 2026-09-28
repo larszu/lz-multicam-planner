@@ -2,6 +2,11 @@ const { app, BrowserWindow, shell, session, ipcMain, safeStorage } = require('el
 const path = require('path');
 const fs = require('fs');
 
+// productName changed from "MultiCam Planner" to "LZ Multicam Planner"; Electron
+// derives userData from it. Pin the old folder so the stored device-library
+// token and Chromium storage (projects, layouts, library cache) stay put.
+if (app.isPackaged) app.setPath('userData', path.join(app.getPath('appData'), 'MultiCam Planner'));
+
 // Anmelde-Token der Geraetebibliothek (devices.zumpelars.de). Verschluesselt
 // mit dem Schluesselbund des Betriebssystems; ohne Schluesselbund nur im
 // Speicher dieser Sitzung — nie im Klartext auf der Platte. Der Inhalt wird

@@ -12,6 +12,8 @@ import { Menu, MenuItem, MenuSeparator, MenuHeading } from './Menu';
 import SettingsDialog from '../Settings/SettingsDialog';
 import { OPEN_SETTINGS_EVENT, type SettingsSection } from '../Settings/openSettings';
 import { TABS, type TabDef } from './tabs';
+import signetDunkel from '../../assets/brand/lzm_signet_offwhite_tally.svg';
+import signetHell from '../../assets/brand/lzm_signet_navy_tally.svg';
 
 // Die Uebersetzungsfunktion, wie sie `useTranslation` liefert.
 type TFn = (key: string, en: string) => string;
@@ -248,8 +250,9 @@ export default function Header({
           ───────────────────────────────────────────────────────────────── */}
       <header className="bc-topbar">
         <div className="flex min-w-0 shrink-0 items-center gap-2 text-bc-text-bright">
-          <FiCamera size={20} className="shrink-0 text-bc-accent" />
-          <span className="hidden text-sm font-bold sm:inline">MultiCam Planner</span>
+          <img src={signetDunkel} alt="lz." className="lz-logo-dunkel h-8 w-auto shrink-0 mr-2" />
+          <img src={signetHell} alt="lz." className="lz-logo-hell h-8 w-auto shrink-0 mr-2" />
+          <span className="hidden text-sm font-bold sm:inline">LZ Multicam Planner</span>
           <span className="ml-2 hidden text-xs text-bc-muted lg:inline">— {venue.name}</span>
           {/* Minimal unsaved-changes indicator (no project-version counter). */}
           {unsaved && (
@@ -520,7 +523,7 @@ export default function Header({
         <Menu label={t('app.menu.help', 'Help')}>
           {(close) => (
             <MenuItem onClick={() => { close(); setSettingsOpen('general'); }}>
-              {t('header.about', 'About MultiCam Planner…')}
+              {t('header.about', 'About LZ Multicam Planner…')}
             </MenuItem>
           )}
         </Menu>

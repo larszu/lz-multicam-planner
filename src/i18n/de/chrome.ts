@@ -34,7 +34,7 @@ export const chrome: Record<string, string> = {
   'header.layout': 'Anordnung',
 
   // ── Hilfe ──
-  'header.about': 'Über MultiCam Planner…',
+  'header.about': 'Über LZ Multicam Planner…',
 
   // ── Einstellungen ──
   'settings.title': 'Einstellungen',
@@ -53,7 +53,7 @@ export const chrome: Record<string, string> = {
   'settings.theme.light.hint': 'Immer hell.',
   'settings.about': 'Über',
   'settings.about.suite':
-    'Teil der AV-Planner-Suite — Kamerapositionen, Objektive, Deckung und Schichtübergabe.',
+    'Teil der LZ Planner Suite — Kamerapositionen, Objektive, Deckung und Schichtübergabe.',
 
   // ── Die Statusleiste (ADR-007 Abschnitt 6: Meldungen links, Zähler rechts) ──
   'status.cameras': '{count} Kameras',

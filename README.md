@@ -1,10 +1,10 @@
-# 🎥 MultiCam Planner
+# 🎥 LZ Multicam Planner
 
 A fast, focused broadcast camera & lens planning tool for multicam setups. Calculate FOV/DoF, plan camera positions in 2D & 3D, and preview live camera views. Available as a web app and Windows desktop application.
 
 [![Lizenz: proprietär](https://img.shields.io/badge/Lizenz-proprietär-critical.svg)](LICENSE)
 
-![MultiCam Planner – 2D-Grundriss mit Bühne, Kamera- und Objektpanel](docs/screenshot.png)
+![LZ Multicam Planner – 2D-Grundriss mit Bühne, Kamera- und Objektpanel](docs/screenshot.png)
 
 ---
 
@@ -25,7 +25,7 @@ Measured 2026-09-09: **published** — the `deploy` job ran and succeeded.
 ---
 ## ✨ Philosophy
 
-MultiCam Planner is designed for quick, intuitive camera planning with essential features for real-world broadcast productions. Its streamlined workflow and simple interface make it perfect for fast setups and clear projects—without the complexity and feature overload of traditional CAD or architecture applications.
+LZ Multicam Planner is designed for quick, intuitive camera planning with essential features for real-world broadcast productions. Its streamlined workflow and simple interface make it perfect for fast setups and clear projects—without the complexity and feature overload of traditional CAD or architecture applications.
 
 ---
 
@@ -235,6 +235,10 @@ MultiCam Planner is designed for quick, intuitive camera planning with essential
 ### 🖥 Desktop App
 - Windows installer (NSIS) and portable build with Electron
 - Native window controls, external links open in system browser
+- App data stays in the `MultiCam Planner` folder (the product name before the
+  rename to LZ Multicam Planner); `electron/main.cjs` pins it before first use
+- Header shows the Lars Zumpe Medienproduktion signet, Settings → About the main logo
+  (`src/assets/brand/`, original contour files, Navy/Off-White by theme)
 
 ---
 
@@ -293,6 +297,10 @@ npm run dist:win
 npm run dist:mac
 ```
 
+App icons come from `build/icon.svg` and `build/favicon.svg`;
+`node scripts/gen-icon.mjs` renders `build/icon.png`, `build/icon.ico` and the
+web icons in `public/` (needs `npm install --no-save sharp png-to-ico`).
+
 A GitHub Actions workflow (`.github/workflows/release-build.yml`) automatically
 builds Windows and macOS artifacts whenever a release is published and attaches
 the binaries (NSIS installer, portable .exe, DMG, ZIP) directly to the release
@@ -346,7 +354,7 @@ reachable by links from an entry page. Both were orphaned until 2026-09-04.
 
 ## ❤️ Support / Donate
 
-If MulticamPlanner saves you time on your next show, consider buying me a coffee:
+If LZ Multicam Planner saves you time on your next show, consider buying me a coffee:
 
 <p>
   <a href="https://paypal.me/larszumpe">

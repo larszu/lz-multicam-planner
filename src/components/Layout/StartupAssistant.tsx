@@ -126,7 +126,7 @@ export default function StartupAssistant() {
         <button onClick={dismiss} className="absolute top-3 right-3 p-1 text-bc-dim hover:text-bc-text-bright" title={t('header.welcome.close', 'Close')}>
           <FiX size={16} />
         </button>
-        <h2 className="text-bc-text-bright font-bold text-lg">{t('header.welcome.title', 'Welcome to MultiCam Planner')}</h2>
+        <h2 className="text-bc-text-bright font-bold text-lg">{t('header.welcome.title', 'Welcome to LZ Multicam Planner')}</h2>
         <p className="text-bc-muted text-sm mt-1">{t('header.welcome.intro', 'How would you like to start?')}</p>
         <div className="grid grid-cols-1 gap-3 mt-5">
           {fortsetzen && (
