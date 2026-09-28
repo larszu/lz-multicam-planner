@@ -341,6 +341,10 @@ export type ControlPath =
   | 'tcp' | 'serial' | 'lumix-http' | 'sony-usb' | 'blackmagic' | 'sony-mnc'
   | 'canon-ccapi' | 'zcam' | 'panasonic-ptz' | 'visca' | 'visca-serial'
   | 'jvc' | 'birddog'
+  // HTTP-CGI PTZ: alternative Steuerung ueber die Web-CGI der Kamera
+  // (Vissonic/PTZOptics ptzctrl.cgi, Sony SRG/BRC /command/) statt VISCA --
+  // reiner PTZ-Weg ohne Paint, wie birddog ohne Bildregler.
+  | 'http-cgi'
   // Gimbals. Sie tragen eine Kamera, sie sind keine: vom Pult aus bewegen
   // sie den Kopf und stellen NICHTS am Bild. Sie stehen hier trotzdem,
   // weil man sie aufbaut und also plant -- anders als `demo`, das es in

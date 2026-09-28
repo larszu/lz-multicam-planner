@@ -29,6 +29,7 @@
 // Reine Daten, headless testbar.
 // ───────────────────────────────────────────────────────────────────────────
 import type { VenueCamera, Camera, Lens } from '../types';
+import { geraetetypIdVon } from '../data/geraetetypIds';
 
 export const CAMERA_LIST_KIND = 'camera-list' as const;
 export const CAMERA_LIST_VERSION = 3 as const;
@@ -154,7 +155,18 @@ export function toCameraList(
       return nurBekannt<CameraListEntry>({
         id: c.id, label: c.label,
         manufacturer: text(def?.manufacturer), model: text(def?.model),
-        deviceTypeId: text(def?.deviceTypeId),
+        // ─── WARUM HIER EIN RUECKFALL STEHT (2026-09-24) ───────────────────
+        //
+        // `def.deviceTypeId` ist an NEUN der 377 Kameras von Hand gesetzt — an
+        // denen, deren echte I/O im Kamera-Katalog des Cable-Planers liegt. Bei
+        // den uebrigen 368 stand hier `undefined`, und der Cable-Planer musste
+        // wieder ueber Hersteller + Modellnamen raten. Genau das sollte die
+        // GUID abschaffen.
+        //
+        // `geraetetypIdVon` liefert die abgeleitete Id aus der erzeugten
+        // Tabelle. Die von Hand gesetzte gewinnt weiter: sie ist aelter, und
+        // gespeicherte Plaene zeigen auf sie.
+        deviceTypeId: text(def?.deviceTypeId) ?? geraetetypIdVon('camera', def?.id),
         x: zahl(c.x), y: zahl(c.y), z: zahl(c.z),
         // Ohne gewaehlten Wechsel-Mount sitzt der native am Body — das ist
         // die Bedeutung von `activeMount === undefined`, keine Annahme.

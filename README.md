@@ -32,9 +32,17 @@ MultiCam Planner is designed for quick, intuitive camera planning with essential
 ## 🚀 Features
 
 ### 📷 Camera & Lens Database
-- 54+ broadcast cameras from 10 major brands (Sony, Canon, Panasonic, Blackmagic, ARRI, RED, Grass Valley, Hitachi, Marshall)
-- 163+ lenses (Fujinon, Canon, Sony, Sigma, Tamron, Tokina, PTZ integrated)
-- 11+ mounts: B4, EF, E, PL, MFT, RF, FZ, L, M12, integrated, universal
+- **377 cameras from 36 brands** (Sony, Canon, Panasonic, Blackmagic, ARRI, RED,
+  Grass Valley, Hitachi, Ikegami, JVC, Nikon, Kinefinity, Z CAM, PTZOptics,
+  Marshall, AIDA, Avonic, BirdDog, Lumens, Vaddio, DJI, GoPro, Insta360 …) —
+  372 with a manufacturer datasheet link
+- **835 lenses from 37 brands** (Fujinon, Angénieux, Cooke, ARRI, Zeiss, Leitz,
+  Canon, Sony, Sigma, Tamron, Atlas, Hawk, Panavision, DZOFilm, Laowa …) — 798
+  with a datasheet link
+- **49 camera rigs** with real dimensions (Jimmy Jib, Technocrane, SuperTechno,
+  Spidercam, Panther, J.L. Fisher, Sachtler, Vinten, Newton, Slidekamera)
+- 24 mounts: B4, EF, E, PL, MFT, RF, FZ, L, LPL, XPL, M12, C/CS, Z, X, K, G,
+  XCD, integrated …
 - Adapter system: automatic adapter detection with T-stop light loss, sensor crop info, Speed Booster support (e.g., EF→MFT)
 - Custom lens support: create and save your own lenses
 - **Custom cameras and lenses travel with the project:** the ones the placed
@@ -146,6 +154,16 @@ MultiCam Planner is designed for quick, intuitive camera planning with essential
 - Client: `src/utils/deviceLibraryClient.ts`, an unchanged copy of
   `larszu/av-device-library` `clients/deviceLibraryClient.ts` — changes go
   there first.
+- **Every catalogue entry also carries a DERIVED device-type GUID**
+  (`src/data/geraetetypIds.ts`, generated). The bullet above describes the
+  hand-set and exactly-name-matched ones: 16 of 377. The other 361 went across
+  with no identity at all, so the cable planner fell back to comparing
+  manufacturer and model as strings — the very thing the GUID was meant to
+  abolish. The derived id closes that gap for all of them; a hand-set one still
+  wins, because it is older and saved plans point at it. It is derived, not
+  invented: UUIDv5 over `avplan:camera:<id>`, so the same catalogue entry yields
+  the same id in every app, and it says *this catalogue entry*, never *these
+  ports*. Regenerate from the cable planner with `npm run katalog:uebernahme`.
 
 ### 🗺 2D Venue Planner
 - Top-down drag & drop camera placement with real-time FOV cones

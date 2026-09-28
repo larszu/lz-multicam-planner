@@ -81,7 +81,7 @@ export const BRIDGE_SOURCE = {
   file: 'packages/web-rcp/src/capabilities.ts',
   symbol: 'MODE_CAPS',
   /** Stand der Quelle, aus der diese Kopie genommen wurde. */
-  commit: 'dce1fdfc17c4e22bc3836a771df0e5a601b7eac5',
+  commit: 'e74a3bc311e9dcf43b739fccc10e5a9d0946a1d7',
 } as const;
 
 /**
@@ -183,6 +183,7 @@ export const CONTROL_PATH_LABEL: Readonly<Record<ControlPath, string>> = {
   'visca-serial': 'VISCA (RS-232/422)',
   jvc: 'JVC (Web-API)',
   birddog: 'BirdDog (VISCA + REST)',
+  'http-cgi': 'HTTP-CGI PTZ (Vissonic/Sony)',
   'dji-osmo': 'DJI Osmo Pocket (Gimbal)',
   'dji-ronin': 'DJI Ronin RS 2 / RS 3 Pro (Gimbal)',
   'b4-lens': 'B4-Objektiv (ESP32 am 12-Pin-Hirose)',
@@ -251,6 +252,10 @@ export const MODE_PAINT: Readonly<Record<ControlPath, readonly PaintFunction[]>>
   // kein Befehlscode, sondern Pin 8 -- ein Draht, der die Optik
   // zwischen ihrer eigenen Automatik und Fernsteuerung umschaltet.
   'b4-lens': ['iris', 'autoIris'],
+  // HTTP-CGI PTZ bewegt pan/tilt/zoom/fokus und ruft Presets, stellt aber
+  // NICHTS am Bild: kein Paint ueber diesen Weg. Wie birddog wird `focus`
+  // in dieser Paint-Tabelle nicht gefuehrt -- also leer.
+  'http-cgi': [],
   none: [],
 };
 
