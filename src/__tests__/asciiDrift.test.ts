@@ -76,7 +76,13 @@ const HARMLOS = new Set(
  * `documentFingerprint` ein, und ein Umlaut darin liesse jedes frueher
  * gedruckte Blatt als veraltet erscheinen.
  */
-const KENNUNGEN = new Set(['schicht-uebergabe']);
+const KENNUNGEN = new Set([
+  'schicht-uebergabe',
+  // Fehler-Code aus @avplan/floorplan (`PlanDateiFehlerCode`), mit dem
+  // `lib/usePlanLaden.ts` vergleicht. Ein Wert des Pakets, kein Text: die
+  // Meldung dazu steht uebersetzt daneben.
+  'pdf-nicht-verfuegbar',
+]);
 
 /** Hex-Folgen (Farben, Fingerabdruecke) bestehen nur aus a-f und Ziffern. */
 const istHex = (wort: string) => /^[0-9a-f]+$/i.test(wort);
@@ -110,6 +116,12 @@ const scanne = (): { befunde: Befund[]; literale: number } => {
     // Testdateien pruefen sich nicht selbst: ihre Namen und Vorgaben duerfen
     // ASCII bleiben, sie stehen in keiner Oberflaeche.
     if (/\.test\.tsx?$/.test(kurz) || kurz.includes('__tests__')) continue;
+    // ADR-015 — Kopien der Suite-Pakete (`src/**/avplan/<name>/`) sind
+    // zeichengleich und werden hier nicht angefasst (Waechter:
+    // avplanKopien.test.ts). Ihre Zeichenketten sind Codes und Bezeichner des
+    // Pakets, keine Oberflaechentexte; ein Befund darin waere nur in
+    // av-planner-suite/packages zu beheben.
+    if (/(^|\/)avplan\//.test(kurz)) continue;
     const kind = kurz.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
     const sf = ts.createSourceFile(kurz, src, ts.ScriptTarget.Latest, true, kind);
     const lauf = (node: ts.Node): void => {

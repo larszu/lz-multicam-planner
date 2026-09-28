@@ -17,6 +17,8 @@ import type Konva from 'konva';
 import { FiCopy, FiLock, FiUnlock, FiTrash2 } from 'react-icons/fi';
 import { useTranslation, format } from '../../i18n';
 import { useIstHell } from '../../lib/useIstHell';
+import { planAblage } from '../../avplan/floorplan';
+import { usePlanLaden } from '../../lib/usePlanLaden';
 
 // Shared style for context-menu items (issue #38).
 const ctxItemStyle: React.CSSProperties = {
@@ -87,6 +89,18 @@ export default function Venue2D() {
   const lockWalls = editMode !== 'all' && editMode !== 'floorplan';
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  // Grundriss per Drag & Drop auf den Plan (ADR-015, @avplan/floorplan):
+  // derselbe Lader wie der Upload in der Sidebar. Die Handler reagieren nur
+  // auf gezogene DATEIEN — Konvas eigene Drags (Kameras, Buehnen, Pan)
+  // sind Maus-Drags ohne dataTransfer und laufen unberuehrt durch.
+  const { lade: ladePlan, meldeUngeeignet } = usePlanLaden();
+  const [planZiehtDarueber, setPlanZiehtDarueber] = useState(false);
+  const planAblageHandler = planAblage({
+    pdf: true,
+    onDatei: (datei) => { void ladePlan(datei); },
+    onUngeeignet: meldeUngeeignet,
+    onAktiv: setPlanZiehtDarueber,
+  });
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
   const [containerSize, setContainerSize] = useState({ w: 800, h: 600 });
   const [zoom, setZoom] = useState(1);
@@ -597,7 +611,27 @@ export default function Venue2D() {
   }, [menu, removeCamera, removePerson, removeStage, removeWall, updateCamera, updatePerson, updateStage, duplicateCamera, duplicatePerson, addStage, venue.stages, venue.widthM, venue.heightM, selectedStageId]);
 
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%', background: P.grund, borderRadius: 8, overflow: 'hidden', position: 'relative' }}>
+    <div
+      ref={containerRef}
+      style={{ width: '100%', height: '100%', background: P.grund, borderRadius: 8, overflow: 'hidden', position: 'relative' }}
+      onDragOver={planAblageHandler.onDragOver}
+      onDragLeave={(e) => {
+        // dragleave feuert auch beim Wechsel auf das Konva-Canvas darunter;
+        // nur das echte Verlassen beendet die Hervorhebung.
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+        planAblageHandler.onDragLeave();
+      }}
+      onDrop={planAblageHandler.onDrop}
+    >
+      {planZiehtDarueber && (
+        <div
+          className="absolute inset-0 z-20 flex items-center justify-center border-2 border-dashed border-bc-accent bg-bc-accent/10 pointer-events-none"
+        >
+          <span className="bg-bc-panel text-bc-text-bright text-sm px-3 py-2 border border-bc-accent">
+            {t('venue.planDrop.release', 'Release to load the image or PDF as the floor plan')}
+          </span>
+        </div>
+      )}
       {/* Zoom indicator */}
       <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 10, background: P.chip, padding: '4px 10px', borderRadius: 4, fontSize: 11, color: P.chipText, pointerEvents: 'none', backdropFilter: 'blur(4px)' }}>
         {(zoom * 100).toFixed(0)}%

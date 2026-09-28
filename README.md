@@ -167,8 +167,12 @@ MultiCam Planner is designed for quick, intuitive camera planning with essential
 
 ### 🗺 2D Venue Planner
 - Top-down drag & drop camera placement with real-time FOV cones
-- Zoom, pan, snap-to-grid, background floor plan import (image & PDF)
-- Two-point calibration tool for scaling imported floor plans
+- Zoom, pan, snap-to-grid, background floor plan import (image & PDF, first
+  page) — via the upload button **or by dragging the file onto the 2D plan or
+  the sidebar's Floor Plan section**. Images are capped at 3000 px on the long
+  edge, PDFs are rendered to at most 2000 px, so a phone photo no longer bloats
+  the project file
+- Two-point calibration tool for scaling imported floor plans (per axis, X or Y)
 - Draw walls with 45° shift-snapping
 - Place stage objects (person, guitarist, drums, keys, mic stand, custom)
 
@@ -323,6 +327,17 @@ page. It can also be triggered manually via the Actions tab for testing.
 - [`docs/venue-suite-architecture.md`](docs/venue-suite-architecture.md) —
   extends that guide with `light-planner` and a shared venue data model. The
   shared-model part is built (`@avplan/*`); the merge part is superseded too.
+
+### Shared suite packages (ADR-015)
+
+`src/avplan/<name>/` holds **byte-identical copies** of packages from
+`av-planner-suite/packages/<name>/src`, each with a `MANIFEST.json` (SHA-256
+per file). Today that is `@avplan/floorplan`: the floor-plan loader (image/PDF,
+drag & drop handlers) and the `venue-exchange` schema, which
+`src/utils/venueExchange.ts` re-exports next to MultiCam's own conversion.
+**Never edit these folders here** — change the package in the suite and run
+`npm run pakete:verteilen` there. `src/__tests__/avplanKopien.test.ts` hashes
+every file against its manifest and fails on changed or unlisted files.
 
 `npm run docs:reachable` fails the build if a document under `docs/` is not
 reachable by links from an entry page. Both were orphaned until 2026-09-04.

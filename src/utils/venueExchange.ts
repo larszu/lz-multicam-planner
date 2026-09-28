@@ -7,50 +7,37 @@
 // einen App exportieren und in der anderen importieren, um z. B. im selben Raum
 // Kameras UND Licht zu planen.
 //
-// Das Schema ist in jeder App identisch gehalten (siehe light-planner
-// src/core/venueExchange.ts). Reine Daten, keine DOM-/Store-Abhaengigkeit →
-// headless testbar.
+// Das Schema kommt aus @avplan/floorplan (ADR-015); hier steht MultiCams
+// Umrechnung. Reine Daten, keine DOM-/Store-Abhaengigkeit → headless testbar.
 // ───────────────────────────────────────────────────────────────────────────
 import type { Venue, ReferencePerson, Wall, BackgroundPlan, StageObjectType } from '../types';
+// ADR-015 — das Schema (Typen, Konstanten, `parseVenueExchange`) stand bis
+// 2026-09-28 hier im Original und in light-planner als Parallelfassung. Es
+// lebt jetzt in `@avplan/floorplan` (av-planner-suite/packages/floorplan),
+// hier als gepruefte Kopie unter `src/avplan/floorplan/`. Wer das Schema
+// aendern will, aendert es dort; hier bleibt nur MultiCams Umrechnung.
+import {
+  VENUE_EXCHANGE_KIND,
+  VENUE_EXCHANGE_VERSION,
+  type VenueExchange,
+  type VenueExchangeFloorPlan,
+  type VenueExchangePerson,
+  type VenueExchangeStageObject,
+  type VenueExchangeWall,
+} from '../avplan/floorplan';
 
-export const VENUE_EXCHANGE_KIND = 'venue-exchange' as const;
-export const VENUE_EXCHANGE_VERSION = 1 as const;
-
-export interface VenueExchangePerson {
-  id: string; x: number; y: number; height: number; label: string;
-  width?: number; objectType?: string; pose?: 'standing' | 'sitting'; facing?: number; color?: string;
-}
-export interface VenueExchangeWall {
-  id: string; x1: number; y1: number; x2: number; y2: number; height: number;
-  label?: string; cx?: number; cy?: number; reflectance?: number; color?: string;
-}
-export interface VenueExchangeStageObject {
-  id: string; x: number; y: number; width: number; height: number;
-  depth?: number; height2?: number; rotation?: number; points?: { x: number; y: number }[]; label?: string;
-}
-export interface VenueExchangeFloorPlan {
-  src: string; name?: string; naturalWidth: number; naturalHeight: number;
-  // Kanonisch: reale Masse (light-Form). MultiCams scaleX/scaleY werden hieraus abgeleitet.
-  widthMeters: number; heightMeters: number;
-  offsetX: number; offsetY: number; opacity: number;
-  locked?: boolean; kind?: 'image' | 'pdf'; pageCount?: number; pageIndex?: number;
-}
-export interface VenueExchange {
-  kind: typeof VENUE_EXCHANGE_KIND;
-  formatVersion: typeof VENUE_EXCHANGE_VERSION;
-  app: string;
-  appVersion: string;
-  exportedAt: string;
-  venue: {
-    name: string;
-    widthM?: number;
-    heightM?: number;
-    persons: VenueExchangePerson[];
-    walls: VenueExchangeWall[];
-    stageObjects: VenueExchangeStageObject[];
-    floorPlan?: VenueExchangeFloorPlan;
-  };
-}
+export {
+  VENUE_EXCHANGE_KIND,
+  VENUE_EXCHANGE_VERSION,
+  parseVenueExchange,
+} from '../avplan/floorplan';
+export type {
+  VenueExchange,
+  VenueExchangeFloorPlan,
+  VenueExchangePerson,
+  VenueExchangeStageObject,
+  VenueExchangeWall,
+} from '../avplan/floorplan';
 
 /**
  * ADR-005 — Buehnen-Felder, die MultiCam nicht modelliert, je Buehnen-Id
@@ -369,19 +356,6 @@ function collectStageForeign(
     if (Object.keys(f).length > 0) out[s.id] = f;
   }
   return out;
-}
-
-/** Parst + validiert eine Austauschdatei. Wirft bei falschem Format. */
-export function parseVenueExchange(text: string): VenueExchange {
-  const data = JSON.parse(text) as Partial<VenueExchange>;
-  if (!data || data.kind !== VENUE_EXCHANGE_KIND) {
-    throw new Error('Keine gültige Venue-Austauschdatei (kind != venue-exchange).');
-  }
-  if (data.formatVersion !== VENUE_EXCHANGE_VERSION) {
-    throw new Error(`Nicht unterstützte Venue-Austausch-Version: ${data.formatVersion}`);
-  }
-  if (!data.venue) throw new Error('Venue-Austauschdatei ohne venue-Block.');
-  return data as VenueExchange;
 }
 
 /**
