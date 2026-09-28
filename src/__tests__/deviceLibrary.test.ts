@@ -3,7 +3,7 @@ import type { Camera, Lens } from '../types';
 import { CAMERAS } from '../data/cameras';
 import { LENSES } from '../data/lenses';
 import { cameraToFacet, lensToFacet, facetToItem, libraryIdFor, proposalCore } from '../library/facet';
-import { emptyCache, mergeSync, readCache } from '../library/sync';
+import { emptyCache, mergeSync, readCache, writeCache } from '../library/sync';
 import type { SyncDevice, SyncResponse } from '../utils/deviceLibraryClient';
 
 // ---------------------------------------------------------------------------
@@ -131,6 +131,17 @@ describe('sync merge', () => {
     expect(readCache(a.cache, 'https://b')).toEqual(emptyCache('https://b'));
     expect(readCache('kaputt', 'https://b')).toEqual(emptyCache('https://b'));
   });
+
+  it('every server has its own slot; writing one keeps the others', () => {
+    const a = mergeSync(emptyCache('https://a'), antwort(1, [geraet('cam', 1, kamera)])).cache;
+    const b = mergeSync(emptyCache('https://b'), antwort(4, [geraet('lens', 4, optik)])).cache;
+    const ablage = writeCache(writeCache(null, a), b);
+    expect(readCache(ablage, 'https://a')).toEqual(a);
+    expect(readCache(ablage, 'https://b')).toEqual(b);
+    // Ein alter Einzelstand wird als Platz seines Servers gelesen.
+    expect(readCache(a, 'https://a')).toEqual(a);
+    expect(readCache(writeCache(a, b), 'https://a')).toEqual(a);
+  });
 });
 
 describe('store against a mocked server', () => {
@@ -195,7 +206,7 @@ describe('store against a mocked server', () => {
     await useDeviceLibrary.getState().syncNow();
     expect(fetchMock.mock.calls[2][0]).toBe('https://devices.zumpelars.de/api/sync?planner=multicam&after=7');
     expect(getCameraById('devlib-sony-fx9-lib')).toBeUndefined();
-    expect(JSON.parse(speicher['multicam-device-library-cache']).latestSeq).toBe(9);
+    expect(JSON.parse(speicher['multicam-device-library-cache']).byServer['https://devices.zumpelars.de'].latestSeq).toBe(9);
   });
 
   it('second factor: challenge header goes back with the code', async () => {
@@ -304,7 +315,7 @@ describe('store against a mocked server', () => {
     expect(messageText('guidelines-outdated')).toMatch(/guidelines/);
   });
 
-  it('a changed server forgets the token and the cache; bad addresses are refused', async () => {
+  it('a changed server forgets the token; bad addresses are refused', async () => {
     const { useDeviceLibrary, normaliseServerUrl } = await import('../library/store');
     expect(normaliseServerUrl('http://devices.example.com')).toBeNull();
     expect(normaliseServerUrl('http://localhost:8080/')).toBe('http://localhost:8080');
@@ -316,6 +327,104 @@ describe('store against a mocked server', () => {
     expect(JSON.parse(speicher['multicam-device-library-server'])).toBe('https://devices.example.com');
     await useDeviceLibrary.getState().setServer('https://devices.zumpelars.de');
     expect(JSON.parse(speicher['multicam-device-library-server'])).toBeNull();
+  });
+
+  // ── Offline-Vertrag (`syncFrom` im gemeinsamen Client) ──────────────────
+  const eineKamera = () => antwort(3, [geraet('sony-fx9-lib', 3, cameraToFacet(eigeneKamera))]);
+  const cacheVon = (server: string) => readCache(JSON.parse(speicher['multicam-device-library-cache'] ?? 'null'), server);
+
+  it('switching the server keeps the other server\'s cache; switching back restores it', async () => {
+    fetchMock
+      .mockResolvedValueOnce(json({ user: { id: 'u', email: 'a@b.de', username: 'l' } }, { 'set-auth-token': 'T' }))
+      .mockResolvedValueOnce(json(eineKamera()));
+    const { useDeviceLibrary } = await import('../library/store');
+    const { getCameraById } = await import('../data/cameras');
+    await useDeviceLibrary.getState().signIn('a@b.de', 'pw');
+    expect(useDeviceLibrary.getState().cache.entries).toHaveLength(1);
+
+    await useDeviceLibrary.getState().setServer('https://devices.example.com');
+    expect(useDeviceLibrary.getState().cache).toEqual(emptyCache('https://devices.example.com'));
+    expect(getCameraById('devlib-sony-fx9-lib')).toBeUndefined();
+    expect(cacheVon('https://devices.zumpelars.de').entries).toHaveLength(1);
+
+    await useDeviceLibrary.getState().setServer('https://devices.zumpelars.de');
+    expect(useDeviceLibrary.getState().cache.latestSeq).toBe(3);
+    expect(getCameraById('devlib-sony-fx9-lib')?.model).toBe('PXW-FX9 (eigene)');
+  });
+
+  it('a legacy single cache is read as the slot of its server and survives the next save', async () => {
+    const alt = mergeSync(emptyCache('https://devices.zumpelars.de'), eineKamera()).cache;
+    speicher['multicam-device-library-cache'] = JSON.stringify(alt);
+    const { useDeviceLibrary } = await import('../library/store');
+    expect(useDeviceLibrary.getState().cache).toEqual(alt);
+    fetchMock
+      .mockResolvedValueOnce(json({ user: { id: 'u', email: 'a@b.de', username: 'l' } }, { 'set-auth-token': 'T' }))
+      .mockResolvedValueOnce(json(antwort(3, [])));
+    await useDeviceLibrary.getState().signIn('a@b.de', 'pw');
+    expect(fetchMock.mock.calls[1][0]).toContain('after=3');
+    expect(JSON.parse(speicher['multicam-device-library-cache']).format).toBe('multicam-device-library-caches');
+    expect(cacheVon('https://devices.zumpelars.de').entries).toHaveLength(1);
+  });
+
+  it('a lower latestSeq fetches everything again and replaces the cache', async () => {
+    fetchMock
+      .mockResolvedValueOnce(json({ user: { id: 'u', email: 'a@b.de', username: 'l' } }, { 'set-auth-token': 'T' }))
+      .mockResolvedValueOnce(json(antwort(10, [geraet('alt', 10, cameraToFacet(eigeneKamera))])));
+    const { useDeviceLibrary } = await import('../library/store');
+    await useDeviceLibrary.getState().signIn('a@b.de', 'pw');
+    fetchMock
+      .mockResolvedValueOnce(json(antwort(2, [])))
+      .mockResolvedValueOnce(json(antwort(2, [geraet('neu', 2, lensToFacet(eigeneOptik))])));
+    await useDeviceLibrary.getState().syncNow();
+    expect(fetchMock.mock.calls[3][0]).toContain('after=0');
+    const c = useDeviceLibrary.getState().cache;
+    expect(c.entries.map((e) => e.slug)).toEqual(['neu']);
+    expect(c.latestSeq).toBe(2);
+    expect(cacheVon('https://devices.zumpelars.de').entries.map((e) => e.slug)).toEqual(['neu']);
+  });
+
+  it('an empty new server is an error and keeps the cache; so do offline and sign-out', async () => {
+    fetchMock
+      .mockResolvedValueOnce(json({ user: { id: 'u', email: 'a@b.de', username: 'l' } }, { 'set-auth-token': 'T' }))
+      .mockResolvedValueOnce(json(eineKamera()));
+    const { useDeviceLibrary } = await import('../library/store');
+    const { libraryErrorText } = await import('../library/messages');
+    await useDeviceLibrary.getState().signIn('a@b.de', 'pw');
+    const vorher = speicher['multicam-device-library-cache'];
+
+    fetchMock.mockResolvedValueOnce(json(antwort(0, []))).mockResolvedValueOnce(json(antwort(0, [])));
+    await useDeviceLibrary.getState().syncNow();
+    expect(useDeviceLibrary.getState().error).toBe('server-empty');
+    expect(libraryErrorText((_k, en) => en, 'server-empty')).toMatch(/were kept/);
+    expect(useDeviceLibrary.getState().cache.entries).toHaveLength(1);
+    expect(speicher['multicam-device-library-cache']).toBe(vorher);
+
+    fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    await useDeviceLibrary.getState().syncNow();
+    expect(useDeviceLibrary.getState().error).toBe('offline');
+    expect(libraryErrorText((_k, en) => en, 'offline')).toMatch(/last sync stay available/);
+    expect(useDeviceLibrary.getState().cache.entries).toHaveLength(1);
+
+    fetchMock.mockResolvedValueOnce(json({ error: 'x' }, {}, 401));
+    await useDeviceLibrary.getState().syncNow();
+    expect(useDeviceLibrary.getState().signedIn).toBe(false);
+    expect(useDeviceLibrary.getState().cache.entries).toHaveLength(1);
+    expect(speicher['multicam-device-library-cache']).toBe(vorher);
+  });
+
+  it('sign-out keeps the cache', async () => {
+    fetchMock
+      .mockResolvedValueOnce(json({ user: { id: 'u', email: 'a@b.de', username: 'l' } }, { 'set-auth-token': 'T' }))
+      .mockResolvedValueOnce(json(eineKamera()))
+      .mockResolvedValueOnce(json({}));
+    const { useDeviceLibrary } = await import('../library/store');
+    const { getCameraById } = await import('../data/cameras');
+    await useDeviceLibrary.getState().signIn('a@b.de', 'pw');
+    await useDeviceLibrary.getState().signOut();
+    expect(useDeviceLibrary.getState().signedIn).toBe(false);
+    expect(useDeviceLibrary.getState().cache.entries).toHaveLength(1);
+    expect(cacheVon('https://devices.zumpelars.de').entries).toHaveLength(1);
+    expect(getCameraById('devlib-sony-fx9-lib')?.model).toBe('PXW-FX9 (eigene)');
   });
 
   it('guidelines link follows the server address', async () => {

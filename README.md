@@ -73,7 +73,17 @@ MultiCam Planner is designed for quick, intuitive camera planning with essential
   goes through the same check as cameras/lenses carried in a project file; one
   that fails is skipped and counted in the sync line. The cache lives in local
   storage and survives sign-out, so placed library cameras keep working
-  offline. Under the selector a library entry shows its status, its number of
+  offline.
+- **Offline contract** (shared by every planner, `syncFrom` in the client):
+  the cache changes only on a successful response — offline, a timeout
+  (15 s per request, 120 s per upload batch), a server error, an expired
+  sign-in or signing out leave the last synced devices usable. Every server
+  address has its own cache slot under the same storage key; a single cache
+  from an older version is read as the slot of its server. When the server
+  reports a lower `latestSeq` than remembered (set up anew, restored from a
+  backup), the whole stand is fetched again and replaces the cache — unless it
+  is empty: then the sync fails with *server was set up anew … devices were
+  kept*, and nothing is deleted. Under the selector a library entry shows its status, its number of
   confirmations and a link to its page.
 - **Library entries travel in the project file**: the ones placed cameras use
   are written into the `.mcplan` (and the `.avplan` cameras slot) as
@@ -130,7 +140,8 @@ MultiCam Planner is designed for quick, intuitive camera planning with essential
   address must be added there, otherwise every request is blocked and the
   settings report the server as unreachable. Changing the address signs out
   at the old server, forgets the token (it must never reach another server)
-  and starts an empty cache and upload record. Only `https://` is accepted (`http://` for
+  and switches to that server's cache slot and a fresh upload record; the
+  previous server's cache stays stored and is back when you switch back. Only `https://` is accepted (`http://` for
   localhost).
 - Client: `src/utils/deviceLibraryClient.ts`, an unchanged copy of
   `larszu/av-device-library` `clients/deviceLibraryClient.ts` — changes go

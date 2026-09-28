@@ -14,7 +14,7 @@ export const library: Record<string, string> = {
   'library.server.custom':
     'Nicht der Standard-Server ({url}). Dieser Build erlaubt in seiner Content-Security-Policy nur den Standard; ein anderer Server muss dort eingetragen werden, sonst wird jede Anfrage blockiert.',
   'library.server.hint':
-    'Ein Serverwechsel meldet ab und beginnt mit leerem Zwischenspeicher: Konto und Geräte gehören zu einem Server.',
+    'Ein Serverwechsel meldet ab: Konto und Geräte gehören zu einem Server. Jeder Server hat seinen eigenen Zwischenspeicher — wer zurückwechselt, hat den alten Stand wieder.',
 
   'library.account': 'Konto',
   'library.signedInAs': 'Angemeldet als {name} ({email}).',
@@ -47,7 +47,9 @@ export const library: Record<string, string> = {
   'library.error.rateLimited': 'Zu viele Versuche. Eine Minute warten und erneut versuchen.',
   'library.error.notSignedIn': 'Nicht angemeldet (oder die Sitzung ist abgelaufen). Bitte neu anmelden.',
   'library.error.offline':
-    'Der Server ist nicht erreichbar. Verbindung prüfen — und bei einem anderen als dem Standard-Server, ob seine Adresse in der Content-Security-Policy dieses Builds steht.',
+    'Der Server ist nicht erreichbar. Die Geräte vom letzten Abgleich bleiben verfügbar. Verbindung prüfen — und bei einem anderen als dem Standard-Server, ob seine Adresse in der Content-Security-Policy dieses Builds steht.',
+  'library.error.serverEmpty':
+    'Der Server wurde neu aufgesetzt und hat noch keine Geräte. Die Geräte vom letzten Abgleich wurden behalten.',
   'library.error.server': 'Der Server hat mit einem Fehler geantwortet. Später erneut versuchen.',
 
   'library.sync': 'Abgleich',

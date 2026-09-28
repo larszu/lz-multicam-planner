@@ -12,8 +12,11 @@
 // aktuelle Fassung wir nicht lesen koennen, als gueltig weiterzufuehren,
 // hiesse Daten zu zeigen, die es so nicht mehr gibt.
 //
-// Der Cache gehoert zu EINEM Server. Wechselt die Adresse, beginnt er leer —
-// Slugs und Sequenznummern sind nur innerhalb eines Servers eindeutig.
+// Ein Cache gehoert zu EINEM Server — Slugs und Sequenznummern sind nur
+// innerhalb eines Servers eindeutig. Gespeichert werden aber die Staende ALLER
+// Server nebeneinander (`CacheAblage`): ein Wechsel der Adresse loescht den
+// alten Stand nicht, und wer zurueckwechselt, hat ihn wieder (Vertrag Punkt 2
+// in `syncFrom`, `deviceLibraryClient.ts`).
 // ───────────────────────────────────────────────────────────────────────────
 import type { SyncDevice, SyncResponse } from '../utils/deviceLibraryClient';
 import { facetToItem, type LibraryItem } from './facet';
@@ -78,11 +81,50 @@ export function mergeSync(cache: LibraryCache, response: SyncResponse): { cache:
   };
 }
 
-/** Liest einen gespeicherten Cache; alles Unlesbare oder fuer einen anderen
- *  Server Gespeicherte ergibt einen leeren. */
+const istCache = (v: unknown): v is LibraryCache => {
+  if (!v || typeof v !== 'object') return false;
+  const c = v as Partial<LibraryCache>;
+  return typeof c.server === 'string' && typeof c.latestSeq === 'number' && Array.isArray(c.entries);
+};
+
+/**
+ * Die Staende aller Server unter einem Speicher-Schluessel.
+ *
+ * Bis 2026-09-28 lag dort genau EIN Cache, und eine andere Adresse hiess:
+ * leer anfangen und ueberschreiben. Wer auf einen Ersatzserver umstellte,
+ * weil devices.zumpelars.de gerade nicht lief, und zurueckwechselte, hatte
+ * danach eine leere Bibliothek. Ein alter Einzelstand wird beim Lesen als
+ * Platz seines Servers verstanden — nichts geht verloren.
+ */
+export interface CacheAblage {
+  format: 'multicam-device-library-caches';
+  version: 1;
+  byServer: Record<string, LibraryCache>;
+}
+
+const leereAblage = (): CacheAblage => ({ format: 'multicam-device-library-caches', version: 1, byServer: {} });
+
+/** Liest den Speicher-Inhalt — neue Ablage oder alter Einzelstand; Unlesbares
+ *  ergibt eine leere Ablage. */
+export function readAblage(raw: unknown): CacheAblage {
+  if (istCache(raw)) return { ...leereAblage(), byServer: { [raw.server]: raw } };
+  const a = raw as Partial<CacheAblage> | null;
+  if (a && typeof a === 'object' && a.format === 'multicam-device-library-caches' && a.version === 1 && a.byServer && typeof a.byServer === 'object') {
+    const byServer: Record<string, LibraryCache> = {};
+    for (const [server, c] of Object.entries(a.byServer)) if (istCache(c) && c.server === server) byServer[server] = c;
+    return { ...leereAblage(), byServer };
+  }
+  return leereAblage();
+}
+
+/** Der Stand fuer DIESEN Server aus dem Speicher-Inhalt; keiner ergibt einen leeren. */
 export function readCache(raw: unknown, server: string): LibraryCache {
-  if (!raw || typeof raw !== 'object') return emptyCache(server);
-  const c = raw as Partial<LibraryCache>;
-  if (c.server !== server || typeof c.latestSeq !== 'number' || !Array.isArray(c.entries)) return emptyCache(server);
-  return { server, latestSeq: c.latestSeq, entries: c.entries };
+  const c = readAblage(raw).byServer[server];
+  return c ? { server, latestSeq: c.latestSeq, entries: c.entries } : emptyCache(server);
+}
+
+/** Legt `cache` auf seinen Platz; die Staende der anderen Server bleiben. */
+export function writeCache(raw: unknown, cache: LibraryCache): CacheAblage {
+  const a = readAblage(raw);
+  return { ...a, byServer: { ...a.byServer, [cache.server]: cache } };
 }
