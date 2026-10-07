@@ -81,7 +81,7 @@ export const BRIDGE_SOURCE = {
   file: 'packages/web-rcp/src/capabilities.ts',
   symbol: 'MODE_CAPS',
   /** Stand der Quelle, aus der diese Kopie genommen wurde. */
-  commit: 'e74a3bc311e9dcf43b739fccc10e5a9d0946a1d7',
+  commit: '0e4158db19330dd16819bd4b5185162cac5d71d6',
 } as const;
 
 /**
@@ -173,6 +173,7 @@ export const CONTROL_PATH_LABEL: Readonly<Record<ControlPath, string>> = {
   tcp: 'Sony CCU 700PTP (TCP)',
   serial: 'Sony CCU 700PTP (RS-422)',
   'sony-usb': 'Sony Alpha/Cinema (USB-PTP)',
+  'sony-ptpip': 'Sony Alpha/Cinema (WLAN/LAN, PTP/IP)',
   'sony-mnc': 'Sony Monitor & Control (WLAN)',
   'lumix-http': 'Panasonic Lumix (HTTP-CGI)',
   'canon-ccapi': 'Canon CCAPI',
@@ -215,6 +216,7 @@ export const MODE_PAINT: Readonly<Record<ControlPath, readonly PaintFunction[]>>
     'masterGamma', 'saturation', 'whiteBalance', 'bars',
   ],
   'sony-usb': ['iris', 'shutter', 'iso', 'masterGain', 'colorTemp', 'awb'],
+  'sony-ptpip': ['iris', 'shutter', 'iso', 'masterGain', 'colorTemp', 'awb'],
   'sony-mnc': ['iris', 'ndFilter', 'iso', 'masterGain', 'colorTemp', 'awb'],
   'lumix-http': [
     'iris', 'ndFilter', 'shutter', 'iso', 'masterGain', 'masterBlack',
