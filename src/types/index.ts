@@ -339,6 +339,9 @@ export interface PositionComms {
  */
 export type ControlPath =
   | 'tcp' | 'serial' | 'lumix-http' | 'sony-usb' | 'blackmagic' | 'sony-mnc'
+  // Sony Alpha/Cinema ueber WLAN/LAN (PTP/IP, mit Zugriffsauthentifizierung
+  // per SSH) -- dieselben Bildregler wie sony-usb, anderer Draht.
+  | 'sony-ptpip'
   | 'canon-ccapi' | 'zcam' | 'panasonic-ptz' | 'visca' | 'visca-serial'
   | 'jvc' | 'birddog'
   // HTTP-CGI PTZ: alternative Steuerung ueber die Web-CGI der Kamera
