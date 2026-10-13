@@ -11,7 +11,11 @@
 // src/utils/venueExchange.ts, dort auch light-planner
 // src/core/venueExchange.ts). Reine Daten, keine DOM-/Store-Abhaengigkeit →
 // headless testbar.
+//
+// Raum-Felder (Decke, Boden, Sitzbloecke, Videowaende) kamen 2026-10 dazu,
+// alle optional — Version 1 bleibt, alte Dateien bleiben gueltig.
 // ───────────────────────────────────────────────────────────────────────────
+import type { RaumErweiterung } from './raum'
 
 export const VENUE_EXCHANGE_KIND = 'venue-exchange' as const
 export const VENUE_EXCHANGE_VERSION = 1 as const
@@ -41,7 +45,7 @@ export interface VenueExchange {
   app: string
   appVersion: string
   exportedAt: string
-  venue: {
+  venue: RaumErweiterung & {
     name: string
     widthM?: number
     heightM?: number

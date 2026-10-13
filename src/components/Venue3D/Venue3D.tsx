@@ -22,7 +22,10 @@ import { useTranslation } from '../../i18n';
 import { easeOut, povFraming, shortestAngleDelta, topFraming, type Framing } from '../../utils/view3dScene';
 import { useSchmal } from '../../lib/useSchmal';
 import { useView3DPrefs } from './view3dPrefs';
-import { Audience, CoverageWedge, StageLights, VideoBoards } from './ShowScene';
+import { Arena, Atmosphere, CoverageWedge, CrowdAndSeating, FieldMesh, LedWalls, ScenePipeline, ShowRig, StageBodyReal } from './ShowScene';
+import { erzeugeMensch, publikumsVariante, stufenWerte, type Pose, type Stufe, type StufenWerte, type Tiefenschaerfe } from '../../avplan/scene3d';
+import { autoVideoWalls, hatSpielfeld, istSpielfeld } from '../../utils/showRig';
+import { sitzblockNormal } from '../../avplan/floorplan';
 import CameraListPanel, { type CameraRow } from './CameraListPanel';
 import { cameraRowDetail } from './cameraRow';
 
@@ -654,15 +657,34 @@ function FovPyramid({ cam, isSelected, look }: { cam: ReturnType<typeof useStore
       )}
       {/* Label: dreht sich zum Betrachter, damit es auch von oben lesbar ist */}
       {look.showLabel && (
+        <NahKleiner groesse={look.labelSize}>
         <Billboard position={[0, 0.35 + look.labelSize * 0.8, 0]}>
           <Text font={LABEL_FONT} fontSize={look.labelSize} color={tallyColor ?? '#F6F5F0'} anchorX="center" anchorY="middle" fontWeight="bold"
             outlineWidth={look.labelSize * 0.08} outlineColor="#0B1426">
             {cam.label}
           </Text>
         </Billboard>
+        </NahKleiner>
       )}
     </group>
   );
+}
+
+/**
+ * Beschriftung, die aus der Naehe nicht waechst: die Schrift ist fuer den
+ * Blick ueber die ganze Halle bemessen und stand sonst im Rundgang meterhoch
+ * vor dem Bild.
+ */
+function NahKleiner({ groesse, children }: { groesse: number; children: React.ReactNode }) {
+  const ref = useRef<THREE.Group>(null);
+  const welt = useMemo(() => new THREE.Vector3(), []);
+  useFrame(({ camera }) => {
+    const g = ref.current;
+    if (!g) return;
+    const d = camera.position.distanceTo(g.getWorldPosition(welt));
+    g.scale.setScalar(Math.min(1, Math.max(0.15, d / (groesse * 30))));
+  });
+  return <group ref={ref}>{children}</group>;
 }
 
 type CameraEditMode = 'move' | 'height' | 'pan' | 'tilt';
@@ -920,7 +942,7 @@ function FloorPlanOverlay({ plan }: { plan: BackgroundPlan }) {
   );
 }
 
-function PersonMesh({ x, z, height, label, objectType, color }: { x: number; z: number; height: number; label: string; objectType?: StageObjectType; color?: string }) {
+function PersonMesh({ x, z, height, label, objectType, color, showLabel = true }: { x: number; z: number; height: number; label: string; objectType?: StageObjectType; color?: string; showLabel?: boolean }) {
   const type = objectType ?? 'person';
   const defaultColor =
     type === 'drums' ? '#ef4444' :
@@ -1083,12 +1105,39 @@ function PersonMesh({ x, z, height, label, objectType, color }: { x: number; z: 
           )}
         </>
       )}
-      <Text font={LABEL_FONT} position={[0, height * 0.5, 0]} fontSize={0.22} color={col} anchorX="center"
-        outlineWidth={0.015} outlineColor="#000000">
-        {label} ({height}m)
-      </Text>
+      {showLabel && (
+        <Text font={LABEL_FONT} position={[0, height * 0.5, 0]} fontSize={0.22} color={col} anchorX="center"
+          outlineWidth={0.015} outlineColor="#000000">
+          {label} ({height}m)
+        </Text>
+      )}
     </group>
   );
+}
+
+/** Typen, die in der Showansicht als echter Mensch erscheinen. */
+const MENSCH_TYPEN: Partial<Record<StageObjectType, Pose>> = { person: 'stehen', 'person-guitar': 'stehen', 'mic-stand': 'stehen', 'sitting-person': 'sitzen' };
+
+function idZahl(id: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+  return (h >>> 0) / 4294967295;
+}
+
+/**
+ * Referenzperson als Mensch. Kleidung aus der Id, damit dieselbe Person
+ * immer gleich aussieht; die Farbe der Person (falls gesetzt) wird das
+ * Oberteil. Blickt zur Mitte der Kameras.
+ */
+function RealPerson({ id, height, pose, color, facingDeg }: { id: string; height: number; pose: Pose; color?: string; facingDeg: number }) {
+  const mesh = useMemo(() => {
+    const v = publikumsVariante(idZahl(id));
+    // Sitzend ist `height` die Hoehe im Sitzen; die Figur misst stehend.
+    const stehend = pose === 'sitzen' ? Math.max(1.2, height / 0.72) : height;
+    return erzeugeMensch(pose, { oben: color ?? v.oben, unten: v.unten, haut: v.haut, haar: v.haar, langarm: v.langarm }, stehend);
+  }, [id, height, pose, color]);
+  useEffect(() => () => { mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); }, [mesh]);
+  return <primitive object={mesh} rotation={[0, Math.PI / 2 - (facingDeg * Math.PI) / 180, 0]} />;
 }
 
 type ViewPreset = 'top' | 'perspective' | 'camera';
@@ -1098,9 +1147,9 @@ function cameraFov(cam: ReturnType<typeof useStore.getState>['cameras'][0]) {
   const st = useStore.getState();
   const camDef = getCameraById(cam.cameraId, st.customCameras);
   const lensDef = getLensById(cam.lensId, st.customLenses);
-  if (!camDef || !lensDef) return { camDef, lensDef, fov: null };
+  if (!camDef || !lensDef) return { camDef, lensDef, fov: null, sensor: null };
   const sensor = getEffectiveSensor(camDef, lensDef, cam.useSpeedbooster, cam.sensorModeIndex, cam.activeMount);
-  return { camDef, lensDef, fov: computeFov(sensor, cam.focalLength, cam.focusDistance, cam.extenderActive, lensDef.squeeze ?? 1) };
+  return { camDef, lensDef, sensor, fov: computeFov(sensor, cam.focalLength, cam.focusDistance, cam.extenderActive, lensDef.squeeze ?? 1) };
 }
 
 export default function Venue3D() {
@@ -1113,6 +1162,9 @@ export default function Venue3D() {
   // Durch welche Kamera gerade geschaut wird. Jede Handbewegung beendet das.
   const [povId, setPovId] = useState<string | null>(null);
   const [preset, setPreset] = useState<ViewPreset>('perspective');
+  const [werte, setWerte] = useState<StufenWerte>(() => stufenWerte('high'));
+  const [stufe, setStufe] = useState<Stufe>('high');
+  const onWerte = useCallback((w: StufenWerte, st: Stufe) => { setWerte(w); setStufe(st); }, []);
 
   useEffect(() => {
     if (unlockedCameraId && !cameras.some((camera) => camera.id === unlockedCameraId)) {
@@ -1122,8 +1174,13 @@ export default function Venue3D() {
 
   // Startausrichtung: Position und Neigung stammen aus derselben Quelle wie
   // beim Einhaengen, sonst zeigt „Perspektive" woanders hin.
-  const [camX, camY, camZ] = defaultCameraPos(venue.widthM, venue.heightM);
-  const startPitch = defaultPitchRad(venue.widthM, venue.heightM);
+  const tribuenenHoehe = (venue.seatingBlocks ?? []).reduce((m, b) => {
+    const n = sitzblockNormal(b);
+    return n.standing ? m : Math.max(m, n.baseHeightM + (n.rows - 1) * n.riseM);
+  }, 0);
+  const minCamY = tribuenenHoehe > 0 ? tribuenenHoehe + 10 : 0;
+  const [camX, camY, camZ] = defaultCameraPos(venue.widthM, venue.heightM, minCamY);
+  const startPitch = defaultPitchRad(venue.widthM, venue.heightM, minCamY);
 
   const flyTo = useCallback((detail: FlyDetail) => {
     window.dispatchEvent(new CustomEvent<FlyDetail>(FLY_EVENT, { detail }));
@@ -1215,8 +1272,6 @@ export default function Venue3D() {
   }, [cameras, venue.widthM, venue.heightM]);
 
   const show = prefs.showLight;
-  // Szenenfarben sind Bildinhalt (WebGL), keine Oberflaeche.
-  const sceneBg = show ? '#070D1C' : '#132040';
   const povInfo = povCam ? fovById.get(povCam.id) : undefined;
 
 
@@ -1224,6 +1279,26 @@ export default function Venue3D() {
   const povRatio = povInfo?.fov && povInfo.fov.horizontalDeg > 0
     ? Math.tan((povInfo.fov.verticalDeg * Math.PI) / 360) / Math.tan((povInfo.fov.horizontalDeg * Math.PI) / 360)
     : 9 / 16;
+
+  // Im Kamerablick soll die Ansicht wie das Bild dieser Kamera wirken: ohne
+  // Planungs-Beiwerk, mit der Schaerfentiefe ihres Objektivs.
+  const realPov = show && !!povCam;
+  const dof: Tiefenschaerfe | null = useMemo(() => {
+    if (!realPov || !povCam || !povInfo?.sensor) return null;
+    return {
+      fokusM: Math.max(0.3, povCam.focusDistance),
+      blende: povCam.aperture,
+      brennweiteMm: povCam.focalLength * (povCam.extenderActive || 1),
+      sensorBreiteMm: povInfo.sensor.widthMm,
+    };
+  }, [realPov, povCam, povInfo]);
+  const draussen = hatSpielfeld(venue.stages) || (!venue.ceilingHeightM && venue.floorMaterial === 'turf');
+  const ledWaende = useMemo(
+    () => (venue.videoWalls?.length ? venue.videoWalls : prefs.videoBoard ? autoVideoWalls(venue.stages, boardLook) : []),
+    [venue.videoWalls, venue.stages, prefs.videoBoard, boardLook],
+  );
+  const farDist = Math.max(500, diag * 6);
+  const personBlick = (x: number, y: number) => (Math.atan2(boardLook.y - y, boardLook.x - x) * 180) / Math.PI;
 
   return (
     <div className="flex w-full h-full" style={{ minHeight: 500 }}>
@@ -1273,22 +1348,18 @@ export default function Venue3D() {
           </div>
         )}
 
-        <Canvas gl={{ preserveDrawingBuffer: true }} dpr={[1, 2]}>
-          <color attach="background" args={[sceneBg]} />
-          {show && <fog attach="fog" args={[sceneBg, diag * 0.9, diag * 3]} />}
-          <PerspectiveCamera makeDefault position={[camX, camY, camZ]} fov={VIEW3D_FOV_DEG} near={0.05} far={Math.max(500, diag * 6)} />
+        <Canvas gl={{ preserveDrawingBuffer: true, antialias: false }} dpr={[1, 2]} shadows>
+          <ScenePipeline quality={prefs.quality} show={show} dof={dof} onWerte={onWerte} />
+          <Atmosphere look={show ? (draussen ? 'nacht' : 'arena') : 'planung'} diagM={diag} domeRadius={farDist * 0.8} />
+          <PerspectiveCamera makeDefault position={[camX, camY, camZ]} fov={VIEW3D_FOV_DEG} near={0.1} far={farDist} />
           <FPSControls mouseLookEnabled={unlockedCameraId === null} defaultPitch={startPitch} onManualMove={handleManualMove} />
 
           {show ? (
             <>
-              <ambientLight intensity={0.35} color="#c9d4ea" />
-              <hemisphereLight args={['#6f86b8', '#0b1220', 0.35]} />
-              <directionalLight position={[venue.widthM * 0.3, 30, venue.heightM * 1.2]} intensity={0.35} color="#9fb2d9" />
-              <StageLights stages={venue.stages} depthM={venue.heightM} />
-              {/* Flutlicht ueber Spielfeldern: dort haengen keine Spots */}
-              {venue.stages.some((st) => Math.max(st.width, st.height) > 30) && (
-                <directionalLight position={[venue.widthM / 2, diag, venue.heightM * 0.8]} intensity={1.4} color="#f2f4ff" />
-              )}
+              <hemisphereLight args={['#8ea2d8', '#0d0a08', draussen ? 0.18 : 0.08]} />
+              {/* Streulicht von der Buehne ins Publikum: ohne es waere die Menge ein schwarzes Loch. */}
+              <directionalLight position={[boardLook.x, 18, boardLook.y - diag]} intensity={0.22} color="#7f93ff" />
+              <ShowRig venue={venue} look={boardLook} werte={werte} dunst={draussen ? 0.32 : 0.62} />
             </>
           ) : (
             <>
@@ -1299,36 +1370,45 @@ export default function Venue3D() {
             </>
           )}
 
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[venue.widthM / 2, 0, venue.heightM / 2]}>
-            <planeGeometry args={[venue.widthM, venue.heightM]} />
-            <meshStandardMaterial color={show ? '#1a2133' : '#252a36'} roughness={show ? 0.55 : 1} metalness={show ? 0.15 : 0} />
-          </mesh>
+          <Arena venue={venue} show={show} />
 
           {backgroundPlan && prefs.floorPlan && <FloorPlanOverlay plan={backgroundPlan} />}
 
-          <Grid
-            args={[venue.widthM, venue.heightM]}
-            position={[venue.widthM / 2, 0.01, venue.heightM / 2]}
-            cellSize={1}
-            cellThickness={0.6}
-            cellColor={show ? '#2a3348' : '#3a4050'}
-            sectionSize={5}
-            sectionThickness={1.5}
-            sectionColor={show ? '#3a4766' : '#4a5568'}
-            fadeDistance={diag * 3}
-          />
+          {!show && (
+            <Grid
+              args={[venue.widthM, venue.heightM]}
+              position={[venue.widthM / 2, 0.01, venue.heightM / 2]}
+              cellSize={1}
+              cellThickness={0.6}
+              cellColor="#3a4050"
+              sectionSize={5}
+              sectionThickness={1.5}
+              sectionColor="#4a5568"
+              fadeDistance={diag * 3}
+            />
+          )}
 
-          <VenueWalls widthM={venue.widthM} heightM={venue.heightM} />
-          {prefs.labels && <FloorLabels widthM={venue.widthM} heightM={venue.heightM} />}
+          {!show && <VenueWalls widthM={venue.widthM} heightM={venue.heightM} />}
+          {prefs.labels && !show && <FloorLabels widthM={venue.widthM} heightM={venue.heightM} />}
 
           {venue.stages.map((s) => (
-            <StageMesh key={s.id} stage={s} />
+            show
+              ? (istSpielfeld(s) ? <FieldMesh key={s.id} stage={s} /> : <StageBodyReal key={s.id} stage={s} />)
+              : <StageMesh key={s.id} stage={s} />
           ))}
 
-          {prefs.audience && <Audience input={audienceInput} />}
-          {prefs.videoBoard && venue.stages.length > 0 && <VideoBoards stages={venue.stages} look={boardLook} title={venue.name} />}
+          {prefs.audience && (
+            <CrowdAndSeating
+              venue={venue}
+              cameras={audienceInput.cameras}
+              persons={audienceInput.persons}
+              walls={walls}
+              max={werte.ao ? 40000 : 15000}
+            />
+          )}
+          {ledWaende.length > 0 && <LedWalls walls={ledWaende} maxLichter={show && werte.ao ? 1 : 0} />}
 
-          {prefs.coverage && cameras.map((cam, i) => {
+          {prefs.coverage && !realPov && cameras.map((cam, i) => {
             const fov = fovById.get(cam.id)?.fov;
             if (!fov) return null;
             const pos = effectiveCameraPos(cam);
@@ -1372,7 +1452,7 @@ export default function Venue3D() {
               look={{
                 showFrustum: cam.id === selectedCameraId || !prefs.coverage,
                 showVolume: !prefs.coverage,
-                showLabel: prefs.labels,
+                showLabel: prefs.labels && !realPov,
                 labelSize,
                 tally: cam.id === programCameraId ? 'pgm' : cam.id === selectedCameraId && programCameraId ? 'pvw' : null,
                 isPov: !!povCam && cam.id === povCam.id,
@@ -1392,7 +1472,9 @@ export default function Venue3D() {
               onDragEnd={(nx, nz) => updatePerson(p.id, { x: nx, y: nz })}
             >
               <group position={[0, groundHeightAt(venue.stages, p.x, p.y), 0]}>
-                <PersonMesh x={0} z={0} height={p.height} label={p.label} objectType={p.objectType} color={p.color} />
+                {show && MENSCH_TYPEN[p.objectType ?? 'person']
+                  ? <RealPerson id={p.id} height={p.height} pose={MENSCH_TYPEN[p.objectType ?? 'person'] as Pose} color={p.color} facingDeg={personBlick(p.x, p.y)} />
+                  : <PersonMesh x={0} z={0} height={p.height} label={p.label} objectType={p.objectType} color={p.color} showLabel={!realPov} />}
               </group>
             </DraggableOnFloor>
           ))}
@@ -1408,7 +1490,9 @@ export default function Venue3D() {
             return (
               <mesh key={w.id} position={[cx, w.height / 2, cy]} rotation={[0, -angle, 0]}>
                 <boxGeometry args={[len, w.height, 0.15]} />
-                <meshStandardMaterial color={w.color ?? '#6b7280'} opacity={0.6} transparent />
+                {show
+                  ? <meshStandardMaterial color={w.color ?? '#3a3d42'} roughness={0.9} />
+                  : <meshStandardMaterial color={w.color ?? '#6b7280'} opacity={0.6} transparent />}
               </mesh>
             );
           })}
@@ -1424,6 +1508,8 @@ export default function Venue3D() {
         onPrefs={updatePrefs}
         onPick={pickCamera}
         hasFloorPlan={!!backgroundPlan}
+        hasRoomWalls={!!venue.videoWalls?.length}
+        stufe={stufe}
       />
     </div>
   );

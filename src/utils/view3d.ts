@@ -179,11 +179,19 @@ export interface View3DFraming {
  * Reihenfolge: lieber Luft unten als eine Halle, die seitlich aus dem Bild
  * laeuft.
  */
-export function defaultView(widthM: number, heightM: number): View3DFraming {
+export function defaultView(widthM: number, heightM: number, minCamY = 0): View3DFraming {
   const width = Math.max(0.001, widthM);
   const depth = Math.max(0.001, heightM);
-  const camY = camHeightFor(depth);
+  // Tribuenen am Rand: von dahinter sieht man nur ihre Rueckwand, also
+  // ueber sie hinweg schauen.
+  const camY = Math.max(camHeightFor(depth), minCamY);
   const fitDist = fitDistanceM(depth, camY);
+  if (minCamY > 0) {
+    // Ueber der hinteren Tribuene statt weit dahinter: von dort sieht man das
+    // Innere, und die Seiten duerfen angeschnitten sein.
+    const nah = Math.min(Math.max(fitDist, widthFitDistanceM(width, depth)), depth * 1.02);
+    return { pos: [width / 2, camY, nah], pitch: groundPitchRad(camY, nah) };
+  }
   const dist = Math.max(fitDist, widthFitDistanceM(width, depth));
   // Passt die Halle in der Hoehe, wird die hintere Kante nach oben geheftet.
   // Zwingt die Breite die Kamera weiter zurueck, fuellt die Halle das Bild
@@ -199,11 +207,11 @@ export function defaultView(widthM: number, heightM: number): View3DFraming {
 }
 
 /** Standardposition der Blickkamera ueber einer Halle (x, Hoehe, z). */
-export function defaultCameraPos(widthM: number, heightM: number): [number, number, number] {
-  return defaultView(widthM, heightM).pos;
+export function defaultCameraPos(widthM: number, heightM: number, minCamY = 0): [number, number, number] {
+  return defaultView(widthM, heightM, minCamY).pos;
 }
 
 /** Startneigung fuer eine Halle mit der Standardposition der Blickkamera. */
-export function defaultPitchRad(widthM: number, heightM: number): number {
-  return defaultView(widthM, heightM).pitch;
+export function defaultPitchRad(widthM: number, heightM: number, minCamY = 0): number {
+  return defaultView(widthM, heightM, minCamY).pitch;
 }

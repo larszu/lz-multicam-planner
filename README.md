@@ -174,16 +174,20 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
   the project file
 - Two-point calibration tool for scaling imported floor plans (per axis, X or Y)
 - Draw walls with 45° shift-snapping
-- Place stage objects (person, guitarist, drums, keys, mic stand, custom)
+- Place stage objects (person, guitarist, drums, keys, mic stand, custom) — new people land on the main stage, side by side
+- **Room (optional, collapsed in the sidebar):** ceiling height, floor (concrete, wood, carpet, grass, tiles, black stage floor), **audience areas** and **video walls**. Add an area with *Seated area* or *Standing area*, then move, resize and rotate it in the 2D plan; rows, row gap, rise per row, first-row height and occupancy sit under *Fine-tune*. Seated areas are rows of seats on a rising stand, standing areas a loose, dense crowd on the floor; one click switches between the two. Video walls are dragged and rotated the same way (the arrow shows where the picture faces). Nothing here is required — without areas the 3D view fills the free floor with people by itself
 
 ### ⚡ 3D Venue View
 - **Views:** *Top* (plan from above, stage at the top like in the 2D plan), *Perspective* and *Camera view* — the view glides there instead of jumping
 - **Camera list** on the right: number, camera, lens range @ current focal length, rig and horizontal FOV. **Click a camera to look through its lens**; the frame is masked to the sensor's aspect ratio and follows pan, tilt and zoom live (e.g. from the Rig panel). Any mouse, key or touch input takes you back to free movement
 - **Coverage** wedges on the floor from each camera to its focus point, with a sight line; the selected camera also shows its 3D FOV pyramid
 - **Tally** from the Multiview: Program camera red, Preview green — on the camera in 3D and in the list
-- **Audience** fills the free floor automatically (centre aisle, cross aisles, clearance around stages, cameras, people and walls) — instanced, so thousands of seats stay smooth. Scenery only: Preview and sight lines do not take it into account; place a person if a head in the shot matters
-- **Show light:** dark hall, haze, spotlights with visible beams over each stage (floodlight over pitches). Off = evenly lit planning view
-- **Video wall** behind each stage (the edge facing away from the cameras), **Labels** and **Floor plan** can be toggled; all toggles are remembered
+- **Photoreal by default:** dark arena with haze, trusses with fixtures whose beams stand in the haze, warm front light on the stage with real shadows, LED walls that glow and light the stage, floodlights over pitches, a night sky outdoors. Ambient occlusion, bloom, AgX tone mapping. One **Quality** switch: *Auto* (starts high, lowers once if the frame rate stays low), *High*, *Low*
+- **Audience** from the room's audience areas — seated on seats and stands, standing with some hands raised — or, without areas, filling the free floor (centre aisle, clearance around stages, cameras, people and walls). Thousands of people with varied clothing, size and posture, instanced so they stay smooth. Space is kept free around cameras and people. Scenery only: Preview and sight lines do not take it into account; place a person if a head in the shot matters
+- **People on stage** appear as people (standing or seated) in the show view, facing the cameras
+- **Camera view like the camera's picture:** sensor and focal length set the angle, planning overlays (coverage, labels) disappear, and on *High* the depth of field follows focal length, aperture and focus distance
+- **Show light** off = evenly lit planning view with grid. **Video wall** draws one wall per stage when the room has none; **Labels** and **Floor plan** can be toggled; all toggles are remembered
+- Rendering building blocks come from `@avplan/scene3d` (see *Shared suite packages*)
 - FPS-style controls (WASD + mouse look, Space/Shift up/down, Ctrl sprint)
 - **Touch: one finger looks around, two fingers pinch to move forward/back and drag to slide sideways and up/down** — no keyboard needed on a phone or tablet
 - Drag cameras in space, visualize stage meshes & venue boundaries
@@ -243,7 +247,7 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 - Dockable panel system (FlexLayout): drag, split, tab, resize
 - Layout modes: Focus (single tab) and Grid (2×2)
 - Customizable layout presets (save/load/delete)
-- Venue templates: sport, concert, church, conference, custom (save your own)
+- Venue templates: football stadium, stadium event, small and large concert, church, conference, custom (save your own) — each with fitting audience areas and video walls
 - Export: Combined 1920px PNG containing 2D plan, 3D view, camera preview, and technical data sheet
 
 ### 🖥 Desktop App
@@ -355,8 +359,11 @@ page. It can also be triggered manually via the Actions tab for testing.
 `src/avplan/<name>/` holds **byte-identical copies** of packages from
 `av-planner-suite/packages/<name>/src`, each with a `MANIFEST.json` (SHA-256
 per file). Today that is `@avplan/floorplan`: the floor-plan loader (image/PDF,
-drag & drop handlers) and the `venue-exchange` schema, which
-`src/utils/venueExchange.ts` re-exports next to MultiCam's own conversion.
+drag & drop handlers), the `venue-exchange` schema (including the optional room
+fields and the seat layout of audience areas), which
+`src/utils/venueExchange.ts` re-exports next to MultiCam's own conversion; and
+`@avplan/scene3d`: the render pipeline, haze beams, surfaces, people, crowd,
+stands and LED walls behind the 3D view.
 **Never edit these folders here** — change the package in the suite and run
 `npm run pakete:verteilen` there. `src/__tests__/avplanKopien.test.ts` hashes
 every file against its manifest and fails on changed or unlisted files.

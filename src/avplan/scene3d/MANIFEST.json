@@ -1,0 +1,19 @@
+{
+  "paket": "@avplan/scene3d",
+  "version": "1.0.0",
+  "quelle": "av-planner-suite/packages/scene3d/src",
+  "hinweis": "Kopie eines Suite-Pakets (ADR-015). Nicht hier aendern: in av-planner-suite/packages aendern und mit `npm run pakete:verteilen` neu kopieren.",
+  "dateien": {
+    "dunst.ts": "e30632f071574b2d9a2a3979c9acd4720a9c2e58d61a826b68bddc9a23027fe5",
+    "index.ts": "df21b3ce73847d024857fd1cc42ff7d19fb515409e0cc3100d7ecd014e59c6d7",
+    "ledwand.ts": "99a42bf3f358dc31697e2ab71118aac772102289ca7acb8e2a767282f57db664",
+    "mensch.ts": "861ced1a624dc35675a8d0488472c851fc82602c13a8e34feeb679aac483526e",
+    "oberflaechen.ts": "2d8f851810e5ef3ff36558a0eafd4625a039a034f1642fa427a97aff61e21bd2",
+    "personModell.ts": "b8cbe32ddc1962fb2bf6d7801efa9bc6149cefdd5f170f0c508d62ea44bca6b4",
+    "pipeline.ts": "dd07f1cde52d38423c0451fa83f15f7a60c69afcab1051a5e597645354d3e8e5",
+    "publikum.ts": "b5fe58c7f973d911a29d016783b3940ef40dad2e9bafd2248992cb0421f16d28",
+    "qualitaet.ts": "2e6d3199ec4b9c387c3cb5e1f71f9c46875fa391333bd7c13b8c3959a56e2fff",
+    "scheinwerfer.ts": "5b8e7f36403c47dda56b2b6576467c7a6a3157504116c11215ef4144ae37fa67",
+    "umgebung.ts": "3be95d94a190dfc9c4835b9c70c18d2e943a47bffceb269e66aa8e13c96c3c56"
+  }
+}

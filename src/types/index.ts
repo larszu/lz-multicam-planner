@@ -1,3 +1,4 @@
+import type { RaumErweiterung } from '../avplan/floorplan';
 import type { SourceIdentity } from '../utils/sourceIdentity';
 
 // ── Sensor ──
@@ -740,7 +741,12 @@ export interface Stage {
 }
 
 // ── Venue ──
-export interface Venue {
+/**
+ * Raum-Felder (Decke, Boden, Publikumsflaechen, Videowaende) kommen aus
+ * `@avplan/floorplan` und sind alle optional: ein Projekt ohne sie plant
+ * Kameras wie bisher, die 3D-Ansicht fuellt dann selbst.
+ */
+export interface Venue extends RaumErweiterung {
   name: string;
   widthM: number;
   heightM: number; // depth

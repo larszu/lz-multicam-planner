@@ -2,6 +2,7 @@ import { FiChevronRight, FiChevronLeft } from 'react-icons/fi';
 import type { VenueCamera } from '../../types';
 import { useTranslation } from '../../i18n';
 import type { View3DPrefs } from './view3dPrefs';
+import type { Qualitaet, Stufe } from '../../avplan/scene3d';
 
 export interface CameraRow {
   cam: VenueCamera;
@@ -19,8 +20,12 @@ type ToggleKey = 'coverage' | 'labels' | 'audience' | 'showLight' | 'videoBoard'
  * zu „was sieht sie".
  */
 export default function CameraListPanel({
-  rows, selectedId, programId, povId, prefs, onPrefs, onPick, hasFloorPlan,
+  rows, selectedId, programId, povId, prefs, onPrefs, onPick, hasFloorPlan, hasRoomWalls, stufe,
 }: {
+  /** Der Raum hat eigene Videowaende — dann gibt es nichts anzudeuten. */
+  hasRoomWalls: boolean;
+  /** Wirksame Stufe — bei Auto die, auf die gesenkt wurde. */
+  stufe: Stufe;
   rows: CameraRow[];
   selectedId: string | null;
   programId: string | null;
@@ -47,13 +52,13 @@ export default function CameraListPanel({
     );
   }
 
-  const toggles: { key: ToggleKey; label: string; disabled?: boolean }[] = [
+  const toggles: { key: ToggleKey; label: string; disabled?: boolean; why?: string }[] = [
     { key: 'coverage', label: t('venue.toggle.coverage', 'Coverage') },
     { key: 'labels', label: t('venue.toggle.labels', 'Labels') },
     { key: 'audience', label: t('venue.toggle.audience', 'Audience') },
     { key: 'showLight', label: t('venue.toggle.showLight', 'Show light') },
-    { key: 'videoBoard', label: t('venue.toggle.videoBoard', 'Video wall') },
-    { key: 'floorPlan', label: t('venue.toggle.floorPlan', 'Floor plan'), disabled: !hasFloorPlan },
+    { key: 'videoBoard', label: t('venue.toggle.videoBoard', 'Video wall'), disabled: hasRoomWalls, why: t('venue.toggle.videoBoardRoom', 'The room has its own video walls (sidebar, Room)') },
+    { key: 'floorPlan', label: t('venue.toggle.floorPlan', 'Floor plan'), disabled: !hasFloorPlan, why: t('venue.toggle.floorPlanNone', 'No floor plan loaded') },
   ];
 
   return (
@@ -73,7 +78,7 @@ export default function CameraListPanel({
       </div>
 
       <div className="flex flex-wrap gap-1 px-3 pb-2" role="group" aria-label={t('venue.toggle.group', 'Show in 3D')}>
-        {toggles.map(({ key, label, disabled }) => {
+        {toggles.map(({ key, label, disabled, why }) => {
           const on = prefs[key] && !disabled;
           return (
             <button
@@ -83,12 +88,38 @@ export default function CameraListPanel({
               aria-pressed={on}
               onClick={() => onPrefs({ [key]: !prefs[key] } as Partial<View3DPrefs>)}
               className={`px-2 py-0.5 text-[11px] font-medium border disabled:opacity-40 disabled:cursor-not-allowed ${on ? 'border-bc-accent text-bc-text-bright bg-bc-panel-raised' : 'border-bc-border text-bc-dim hover:text-bc-text'}`}
-              title={disabled ? t('venue.toggle.floorPlanNone', 'No floor plan loaded') : undefined}
+              title={disabled ? why : undefined}
             >
               {label}
             </button>
           );
         })}
+      </div>
+
+      <div className="flex items-center gap-2 px-3 pb-2">
+        <span className="text-[11px] text-bc-muted">{t('venue.quality.label', 'Quality')}</span>
+        <div className="flex" role="group" aria-label={t('venue.quality.label', 'Quality')}>
+          {([
+            ['auto', t('venue.quality.auto', 'Auto')],
+            ['high', t('venue.quality.high', 'High')],
+            ['low', t('venue.quality.low', 'Low')],
+          ] as [Qualitaet, string][]).map(([q, label]) => (
+            <button
+              key={q}
+              type="button"
+              aria-pressed={prefs.quality === q}
+              onClick={() => onPrefs({ quality: q })}
+              className={`-ml-px first:ml-0 px-2 py-0.5 text-[11px] font-medium border ${prefs.quality === q ? 'border-bc-accent text-bc-text-bright bg-bc-panel-raised' : 'border-bc-border text-bc-dim hover:text-bc-text'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {prefs.quality === 'auto' && stufe === 'low' && (
+          <span className="text-[11px] text-bc-muted" title={t('venue.quality.lowered.title', 'The frame rate was too low, so the view switched to the faster setting.')}>
+            {t('venue.quality.lowered', 'lowered')}
+          </span>
+        )}
       </div>
 
       <p className="px-3 pb-1 text-[11px] text-bc-muted">{t('venue.list.hint', 'Click a camera for its view')}</p>

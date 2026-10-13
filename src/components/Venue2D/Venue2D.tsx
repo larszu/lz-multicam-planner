@@ -19,6 +19,7 @@ import { useTranslation, format } from '../../i18n';
 import { useIstHell } from '../../lib/useIstHell';
 import { planAblage } from '../../avplan/floorplan';
 import { usePlanLaden } from '../../lib/usePlanLaden';
+import RaumOverlay, { type RaumAuswahl } from './RaumOverlay';
 
 // Shared style for context-menu items (issue #38).
 const ctxItemStyle: React.CSSProperties = {
@@ -79,7 +80,7 @@ const PALETTE = {
 export default function Venue2D() {
   const { t } = useTranslation();
   const P = PALETTE[useIstHell() ? 'hell' : 'dunkel'];
-  const { venue, setVenue, cameras, selectedCameraId, selectCamera, moveCamera, updateCamera, removeCamera, duplicateCamera, showAllFov, showDof, pixelsPerMeter, persons, updatePerson, removePerson, duplicatePerson, updateStage, addStage, removeStage, backgroundPlan, setBackgroundPlan, walls, updateWall, addWall, removeWall, wallSnap, editMode, avForeign, showForeign } = useStore();
+  const { venue, setVenue, cameras, selectedCameraId, selectCamera, moveCamera, updateCamera, removeCamera, duplicateCamera, showAllFov, showDof, pixelsPerMeter, persons, updatePerson, removePerson, duplicatePerson, updateStage, addStage, removeStage, updateSeatingBlock, updateVideoWall, backgroundPlan, setBackgroundPlan, walls, updateWall, addWall, removeWall, wallSnap, editMode, avForeign, showForeign } = useStore();
 
   // Edit-mode locking (issue #43): each mode locks every category except its own.
   // 'all' falls through to each object's individual lock flag.
@@ -109,6 +110,7 @@ export default function Venue2D() {
   // ── Stage resize (issue #42): select a stage to show a Konva Transformer
   // with corner/edge anchors. ──
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
+  const [raumAuswahl, setRaumAuswahl] = useState<RaumAuswahl>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const stageNodeRefs = useRef<Record<string, Konva.Group>>({});
 
@@ -318,6 +320,7 @@ export default function Venue2D() {
     // Clicking empty canvas (the Konva Stage itself) clears the stage selection.
     if (e.target === e.target.getStage() && !drawingWall && !calibActive) {
       setSelectedStageId(null);
+      setRaumAuswahl(null);
     }
     const point = getPointerWorldPoint();
     if (!point) return;
@@ -771,6 +774,19 @@ export default function Venue2D() {
           );
         })}
 
+        {/* Publikum und Videowaende liegen unter den Buehnen: die Buehne ist
+            das, was man zuerst greifen will. */}
+        <RaumOverlay
+          ppm={ppm}
+          blocks={venue.seatingBlocks ?? []}
+          walls={venue.videoWalls ?? []}
+          locked={lockStages || drawingWall || calibActive}
+          auswahl={raumAuswahl}
+          onAuswahl={(a) => { setRaumAuswahl(a); if (a) setSelectedStageId(null); }}
+          onBlock={updateSeatingBlock}
+          onWand={updateVideoWall}
+        />
+
         {/* Stages — click to select (shows resize handles), drag to move,
             right-click for the context menu (issue #42 / #38). */}
         {venue.stages.map((s) => (
@@ -781,8 +797,8 @@ export default function Venue2D() {
             y={s.y * ppm}
             draggable={!drawingWall && !s.locked && !lockStages}
             onDragEnd={(e) => handleStageDragEnd(s.id, e)}
-            onClick={(e) => { if (!drawingWall && !calibActive) { e.cancelBubble = true; setSelectedStageId(s.locked || lockStages ? null : s.id); } }}
-            onTap={(e) => { if (!drawingWall && !calibActive) { e.cancelBubble = true; setSelectedStageId(s.locked || lockStages ? null : s.id); } }}
+            onClick={(e) => { if (!drawingWall && !calibActive) { e.cancelBubble = true; setRaumAuswahl(null); setSelectedStageId(s.locked || lockStages ? null : s.id); } }}
+            onTap={(e) => { if (!drawingWall && !calibActive) { e.cancelBubble = true; setRaumAuswahl(null); setSelectedStageId(s.locked || lockStages ? null : s.id); } }}
             onContextMenu={(e) => openContextMenu('stage', s.id, !!s.locked, e)}
             onTransformEnd={(e) => handleStageTransformEnd(s.id, e)}
           >

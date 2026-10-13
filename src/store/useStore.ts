@@ -28,6 +28,8 @@ import { newProjectId, isProjectId, legacyProjectId } from '../utils/projectId';
 import { pickProjectLibrary, mergeProjectLibrary, readCarriedLibrary } from '../utils/projectLibrary';
 import { libraryCameras, libraryLenses, setProjectLibraryEntries } from '../library/registry';
 import { translate } from '../i18n';
+import type { VenueSeatingBlock, VenueVideoWall } from '../avplan/floorplan';
+import { neueSitzflaeche, neueVideowand, platzFuerPerson, venueAusDatei } from '../utils/raum';
 
 // Injected by Vite from package.json. In a release build that came through
 // the GitHub Actions workflow this matches the git release tag exactly,
@@ -124,6 +126,12 @@ interface AppState {
   addStage: (stage?: Partial<Stage>) => void;
   removeStage: (id: string) => void;
   updateStage: (id: string, updates: Partial<Stage>) => void;
+  addSeatingBlock: (standing?: boolean) => void;
+  updateSeatingBlock: (id: string, updates: Partial<VenueSeatingBlock>) => void;
+  removeSeatingBlock: (id: string) => void;
+  addVideoWall: () => void;
+  updateVideoWall: (id: string, updates: Partial<VenueVideoWall>) => void;
+  removeVideoWall: (id: string) => void;
 
   // Background plan
   backgroundPlan: BackgroundPlan | null;
@@ -510,6 +518,32 @@ export const useStore = create<AppState>((set, get) => ({
     }));
   },
 
+  // ── Raum: Publikumsflaechen, Videowaende ──
+  addSeatingBlock: (standing) => set((s) => ({
+    venue: { ...s.venue, seatingBlocks: [...(s.venue.seatingBlocks ?? []), neueSitzflaeche(s.venue, standing)] },
+    projectVersion: s.projectVersion + 1,
+  })),
+  updateSeatingBlock: (id, updates) => set((s) => ({
+    venue: { ...s.venue, seatingBlocks: (s.venue.seatingBlocks ?? []).map((b) => (b.id === id ? { ...b, ...updates } : b)) },
+    projectVersion: s.projectVersion + 1,
+  })),
+  removeSeatingBlock: (id) => set((s) => ({
+    venue: { ...s.venue, seatingBlocks: (s.venue.seatingBlocks ?? []).filter((b) => b.id !== id) },
+    projectVersion: s.projectVersion + 1,
+  })),
+  addVideoWall: () => set((s) => ({
+    venue: { ...s.venue, videoWalls: [...(s.venue.videoWalls ?? []), neueVideowand(s.venue)] },
+    projectVersion: s.projectVersion + 1,
+  })),
+  updateVideoWall: (id, updates) => set((s) => ({
+    venue: { ...s.venue, videoWalls: (s.venue.videoWalls ?? []).map((w) => (w.id === id ? { ...w, ...updates } : w)) },
+    projectVersion: s.projectVersion + 1,
+  })),
+  removeVideoWall: (id) => set((s) => ({
+    venue: { ...s.venue, videoWalls: (s.venue.videoWalls ?? []).filter((w) => w.id !== id) },
+    projectVersion: s.projectVersion + 1,
+  })),
+
   // ── Background plan ──
   backgroundPlan: null,
   setBackgroundPlan: (plan) => set((s) => ({ backgroundPlan: plan, projectVersion: s.projectVersion + 1 })),
@@ -521,8 +555,8 @@ export const useStore = create<AppState>((set, get) => ({
     set((s) => {
       const newPerson: ReferencePerson = {
         id: personUid(),
-        x: x ?? s.venue.widthM / 2,
-        y: y ?? s.venue.heightM / 2,
+        x: x ?? platzFuerPerson(s.venue, s.persons.length).x,
+        y: y ?? platzFuerPerson(s.venue, s.persons.length).y,
         height: 1.8,
         width: 0.5,
         label: `Person ${s.persons.length + 1}`,
@@ -538,8 +572,8 @@ export const useStore = create<AppState>((set, get) => ({
       const count = s.persons.filter((p) => p.objectType === objectType).length;
       const newObj: ReferencePerson = {
         id: personUid(),
-        x: x ?? s.venue.widthM / 2,
-        y: y ?? s.venue.heightM / 2,
+        x: x ?? platzFuerPerson(s.venue, s.persons.length).x,
+        y: y ?? platzFuerPerson(s.venue, s.persons.length).y,
         height: preset.height,
         width: preset.width,
         label: `${preset.label} ${count + 1}`,
@@ -1000,7 +1034,7 @@ export const useStore = create<AppState>((set, get) => ({
     personId = 1;
     const cams: VenueCamera[] = tmpl.cameras.map((c) => ({ ...c, id: uid(), useSpeedbooster: c.useSpeedbooster ?? false }));
     set((s) => ({
-      venue: { ...tmpl.venue },
+      venue: structuredClone(tmpl.venue),
       cameras: cams,
       selectedCameraId: cams[0]?.id ?? null,
       persons: [],
@@ -1257,7 +1291,7 @@ export const useStore = create<AppState>((set, get) => ({
       bgPlan = { ...rest, scaleX: s, scaleY: s };
     }
     set({
-      venue: { ...project.venue, stages: stagesFixed.items },
+      venue: venueAusDatei(project.venue, stagesFixed.items),
       cameras,
       persons: personsFixed.items,
       backgroundPlan: bgPlan,

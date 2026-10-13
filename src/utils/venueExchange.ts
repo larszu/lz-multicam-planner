@@ -19,6 +19,7 @@ import type { Venue, ReferencePerson, Wall, BackgroundPlan, StageObjectType } fr
 import {
   VENUE_EXCHANGE_KIND,
   VENUE_EXCHANGE_VERSION,
+  raumAus,
   type VenueExchange,
   type VenueExchangeFloorPlan,
   type VenueExchangePerson,
@@ -170,6 +171,7 @@ export function toVenueExchange(input: MultiCamVenueInput): VenueExchange {
     appVersion: input.appVersion,
     exportedAt: input.exportedAt,
     venue: {
+      ...raumAus(venue),
       name: venue.name,
       widthM: venue.widthM,
       heightM: venue.heightM,
@@ -260,6 +262,7 @@ export function fromVenueExchange(ex: VenueExchange): MultiCamVenueResult {
   const v = ex.venue;
   return {
     venue: {
+      ...raumAus(v),
       name: v.name || 'Venue',
       // Die 20x12 sind eine NOTLOESUNG fuer den Fall, dass gar kein Bestand
       // da ist — nicht die Aussage der Datei. `venueDimsInFile` unten sagt,

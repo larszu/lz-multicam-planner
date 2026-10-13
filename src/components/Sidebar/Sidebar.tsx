@@ -52,6 +52,7 @@ import {
   valueToPos,
 } from '../../utils/lensScale';
 import { CustomCameraForm } from './CustomCameraForm';
+import RoomPanel from './RoomPanel';
 import { CalculationBreakdown } from './CalculationBreakdown';
 import AiPlanAnalysis from './AiPlanAnalysis';
 import { planAblage, planAccept } from '../../avplan/floorplan';
@@ -2067,6 +2068,7 @@ export default function Sidebar() {
   );
   const [venueOpen, setVenueOpen] = useState(false);
   const [stagesOpen, setStagesOpen] = useState(false);
+  const [roomOpen, setRoomOpen] = useState(false);
   const [personsOpen, setPersonsOpen] = useState(false);
   const [wallsOpen, setWallsOpen] = useState(false);
   const [bgOpen, setBgOpen] = useState(false);
@@ -2444,6 +2446,18 @@ export default function Sidebar() {
         )}
       </div>
 
+
+      {/* Raum: optional, eingeklappt — der Kamera-Ablauf bleibt vorn. */}
+      <div className={`border-b border-bc-border/60 ${roomOpen ? 'bg-bc-hover-soft' : ''}`}>
+        <AccordionHeader
+          icon={<FiUsers size={14} />}
+          title={t('room.title', 'Room')}
+          count={(venue.seatingBlocks?.length ?? 0) + (venue.videoWalls?.length ?? 0) || undefined}
+          open={roomOpen}
+          onToggle={() => setRoomOpen(!roomOpen)}
+        />
+        {roomOpen && <RoomPanel />}
+      </div>
 
       {/* Walls */}
       <div className={`border-b border-bc-border/60 ${wallsOpen ? 'bg-bc-hover-soft' : ''}`}>
