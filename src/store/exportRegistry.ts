@@ -8,6 +8,12 @@ export interface ExportRegistry {
    * sichtbaren Canvas und liefert nichts, wenn dessen Tab versteckt (0 px) ist.
    */
   renderPreviewOffscreen: ((cssWidth?: number) => HTMLCanvasElement | null) | null;
+  /**
+   * Rendert eine beliebige Kamera ohne Bedien-Overlays in `canvas` — fuer die
+   * Kacheln des Multiview. Lebt in der Preview, weil dort der Renderer sitzt;
+   * `null`, solange keine Preview gemountet ist.
+   */
+  renderCameraOffscreen: ((camId: string, canvas: HTMLCanvasElement, cssWidth: number, dpr?: number) => boolean) | null;
   prepareForExport: (() => Promise<{ restore: () => void } | null>) | null;
   framing3D: {
     save: () => FramingState;
@@ -26,6 +32,7 @@ const registry: ExportRegistry = {
   capture2DExport: null,
   capturePreviewCanvas: null,
   renderPreviewOffscreen: null,
+  renderCameraOffscreen: null,
   prepareForExport: null,
   framing3D: null,
 };

@@ -78,6 +78,7 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const cam = cameras.find((c) => c.id === selectedCameraId);
+  const selectedCam = cam;
   const isDragging = useRef(false);
   // Die liegenden Finger (#137). Eine Instanz je Vorschau: die Geste IST der
   // Zustand zwischen den Ereignissen, und den kann ein Handler nicht halten.
@@ -190,9 +191,13 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
   // `target` rendert in einen uebergebenen (auch nicht im DOM haengenden) Canvas
   // mit fester Breite. Gebraucht fuer Shotlist-Framegrabs, wenn der Preview-Tab
   // gerade nicht sichtbar ist und der eigene Canvas darum 0 px breit waere.
-  const draw = useCallback((target?: { canvas: HTMLCanvasElement; cssW: number }) => {
+  // `cam`/`bare` im Ziel: das Multiview rendert damit jede Kamera ohne
+  // Bedien-Overlays (Lineale, Hilfslinien, Badges) in seine Kacheln.
+  const draw = useCallback((target?: { canvas: HTMLCanvasElement; cssW: number; dpr?: number; cam?: VenueCamera; bare?: boolean }) => {
     const canvas = target?.canvas ?? canvasRef.current;
     const wrap = wrapRef.current;
+    const cam = target?.cam ?? selectedCam;
+    const bare = target?.bare ?? false;
     if (!canvas || !cam) return;
     if (!target && !wrap) return;
     const ctx = canvas.getContext('2d');
@@ -207,7 +212,7 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
     // HiDPI: size canvas to container at device pixel ratio.
     // Offscreen (target) rendern wir bei dpr 1 in fester Breite — das Thumbnail
     // wird ohnehin auf 320 px verkleinert.
-    const dpr = target ? 1 : (window.devicePixelRatio || 1);
+    const dpr = target ? (target.dpr ?? 1) : (window.devicePixelRatio || 1);
     const cssW = target ? target.cssW : wrap!.getBoundingClientRect().width;
     if (!(cssW > 0)) return; // versteckter Tab: nichts zu zeichnen
     const cssH = Math.round(cssW * 9 / 16);
@@ -947,40 +952,41 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
       ctx.fillText(otherCam.label, pos.sx, pos.sy - sz / 2 - 3);
     });
 
-    // ═══ RULERS ═══
+    const vRulerW = bare ? 0 : 26;
     const rulerH = 22;
-    const rulerY = H - rulerH;
-    ctx.fillStyle = '#000000cc';
-    ctx.fillRect(0, rulerY, W, rulerH);
+    // ═══ RULERS ═══
+    if (!bare) {
+      const rulerY = H - rulerH;
+      ctx.fillStyle = '#000000cc';
+      ctx.fillRect(0, rulerY, W, rulerH);
 
-    const niceSteps = [0.25, 0.5, 1, 2, 5, 10, 20, 50, 100];
-    const rawStep = imgW / 8;
-    const step = niceSteps.find((s) => s >= rawStep) ?? rawStep;
-    const halfImgW = imgW / 2;
+      const niceSteps = [0.25, 0.5, 1, 2, 5, 10, 20, 50, 100];
+      const rawStep = imgW / 8;
+      const step = niceSteps.find((s) => s >= rawStep) ?? rawStep;
+      const halfImgW = imgW / 2;
 
-    ctx.strokeStyle = '#666';
-    ctx.fillStyle = '#999';
-    ctx.font = '10px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.lineWidth = 1;
+      ctx.strokeStyle = '#666';
+      ctx.fillStyle = '#999';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 1;
 
-    for (let m = 0; m <= halfImgW; m += step) {
-      const pxR = W / 2 + (m / imgW) * W;
-      const pxL = W / 2 - (m / imgW) * W;
-      if (pxR <= W) {
-        ctx.beginPath(); ctx.moveTo(pxR, rulerY); ctx.lineTo(pxR, rulerY + 6); ctx.stroke();
-        ctx.fillText(`${m.toFixed(m < 1 ? 2 : 1)}m`, pxR, rulerY + 16);
-      }
-      if (m > 0 && pxL >= 0) {
-        ctx.beginPath(); ctx.moveTo(pxL, rulerY); ctx.lineTo(pxL, rulerY + 6); ctx.stroke();
-        ctx.fillText(`${m.toFixed(m < 1 ? 2 : 1)}m`, pxL, rulerY + 16);
-      }
+      for (let m = 0; m <= halfImgW; m += step) {
+        const pxR = W / 2 + (m / imgW) * W;
+        const pxL = W / 2 - (m / imgW) * W;
+        if (pxR <= W) {
+          ctx.beginPath(); ctx.moveTo(pxR, rulerY); ctx.lineTo(pxR, rulerY + 6); ctx.stroke();
+          ctx.fillText(`${m.toFixed(m < 1 ? 2 : 1)}m`, pxR, rulerY + 16);
+        }
+        if (m > 0 && pxL >= 0) {
+          ctx.beginPath(); ctx.moveTo(pxL, rulerY); ctx.lineTo(pxL, rulerY + 6); ctx.stroke();
+          ctx.fillText(`${m.toFixed(m < 1 ? 2 : 1)}m`, pxL, rulerY + 16);
+        }
     }
     ctx.strokeStyle = '#ccc';
     ctx.beginPath(); ctx.moveTo(W / 2, rulerY); ctx.lineTo(W / 2, rulerY + 8); ctx.stroke();
 
     // Vertical ruler
-    const vRulerW = 26;
     const vRulerX = W - vRulerW;
     ctx.fillStyle = '#000000cc';
     ctx.fillRect(vRulerX, 0, vRulerW, H - rulerH);
@@ -999,9 +1005,11 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
       ctx.fillText(`${m.toFixed(m < 1 ? 2 : 1)}m`, W - 3, py + 3);
     }
 
+    }
+
     // ═══ OVERLAY GUIDES ═══
     // Safe areas
-    if (showSafeAreas) {
+    if (!bare && showSafeAreas) {
       ctx.strokeStyle = 'rgba(255,255,255,0.15)';
       ctx.lineWidth = 1;
       ctx.setLineDash([5, 4]);
@@ -1013,7 +1021,7 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
     }
 
     // Rule of thirds
-    if (showThirds) {
+    if (!bare && showThirds) {
       ctx.strokeStyle = 'rgba(255,255,255,0.08)';
       ctx.lineWidth = 1;
       for (let i = 1; i <= 2; i++) {
@@ -1023,7 +1031,7 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
     }
 
     // Crosshair
-    if (showCrosshair) {
+    if (!bare && showCrosshair) {
       ctx.strokeStyle = 'rgba(255,255,255,0.2)';
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(W / 2 - 18, H / 2); ctx.lineTo(W / 2 + 18, H / 2); ctx.stroke();
@@ -1050,7 +1058,7 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
     // ── Coverage indicator (top-left badge) ──
     // Subtle warning when subjects exist but aren't framed. Locked subject
     // off-frame gets a stronger red badge because that's almost always wrong.
-    if (totalInFront > 0) {
+    if (!bare && totalInFront > 0) {
       const offFrame = totalInFront - inFramePersons;
       const lockedTarget = cam.lockedPersonId ? persons.find((p) => p.id === cam.lockedPersonId) : null;
       const lockedOff = lockedTarget ? !projectedPersons.current.some((p) => p.id === lockedTarget.id) : false;
@@ -1085,20 +1093,22 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
     ctx.fillRect(0, 0, W, H);
 
     // Compact Pan/Tilt badge top-right
-    ctx.fillStyle = '#00000088';
-    const badgeW = 110;
-    ctx.fillRect(W - vRulerW - badgeW - 4, 4, badgeW, 18);
-    ctx.fillStyle = '#ffffffaa';
-    ctx.font = '10px sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(`P ${cam.pan.toFixed(1)}°  T ${cam.tilt.toFixed(1)}°`, W - vRulerW - 8, 16);
+    if (!bare) {
+      ctx.fillStyle = '#00000088';
+      const badgeW = 110;
+      ctx.fillRect(W - vRulerW - badgeW - 4, 4, badgeW, 18);
+      ctx.fillStyle = '#ffffffaa';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(`P ${cam.pan.toFixed(1)}°  T ${cam.tilt.toFixed(1)}°`, W - vRulerW - 8, 16);
+    }
 
     // Anzahl sichtbarer Personen in State spiegeln, damit das Render sie lesen
     // kann ohne auf den Ref zuzugreifen (Refs sind waehrend des Renders tabu und
     // loesen kein Re-Render aus). Gleicher Wert => React bricht ab, kein Loop.
     if (!target) setProjectedCount(projectedPersons.current.length);
 
-  }, [cam, venue, persons, walls, cameras, showGrid, showSafeAreas, showThirds, showCrosshair, getWallImage, imageTick, t]);
+  }, [selectedCam, venue, persons, walls, cameras, showGrid, showSafeAreas, showThirds, showCrosshair, getWallImage, imageTick, t]);
 
   // Repaint synchronously after every render so pan/tilt drags update the canvas
   // on the very next browser frame. The earlier `useEffect` variant was being
@@ -1153,7 +1163,21 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
       }
       return canvas.width > 0 && canvas.height > 0 ? canvas : null;
     };
-    return () => { registry.renderPreviewOffscreen = null; };
+    registry.renderCameraOffscreen = (camId, canvas, cssWidth, dpr = 1) => {
+      const target = useStore.getState().cameras.find((c) => c.id === camId);
+      if (!target) return false;
+      const saved = projectedPersons.current;
+      try {
+        draw({ canvas, cssW: cssWidth, dpr, cam: target, bare: true });
+      } finally {
+        projectedPersons.current = saved;
+      }
+      return canvas.width > 0;
+    };
+    return () => {
+      registry.renderPreviewOffscreen = null;
+      registry.renderCameraOffscreen = null;
+    };
   }, [draw]);
 
   // ── PTZ Mouse Controls ──

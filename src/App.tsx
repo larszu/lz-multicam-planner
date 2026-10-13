@@ -8,6 +8,7 @@ import Sidebar from './components/Sidebar/Sidebar';
 import Venue2D from './components/Venue2D/Venue2D';
 import Venue3D from './components/Venue3D/Venue3D';
 import CameraPreview from './components/Preview/CameraPreview';
+import Multiview from './components/Multiview/Multiview';
 import Calculator from './components/Sidebar/Calculator';
 import ShotlistPanel from './components/Shotlist/ShotlistPanel';
 import RigControlPanel from './components/RigControl/RigControlPanel';
@@ -29,7 +30,7 @@ type TFn = (key: string, en: string) => string;
 const LAYOUT_STORAGE_KEY = 'multicam-layout';
 const LAYOUT_VERSION_KEY = 'multicam-layout-version';
 const LAYOUT_PRESETS_KEY = 'multicam-layout-presets';
-const CURRENT_LAYOUT_VERSION = 4;
+const CURRENT_LAYOUT_VERSION = 5;
 
 type LayoutMode = 'focus' | 'grid' | 'custom';
 
@@ -41,12 +42,14 @@ function getSelectedIndexForTab(tabId: string) {
       return 1;
     case 'tab-preview':
       return 2;
-    case 'tab-calc':
+    case 'tab-multiview':
       return 3;
-    case 'tab-shotlist':
+    case 'tab-calc':
       return 4;
-    case 'tab-rig':
+    case 'tab-shotlist':
       return 5;
+    case 'tab-rig':
+      return 6;
     case 'tab-2d':
     default:
       return 0;
@@ -73,6 +76,7 @@ function createFocusLayoutJson(t: TFn, selectedTabId = 'tab-2d'): IJsonModel {
             { type: 'tab', name: t('header.tab.2dPlan', '2D Plan'), component: 'venue2d', id: 'tab-2d' },
             { type: 'tab', name: t('header.tab.3dView', '3D View'), component: 'venue3d', id: 'tab-3d' },
             { type: 'tab', name: t('header.tab.preview', 'Preview'), component: 'preview', id: 'tab-preview' },
+            { type: 'tab', name: t('header.tab.multiview', 'Multiview'), component: 'multiview', id: 'tab-multiview' },
             { type: 'tab', name: t('header.tab.calculator', 'Calculator'), component: 'calculator', id: 'tab-calc' },
             { type: 'tab', name: 'Shotlist', component: 'shotlist', id: 'tab-shotlist' },
             // Kein eigener Reiter mehr fuer die Rig-Steuerung (Nutzer-Meldung
@@ -133,6 +137,7 @@ function createGridLayoutJson(t: TFn): IJsonModel {
               selected: 0,
               children: [
                 { type: 'tab', name: t('header.tab.preview', 'Preview'), component: 'preview', id: 'tab-preview' },
+                { type: 'tab', name: t('header.tab.multiview', 'Multiview'), component: 'multiview', id: 'tab-multiview' },
               ],
             },
             {
@@ -294,6 +299,7 @@ export default function App() {
     'tab-2d': { component: 'venue2d', name: t('header.tab.2dPlan', '2D Plan') },
     'tab-3d': { component: 'venue3d', name: t('header.tab.3dView', '3D View') },
     'tab-preview': { component: 'preview', name: t('header.tab.preview', 'Preview') },
+    'tab-multiview': { component: 'multiview', name: t('header.tab.multiview', 'Multiview') },
     'tab-calc': { component: 'calculator', name: t('header.tab.calculator', 'Calculator') },
     'tab-shotlist': { component: 'shotlist', name: 'Shotlist' },
     // BLEIBT STEHEN, obwohl kein neues Layout den Reiter mehr anlegt: wer die
@@ -409,6 +415,8 @@ export default function App() {
         );
       case 'preview':
         return <CameraPreview undocked={false} onUndock={() => {}} />;
+      case 'multiview':
+        return <Multiview />;
       case 'calculator':
         return <Calculator />;
       case 'shotlist':

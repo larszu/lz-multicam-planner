@@ -84,6 +84,9 @@
   /* Der Letterbox-Grund hinter einem Framegrab. Schwarz in JEDEM Thema:
    * das ist kein Oberflaechenton, sondern die Abwesenheit von Bild. */
   --color-bc-media: #000000;
+  /* Schrift AUF dem Bild (Multiview-Beschriftung, Tally-Leisten): hell in
+   * jedem Thema, weil der Grund immer Bild oder Schleier ist. */
+  --color-bc-on-media: #F6F5F0;
   /* Status: nur Meldungen. */
   --color-bc-green: #2F7D5C;
   --color-bc-red: #B04A3F;
@@ -150,6 +153,9 @@
    * hellem Grund genauso. */
   --color-bc-scrim: rgba(0, 0, 0, 0.45);
   --color-bc-media: #000000;
+  /* Schrift AUF dem Bild (Multiview-Beschriftung, Tally-Leisten): hell in
+   * jedem Thema, weil der Grund immer Bild oder Schleier ist. */
+  --color-bc-on-media: #F6F5F0;
   color-scheme: light;
 }
 
@@ -181,6 +187,9 @@
     --color-bc-hover-soft: rgba(19, 32, 64, 0.02);
     --color-bc-scrim: rgba(0, 0, 0, 0.45);
     --color-bc-media: #000000;
+  /* Schrift AUF dem Bild (Multiview-Beschriftung, Tally-Leisten): hell in
+   * jedem Thema, weil der Grund immer Bild oder Schleier ist. */
+  --color-bc-on-media: #F6F5F0;
     color-scheme: light;
   }
 }

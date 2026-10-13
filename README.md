@@ -190,6 +190,14 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 - Pan/tilt by dragging — with the mouse or one finger; pinch with two fingers to zoom the lens
 - On a narrow window the data readout moves **below** the image instead of taking a fixed column beside it: the picture gets the full width
 
+### 🟥 Multiview
+- Every camera live as a tile, like the multiviewer of a vision mixer — camera, lens range, focal length and horizontal FOV on each tile
+- Large **Preview** (green) and **Program** (red) windows; Preview is always the selected camera, so 2D, 3D and Preview follow along
+- **CUT** (Space) and **AUTO** dissolve (Enter, duration adjustable); after a take the old program source moves to preview
+- Click a tile for preview, double-click to take it straight to program; keys 1–9 = preview, Shift+1–9 = program
+- Time-of-day timecode (25 fps) in the toolbar
+- Draws through the Preview panel's renderer — keep the Preview tab in the layout
+
 ### 📐 FOV & DoF Calculator
 - 9 sensor sizes (Full Frame, Super 35, APS-C, MFT, 1", 2/3", 1/2", 1/3", 1/2.3")
 - Controls for focal length, aperture, distance, extenders

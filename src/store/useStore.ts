@@ -155,6 +155,11 @@ interface AppState {
   favoriteLensIds: string[];
   selectedCameraId: string | null;
   selectCamera: (id: string | null) => void;
+  // Program-Bus des Multiview. Preview-Bus ist `selectedCameraId`: was der
+  // Mischer vorhaelt, ist dieselbe Kamera, die 2D/3D/Preview gerade zeigen.
+  // Nicht im Projekt gespeichert — Schnittzustand, keine Planung.
+  programCameraId: string | null;
+  setProgramCamera: (id: string | null) => void;
   selectNextCamera: () => void;
   selectPrevCamera: () => void;
   toggleFavoriteCameraId: (id: string) => void;
@@ -668,6 +673,8 @@ export const useStore = create<AppState>((set, get) => ({
   favoriteLensIds: loadFavoriteIds(FAVORITE_LENSES_KEY),
   selectedCameraId: null,
   selectCamera: (id) => set({ selectedCameraId: id }),
+  programCameraId: null,
+  setProgramCamera: (id) => set({ programCameraId: id }),
 
   selectNextCamera: () => {
     const { cameras, selectedCameraId } = get();
@@ -752,6 +759,7 @@ export const useStore = create<AppState>((set, get) => ({
     set((s) => ({
       cameras: s.cameras.filter((c) => c.id !== id),
       selectedCameraId: s.selectedCameraId === id ? null : s.selectedCameraId,
+      programCameraId: s.programCameraId === id ? null : s.programCameraId,
       projectVersion: s.projectVersion + 1,
     })),
 
