@@ -177,7 +177,13 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 - Place stage objects (person, guitarist, drums, keys, mic stand, custom)
 
 ### ⚡ 3D Venue View
-- Interactive 3D venue visualization with FOV pyramids
+- **Views:** *Top* (plan from above, stage at the top like in the 2D plan), *Perspective* and *Camera view* — the view glides there instead of jumping
+- **Camera list** on the right: number, camera, lens range @ current focal length, rig and horizontal FOV. **Click a camera to look through its lens**; the frame is masked to the sensor's aspect ratio and follows pan, tilt and zoom live (e.g. from the Rig panel). Any mouse, key or touch input takes you back to free movement
+- **Coverage** wedges on the floor from each camera to its focus point, with a sight line; the selected camera also shows its 3D FOV pyramid
+- **Tally** from the Multiview: Program camera red, Preview green — on the camera in 3D and in the list
+- **Audience** fills the free floor automatically (centre aisle, cross aisles, clearance around stages, cameras, people and walls) — instanced, so thousands of seats stay smooth. Scenery only: Preview and sight lines do not take it into account; place a person if a head in the shot matters
+- **Show light:** dark hall, haze, spotlights with visible beams over each stage (floodlight over pitches). Off = evenly lit planning view
+- **Video wall** behind each stage (the edge facing away from the cameras), **Labels** and **Floor plan** can be toggled; all toggles are remembered
 - FPS-style controls (WASD + mouse look, Space/Shift up/down, Ctrl sprint)
 - **Touch: one finger looks around, two fingers pinch to move forward/back and drag to slide sideways and up/down** — no keyboard needed on a phone or tablet
 - Drag cameras in space, visualize stage meshes & venue boundaries

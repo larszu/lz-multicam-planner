@@ -1,6 +1,6 @@
 import React from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Grid, Text, PerspectiveCamera, Html, TransformControls } from '@react-three/drei';
+import { Grid, Text, PerspectiveCamera, Html, TransformControls, Billboard } from '@react-three/drei';
 import { useStore } from '../../store/useStore';
 import { getCameraById, getEffectiveSensor } from '../../data/cameras';
 import { getLensById } from '../../data/lenses';
@@ -19,6 +19,25 @@ import { FiLock, FiUnlock } from 'react-icons/fi';
 import { VIEW3D_FOV_DEG, defaultCameraPos, defaultPitchRad } from '../../utils/view3d';
 import robotoFont from '../../assets/fonts/Roboto-Regular.ttf';
 import { useTranslation } from '../../i18n';
+import { easeOut, povFraming, shortestAngleDelta, topFraming, type Framing } from '../../utils/view3dScene';
+import { useSchmal } from '../../lib/useSchmal';
+import { useView3DPrefs } from './view3dPrefs';
+import { Audience, CoverageWedge, StageLights, VideoBoards } from './ShowScene';
+import CameraListPanel, { type CameraRow } from './CameraListPanel';
+import { cameraRowDetail } from './cameraRow';
+
+/** Fahrt der Blickkamera (Ansichts-Knoepfe, Klick in der Kameraliste). */
+export const FLY_EVENT = 'multicam-3d-fly';
+export interface FlyDetail {
+  /** Fehlt `framing`, wird nur der Bildwinkel zurueckgefahren. */
+  framing?: Framing;
+  fovDeg?: number;
+  /** Fuer den Blick durch eine Kamera: H-FOV, aus dem das Bildfenster den V-FOV rechnet. */
+  povHFovDeg?: number;
+  /** Draufsicht auf eine Halle dieser Groesse — gerahmt mit dem Seitenverhaeltnis der Ansicht. */
+  topOf?: { widthM: number; depthM: number };
+  durationMs?: number;
+}
 
 // ── Apple-Silicon / Electron 3D-view fix (issue #35) ──
 // drei's <Text> uses troika-three-text, which by default does its font
@@ -184,8 +203,24 @@ function VenueWalls({ widthM, heightM }: { widthM: number; heightM: number }) {
  * Scroll    = move forward/back (dolly)
  * Ctrl      = sprint (2×)
  */
-function FPSControls({ mouseLookEnabled, defaultPitch }: { mouseLookEnabled: boolean; defaultPitch: number }) {
-  const { camera, gl } = useThree();
+function FPSControls({ mouseLookEnabled, defaultPitch, onManualMove }: { mouseLookEnabled: boolean; defaultPitch: number; onManualMove?: () => void }) {
+  const { camera, gl, size } = useThree();
+  // Laufende Fahrt. Haende am Steuer (Maus, Tasten, Rad, Finger) brechen die
+  // Bewegung ab — nur der Bildwinkel faehrt zu Ende, sonst bliebe ein Tele-
+  // Bildwinkel aus dem Kamerablick am freien Rundgang haengen.
+  const fly = useRef<null | {
+    t0: number; dur: number;
+    fromPos: THREE.Vector3; toPos: THREE.Vector3 | null;
+    fromYaw: number; dYaw: number; fromPitch: number; toPitch: number;
+    fromFov: number; toFov: number;
+  }>(null);
+  const manualRef = useRef(onManualMove);
+  useEffect(() => { manualRef.current = onManualMove; }, [onManualMove]);
+  const takeOver = useCallback(() => {
+    const f = fly.current;
+    if (f) f.toPos = null;
+    manualRef.current?.();
+  }, []);
   const keys = useRef<Set<string>>(new Set());
   const yaw = useRef(0);
   const pitch = useRef(defaultPitch);
@@ -205,18 +240,31 @@ function FPSControls({ mouseLookEnabled, defaultPitch }: { mouseLookEnabled: boo
     pitch.current = defaultPitch;
   }, [camera, defaultPitch]);
 
-  // Listen for reset event
   useEffect(() => {
-    const handleReset = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      camera.position.set(detail.x, detail.y, detail.z);
-      yaw.current = 0;
-      // Zuruecksetzen muss dieselbe Ausrichtung liefern wie der Start.
-      pitch.current = typeof detail.pitch === 'number' ? detail.pitch : defaultPitch;
+    const persp = camera as THREE.PerspectiveCamera;
+    const aspect = size.width > 0 && size.height > 0 ? size.width / size.height : 16 / 9;
+    const onFly = (e: Event) => {
+      const d = (e as CustomEvent<FlyDetail>).detail;
+      const target = d.topOf ? topFraming(d.topOf.widthM, d.topOf.depthM, VIEW3D_FOV_DEG, aspect) : d.framing;
+      let toFov = d.fovDeg ?? target?.fovDeg ?? persp.fov;
+      if (d.povHFovDeg !== undefined) toFov = (2 * Math.atan(Math.tan((d.povHFovDeg * Math.PI) / 360) / aspect) * 180) / Math.PI;
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      fly.current = {
+        t0: performance.now(),
+        dur: reduce ? 0 : (d.durationMs ?? 700),
+        fromPos: camera.position.clone(),
+        toPos: target ? new THREE.Vector3(...target.pos) : null,
+        fromYaw: yaw.current,
+        dYaw: target ? shortestAngleDelta(yaw.current, target.yaw) : 0,
+        fromPitch: pitch.current,
+        toPitch: target ? target.pitch : pitch.current,
+        fromFov: persp.fov,
+        toFov,
+      };
     };
-    window.addEventListener('multicam-3d-reset', handleReset);
-    return () => window.removeEventListener('multicam-3d-reset', handleReset);
-  }, [camera, defaultPitch]);
+    window.addEventListener(FLY_EVENT, onFly);
+    return () => window.removeEventListener(FLY_EVENT, onFly);
+  }, [camera, size.width, size.height]);
 
   useEffect(() => {
     const registry = getExportRegistry();
@@ -261,6 +309,7 @@ function FPSControls({ mouseLookEnabled, defaultPitch }: { mouseLookEnabled: boo
       const k = e.key.toLowerCase();
       if (['w', 'a', 's', 'd'].includes(k) || e.code === 'Space' || e.key === 'Shift' || e.key === 'Control') {
         e.preventDefault();
+        if (['w', 'a', 's', 'd'].includes(k) || e.code === 'Space') takeOver();
         keys.current.add(e.code === 'Space' ? ' ' : k === 'control' ? 'ctrl' : k);
       }
     };
@@ -274,6 +323,7 @@ function FPSControls({ mouseLookEnabled, defaultPitch }: { mouseLookEnabled: boo
     const onMouseDown = (e: MouseEvent) => {
       if (!mouseLookEnabled) return;
       isLooking.current = true;
+      takeOver();
       canvas.style.cursor = 'grabbing';
       // Try pointer lock for smoother FPS look
       if (e.button === 2) {
@@ -297,6 +347,7 @@ function FPSControls({ mouseLookEnabled, defaultPitch }: { mouseLookEnabled: boo
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      takeOver();
       // Scroll = zoom in/out along look direction (including vertical)
       const dir = new THREE.Vector3(
         -Math.sin(yaw.current) * Math.cos(pitch.current),
@@ -327,6 +378,7 @@ function FPSControls({ mouseLookEnabled, defaultPitch }: { mouseLookEnabled: boo
     // wie fuer die Maus (0.002 rad/px), damit sich beides gleich anfuehlt.
     const onPointerDown = (e: PointerEvent) => {
       if (e.pointerType === 'mouse') return;
+      takeOver();
       finger.runter({ id: e.pointerId, x: e.clientX, y: e.clientY });
       canvas.setPointerCapture?.(e.pointerId);
     };
@@ -392,9 +444,22 @@ function FPSControls({ mouseLookEnabled, defaultPitch }: { mouseLookEnabled: boo
       canvas.removeEventListener('pointercancel', onPointerUp);
       finger.leeren();
     };
-  }, [camera, gl, mouseLookEnabled]);
+  }, [camera, gl, mouseLookEnabled, takeOver]);
 
   useFrame((_, delta) => {
+    const f = fly.current;
+    if (f) {
+      const k = f.dur > 0 ? easeOut((performance.now() - f.t0) / f.dur) : 1;
+      if (f.toPos) {
+        camera.position.lerpVectors(f.fromPos, f.toPos, k);
+        yaw.current = f.fromYaw + f.dYaw * k;
+        pitch.current = f.fromPitch + (f.toPitch - f.fromPitch) * k;
+      }
+      const persp = camera as THREE.PerspectiveCamera;
+      persp.fov = f.fromFov + (f.toFov - f.fromFov) * k;
+      persp.updateProjectionMatrix();
+      if (k >= 1) fly.current = null;
+    }
     const forward = new THREE.Vector3(-Math.sin(yaw.current), 0, -Math.cos(yaw.current));
     const right = new THREE.Vector3(forward.z, 0, -forward.x);
     const move = new THREE.Vector3();
@@ -454,7 +519,25 @@ function StageMesh({ stage }: { stage: Stage }) {
   );
 }
 
-function FovPyramid({ cam, isSelected }: { cam: ReturnType<typeof useStore.getState>['cameras'][0]; isSelected: boolean }) {
+interface CameraLook {
+  /** Pyramide bis zum Schaerfepunkt zeigen (die gewaehlte Kamera immer). */
+  showFrustum: boolean;
+  /** Gefuellte Pyramide — entfaellt, wenn der Keil am Boden die Abdeckung schon zeigt. */
+  showVolume: boolean;
+  showLabel: boolean;
+  /** Schrifthoehe der Beschriftung in Metern — waechst mit der Halle. */
+  labelSize: number;
+  tally: 'pgm' | 'pvw' | null;
+  /** Durch diese Kamera wird gerade geschaut: Gehaeuse und Pyramide weg. */
+  isPov: boolean;
+}
+
+// Tally wie am Mischer: Rot = Program, Gruen = Preview. In der Szene ist das
+// Bildinhalt, keine Oberflaeche — darum Farbwerte statt Token.
+const TALLY_PGM = '#D6402E';
+const TALLY_PVW = '#2F7D5C';
+
+function FovPyramid({ cam, isSelected, look }: { cam: ReturnType<typeof useStore.getState>['cameras'][0]; isSelected: boolean; look: CameraLook }) {
   const camDef = getCameraById(cam.cameraId, useStore.getState().customCameras);
   const lensDef = getLensById(cam.lensId, useStore.getState().customLenses);
 
@@ -516,7 +599,8 @@ function FovPyramid({ cam, isSelected }: { cam: ReturnType<typeof useStore.getSt
   }, [isZoom, fovMax?.horizontalDeg, fovMax?.verticalDeg, cam.focusDistance]);
 
   // Guard nach den Hooks: ohne gueltige Kamera/Linse gibt es keine Geometrie.
-  if (!geometry) return null;
+  if (!geometry || look.isPov) return null;
+  const tallyColor = look.tally === 'pgm' ? TALLY_PGM : look.tally === 'pvw' ? TALLY_PVW : null;
 
   return (
     // The pyramid mesh is modelled looking along -Z. Both the pitch (rotate-X)
@@ -532,19 +616,23 @@ function FovPyramid({ cam, isSelected }: { cam: ReturnType<typeof useStore.getSt
         <meshStandardMaterial color={cam.color} emissive={cam.color} emissiveIntensity={isSelected ? 0.5 : 0.15} />
       </mesh>
       {/* FOV volume */}
-      <mesh geometry={geometry}>
-        <meshStandardMaterial
-          color={cam.color}
-          opacity={isSelected ? 0.25 : 0.1}
-          transparent
-          side={THREE.DoubleSide}
-          depthWrite={false}
-        />
-      </mesh>
+      {look.showFrustum && look.showVolume && (
+        <mesh geometry={geometry}>
+          <meshBasicMaterial
+            color={cam.color}
+            opacity={isSelected ? 0.12 : 0.06}
+            transparent
+            side={THREE.DoubleSide}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
       {/* Wireframe */}
-      <lineSegments geometry={geometry}>
-        <lineBasicMaterial color={cam.color} opacity={isSelected ? 0.8 : 0.3} transparent />
-      </lineSegments>
+      {look.showFrustum && (
+        <lineSegments geometry={geometry}>
+          <lineBasicMaterial color={cam.color} opacity={isSelected ? 0.8 : 0.3} transparent />
+        </lineSegments>
+      )}
       {/* Min FOV wireframe (red) */}
       {isSelected && geoMin && (
         <lineSegments geometry={geoMin}>
@@ -557,11 +645,22 @@ function FovPyramid({ cam, isSelected }: { cam: ReturnType<typeof useStore.getSt
           <lineBasicMaterial color="#22c55e" opacity={0.4} transparent />
         </lineSegments>
       )}
-      {/* Label */}
-      <Text font={LABEL_FONT} position={[0, 0.5, 0]} fontSize={0.35} color="#ffffff" anchorX="center" fontWeight="bold"
-        outlineWidth={0.02} outlineColor="#000000">
-        {cam.label}
-      </Text>
+      {/* Tally-Lampe ueber dem Gehaeuse */}
+      {tallyColor && (
+        <mesh position={[0, 0.22, 0]}>
+          <boxGeometry args={[0.18, 0.08, 0.18]} />
+          <meshBasicMaterial color={tallyColor} toneMapped={false} />
+        </mesh>
+      )}
+      {/* Label: dreht sich zum Betrachter, damit es auch von oben lesbar ist */}
+      {look.showLabel && (
+        <Billboard position={[0, 0.35 + look.labelSize * 0.8, 0]}>
+          <Text font={LABEL_FONT} fontSize={look.labelSize} color={tallyColor ?? '#F6F5F0'} anchorX="center" anchorY="middle" fontWeight="bold"
+            outlineWidth={look.labelSize * 0.08} outlineColor="#0B1426">
+            {cam.label}
+          </Text>
+        </Billboard>
+      )}
     </group>
   );
 }
@@ -585,7 +684,9 @@ function CameraRig({
   onEditModeChange,
   venueWidth,
   venueHeight,
+  look,
 }: {
+  look: CameraLook;
   cam: ReturnType<typeof useStore.getState>['cameras'][0];
   isSelected: boolean;
   isUnlocked: boolean;
@@ -676,7 +777,6 @@ function CameraRig({
     background: active ? '#3b82f6' : '#111827',
     border: `1px solid ${active ? '#60a5fa' : '#334155'}`,
     color: active ? '#ffffff' : '#94a3b8',
-    borderRadius: 4,
     padding: '3px 6px',
     fontSize: 10,
     cursor: 'pointer',
@@ -719,8 +819,10 @@ function CameraRig({
         }}
       >
         <group ref={liftRef} position={[0, cam.z, 0]}>
-          {isSelected && (
-            <Html position={[0, 1.15, 0]} center style={{ pointerEvents: 'auto' }}>
+          {isSelected && !look.isPov && (
+            // Unter das Gehaeuse, im Bildraum versetzt: die Beschriftung steht
+            // darueber, und in der Draufsicht fielen beide sonst auf denselben Punkt.
+            <Html position={[0, 0, 0]} center style={{ pointerEvents: 'auto' }}>
               <div
                 style={{
                   display: 'flex',
@@ -728,9 +830,8 @@ function CameraRig({
                   alignItems: 'center',
                   background: 'rgba(15, 23, 42, 0.92)',
                   border: '1px solid #334155',
-                  borderRadius: 8,
                   padding: '6px 8px',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+                  transform: 'translateY(44px)',
                 }}
                 onPointerDown={(e) => e.stopPropagation()}
               >
@@ -778,7 +879,7 @@ function CameraRig({
                 acts on the camera's right axis (X) before reorientation, giving a
                 proper pitch instead of roll. */}
             <group rotation={[0, -Math.PI / 2, 0]}>
-              <FovPyramid cam={cam} isSelected={isSelected} />
+              <FovPyramid cam={cam} isSelected={isSelected} look={look} />
             </group>
           </group>
         </group>
@@ -990,11 +1091,28 @@ function PersonMesh({ x, z, height, label, objectType, color }: { x: number; z: 
   );
 }
 
+type ViewPreset = 'top' | 'perspective' | 'camera';
+
+/** Bildwinkel einer Planer-Kamera, wie ihn Vorschau und Rechner benutzen. */
+function cameraFov(cam: ReturnType<typeof useStore.getState>['cameras'][0]) {
+  const st = useStore.getState();
+  const camDef = getCameraById(cam.cameraId, st.customCameras);
+  const lensDef = getLensById(cam.lensId, st.customLenses);
+  if (!camDef || !lensDef) return { camDef, lensDef, fov: null };
+  const sensor = getEffectiveSensor(camDef, lensDef, cam.useSpeedbooster, cam.sensorModeIndex, cam.activeMount);
+  return { camDef, lensDef, fov: computeFov(sensor, cam.focalLength, cam.focusDistance, cam.extenderActive, lensDef.squeeze ?? 1) };
+}
+
 export default function Venue3D() {
   const { t } = useTranslation();
-  const { venue, cameras, persons, backgroundPlan, walls, updatePerson, selectCamera, selectedCameraId } = useStore();
+  const { venue, cameras, persons, backgroundPlan, walls, updatePerson, selectCamera, selectedCameraId, programCameraId } = useStore();
   const [unlockedCameraId, setUnlockedCameraId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState<CameraEditMode>('move');
+  const [prefs, updatePrefs] = useView3DPrefs();
+  const schmal = useSchmal();
+  // Durch welche Kamera gerade geschaut wird. Jede Handbewegung beendet das.
+  const [povId, setPovId] = useState<string | null>(null);
+  const [preset, setPreset] = useState<ViewPreset>('perspective');
 
   useEffect(() => {
     if (unlockedCameraId && !cameras.some((camera) => camera.id === unlockedCameraId)) {
@@ -1003,153 +1121,310 @@ export default function Venue3D() {
   }, [cameras, unlockedCameraId]);
 
   // Startausrichtung: Position und Neigung stammen aus derselben Quelle wie
-  // beim Einhaengen, sonst zeigt "Ansicht zuruecksetzen" woanders hin.
+  // beim Einhaengen, sonst zeigt „Perspektive" woanders hin.
   const [camX, camY, camZ] = defaultCameraPos(venue.widthM, venue.heightM);
   const startPitch = defaultPitchRad(venue.widthM, venue.heightM);
 
-  const handleReset = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('multicam-3d-reset', {
-      detail: { x: camX, y: camY, z: camZ, pitch: startPitch },
-    }));
-  }, [camX, camY, camZ, startPitch]);
+  const flyTo = useCallback((detail: FlyDetail) => {
+    window.dispatchEvent(new CustomEvent<FlyDetail>(FLY_EVENT, { detail }));
+  }, []);
+
+  const goPerspective = useCallback(() => {
+    setPovId(null);
+    setPreset('perspective');
+    flyTo({ framing: { pos: [camX, camY, camZ], yaw: 0, pitch: startPitch, fovDeg: VIEW3D_FOV_DEG } });
+  }, [camX, camY, camZ, startPitch, flyTo]);
+
+  const goTop = useCallback(() => {
+    setPovId(null);
+    setPreset('top');
+    flyTo({ topOf: { widthM: venue.widthM, depthM: venue.heightM } });
+  }, [venue.widthM, venue.heightM, flyTo]);
+
+  const goCamera = useCallback((id: string, durationMs = 700) => {
+    const cam = useStore.getState().cameras.find((c) => c.id === id);
+    if (!cam) return;
+    const { fov } = cameraFov(cam);
+    if (!fov) return;
+    const pos = effectiveCameraPos(cam);
+    setPovId(id);
+    setPreset('camera');
+    flyTo({ framing: povFraming({ ...cam, x: pos.x, y: pos.y }, fov.horizontalDeg, 16 / 9), povHFovDeg: fov.horizontalDeg, durationMs });
+  }, [flyTo]);
+
+  // Im Kamerablick faehrt die Ansicht mit, wenn die Kamera schwenkt oder
+  // zoomt — Rig-Pult und 3D zeigen dann dasselbe Bild.
+  // Wird die Kamera geloescht, waehrend man durch sie schaut, gilt der Blick als beendet.
+  const povCam = povId ? cameras.find((c) => c.id === povId) : undefined;
+  const povKey = povCam ? [povCam.x, povCam.y, povCam.z, povCam.pan, povCam.tilt, povCam.focalLength, povCam.extenderActive, povCam.trackOffset ?? 0, povCam.lensId, povCam.cameraId].join('|') : '';
+  const lastPovKey = useRef('');
+  useEffect(() => {
+    if (!povId || !povKey) { lastPovKey.current = ''; return; }
+    if (lastPovKey.current && lastPovKey.current !== povKey) goCamera(povId, 0);
+    lastPovKey.current = povKey;
+  }, [povId, povKey, goCamera]);
+
+  const povRef = useRef(povId);
+  useEffect(() => { povRef.current = povId; }, [povId]);
+  const handleManualMove = useCallback(() => {
+    if (!povRef.current) return;
+    povRef.current = null;
+    setPovId(null);
+    setPreset('perspective');
+    flyTo({ fovDeg: VIEW3D_FOV_DEG, durationMs: 250 });
+  }, [flyTo]);
+
+  const pickCamera = useCallback((id: string) => {
+    selectCamera(id);
+    goCamera(id);
+  }, [selectCamera, goCamera]);
+
+  const fovById = useMemo(() => {
+    const m = new Map<string, ReturnType<typeof cameraFov>>();
+    for (const c of cameras) m.set(c.id, cameraFov(c));
+    return m;
+  }, [cameras]);
+
+  const rows: CameraRow[] = useMemo(() => cameras.map((cam, i) => {
+    const info = fovById.get(cam.id);
+    const camName = info?.camDef ? `${info.camDef.manufacturer} ${info.camDef.model}`.trim() : null;
+    return {
+      cam,
+      number: i + 1,
+      detail: cameraRowDetail(t, cam, camName, info?.lensDef ?? null),
+      hFovDeg: info?.fov?.horizontalDeg ?? null,
+    };
+  }), [cameras, fovById, t]);
+
+  const diag = Math.hypot(venue.widthM, venue.heightM);
+  const labelSize = Math.min(2.2, Math.max(0.35, diag / 55));
+
+  const audienceInput = useMemo(() => ({
+    widthM: venue.widthM,
+    depthM: venue.heightM,
+    stages: venue.stages,
+    cameras: cameras.map((c) => effectiveCameraPos(c)),
+    persons: persons.map((p) => ({ x: p.x, y: p.y })),
+    walls,
+  }), [venue.widthM, venue.heightM, venue.stages, cameras, persons, walls]);
+
+  const boardLook = useMemo(() => {
+    if (cameras.length === 0) return { x: venue.widthM / 2, y: venue.heightM / 2 };
+    const pts = cameras.map((c) => effectiveCameraPos(c));
+    return { x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length };
+  }, [cameras, venue.widthM, venue.heightM]);
+
+  const show = prefs.showLight;
+  // Szenenfarben sind Bildinhalt (WebGL), keine Oberflaeche.
+  const sceneBg = show ? '#070D1C' : '#132040';
+  const povInfo = povCam ? fovById.get(povCam.id) : undefined;
+
+
+  // Bildfenster im Seitenverhaeltnis des Sensors, Rest abgedunkelt.
+  const povRatio = povInfo?.fov && povInfo.fov.horizontalDeg > 0
+    ? Math.tan((povInfo.fov.verticalDeg * Math.PI) / 360) / Math.tan((povInfo.fov.horizontalDeg * Math.PI) / 360)
+    : 9 / 16;
 
   return (
-    <div style={{ width: '100%', height: '100%', minHeight: 500, position: 'relative' }}>
-      {/* Controls hint */}
-      <div style={{
-        position: 'absolute', bottom: 8, left: 8, zIndex: 10,
-        background: '#000000aa', padding: '8px 12px', borderRadius: 6,
-        fontSize: 11, color: '#9ca3af', lineHeight: 1.6, backdropFilter: 'blur(4px)',
-        pointerEvents: 'none',
-      }}>
-        <b style={{ color: '#60a5fa' }}>{t('venue.selectCamera', 'Select camera')}</b> {t('venue.unlockToEdit', '→ unlock to edit')}<br/>
-        <b style={{ color: '#60a5fa' }}>XY</b> {t('venue.floorMove', 'floor move')} &nbsp;|&nbsp;
-        <b style={{ color: '#60a5fa' }}>Z</b> {t('venue.height', 'height')} &nbsp;|&nbsp;
-        <b style={{ color: '#60a5fa' }}>Pan/Tilt</b> {t('venue.rotateAxes', 'rotate axes')}<br/>
-        <b style={{ color: '#60a5fa' }}>WASD</b> {t('venue.move', 'Move')} &nbsp;|&nbsp;
-        <b style={{ color: '#60a5fa' }}>Space/Shift</b> {t('venue.vertical', 'vertical')} &nbsp;|&nbsp;
-        <b style={{ color: '#60a5fa' }}>Scroll</b> {t('venue.dolly', 'Dolly')}
+    <div className="flex w-full h-full" style={{ minHeight: 500 }}>
+      <div className="relative flex-1 min-w-0 h-full overflow-hidden">
+        <div className="absolute top-2 left-2 z-10 flex" role="group" aria-label={t('venue.view.group', 'View')}>
+          {([
+            { id: 'top', label: t('venue.view.top', 'Top'), go: goTop },
+            { id: 'perspective', label: t('venue.view.perspective', 'Perspective'), go: goPerspective },
+            { id: 'camera', label: t('venue.view.camera', 'Camera view'), go: () => { if (selectedCameraId) goCamera(selectedCameraId); }, disabled: !selectedCameraId },
+          ] as { id: ViewPreset; label: string; go: () => void; disabled?: boolean }[]).map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onClick={b.go}
+              disabled={b.disabled}
+              aria-pressed={preset === b.id}
+              className={`px-2.5 py-1 text-xs font-semibold border -ml-px first:ml-0 disabled:opacity-40 disabled:cursor-not-allowed ${preset === b.id ? 'bg-bc-accent text-bc-accent-text border-bc-accent' : 'bg-bc-panel text-bc-text border-bc-border hover:bg-bc-panel-raised'}`}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+
+        {povCam && povInfo?.fov && (
+          <div className="absolute inset-0 z-[5] pointer-events-none flex items-center justify-center">
+            <div
+              className="relative w-full outline outline-1 outline-bc-on-media/60"
+              style={{ aspectRatio: `${1 / povRatio}`, boxShadow: '0 0 0 100vmax rgba(0, 0, 0, 0.45)' }}
+            >
+              <div className="absolute left-2 bottom-2 px-2 py-1 text-[11px] font-semibold text-bc-on-media bg-bc-media/70 tabular-nums">
+                {povCam.label} · {Math.round(povCam.focalLength * 10) / 10} mm · {povInfo.fov.horizontalDeg.toFixed(1)}° H
+                {povCam.id === programCameraId && <span className="ml-2 px-1 bg-bc-signal">PGM</span>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!schmal && !povCam && (
+          <div className="absolute bottom-2 left-2 z-10 pointer-events-none px-3 py-2 text-[11px] leading-relaxed text-bc-on-media bg-bc-media/70">
+            <b>{t('venue.selectCamera', 'Select camera')}</b> {t('venue.unlockToEdit', '→ unlock to edit')}<br/>
+            <b>XY</b> {t('venue.floorMove', 'floor move')} &nbsp;|&nbsp;
+            <b>Z</b> {t('venue.height', 'height')} &nbsp;|&nbsp;
+            <b>Pan/Tilt</b> {t('venue.rotateAxes', 'rotate axes')}<br/>
+            <b>WASD</b> {t('venue.move', 'Move')} &nbsp;|&nbsp;
+            <b>Space/Shift</b> {t('venue.vertical', 'vertical')} &nbsp;|&nbsp;
+            <b>Scroll</b> {t('venue.dolly', 'Dolly')}
+          </div>
+        )}
+
+        <Canvas gl={{ preserveDrawingBuffer: true }} dpr={[1, 2]}>
+          <color attach="background" args={[sceneBg]} />
+          {show && <fog attach="fog" args={[sceneBg, diag * 0.9, diag * 3]} />}
+          <PerspectiveCamera makeDefault position={[camX, camY, camZ]} fov={VIEW3D_FOV_DEG} near={0.05} far={Math.max(500, diag * 6)} />
+          <FPSControls mouseLookEnabled={unlockedCameraId === null} defaultPitch={startPitch} onManualMove={handleManualMove} />
+
+          {show ? (
+            <>
+              <ambientLight intensity={0.35} color="#c9d4ea" />
+              <hemisphereLight args={['#6f86b8', '#0b1220', 0.35]} />
+              <directionalLight position={[venue.widthM * 0.3, 30, venue.heightM * 1.2]} intensity={0.35} color="#9fb2d9" />
+              <StageLights stages={venue.stages} depthM={venue.heightM} />
+              {/* Flutlicht ueber Spielfeldern: dort haengen keine Spots */}
+              {venue.stages.some((st) => Math.max(st.width, st.height) > 30) && (
+                <directionalLight position={[venue.widthM / 2, diag, venue.heightM * 0.8]} intensity={1.4} color="#f2f4ff" />
+              )}
+            </>
+          ) : (
+            <>
+              <ambientLight intensity={0.7} color="#e8eaf0" />
+              <directionalLight position={[10, 20, 10]} intensity={1.0} color="#ffffff" />
+              <directionalLight position={[-10, 15, -5]} intensity={0.3} color="#94a3b8" />
+              <hemisphereLight args={['#b0c4de', '#1e293b', 0.4]} />
+            </>
+          )}
+
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[venue.widthM / 2, 0, venue.heightM / 2]}>
+            <planeGeometry args={[venue.widthM, venue.heightM]} />
+            <meshStandardMaterial color={show ? '#1a2133' : '#252a36'} roughness={show ? 0.55 : 1} metalness={show ? 0.15 : 0} />
+          </mesh>
+
+          {backgroundPlan && prefs.floorPlan && <FloorPlanOverlay plan={backgroundPlan} />}
+
+          <Grid
+            args={[venue.widthM, venue.heightM]}
+            position={[venue.widthM / 2, 0.01, venue.heightM / 2]}
+            cellSize={1}
+            cellThickness={0.6}
+            cellColor={show ? '#2a3348' : '#3a4050'}
+            sectionSize={5}
+            sectionThickness={1.5}
+            sectionColor={show ? '#3a4766' : '#4a5568'}
+            fadeDistance={diag * 3}
+          />
+
+          <VenueWalls widthM={venue.widthM} heightM={venue.heightM} />
+          {prefs.labels && <FloorLabels widthM={venue.widthM} heightM={venue.heightM} />}
+
+          {venue.stages.map((s) => (
+            <StageMesh key={s.id} stage={s} />
+          ))}
+
+          {prefs.audience && <Audience input={audienceInput} />}
+          {prefs.videoBoard && venue.stages.length > 0 && <VideoBoards stages={venue.stages} look={boardLook} title={venue.name} />}
+
+          {prefs.coverage && cameras.map((cam, i) => {
+            const fov = fovById.get(cam.id)?.fov;
+            if (!fov) return null;
+            const pos = effectiveCameraPos(cam);
+            return (
+              <CoverageWedge
+                key={`cov-${cam.id}`}
+                cam={{ ...cam, x: pos.x, y: pos.y }}
+                hFovDeg={fov.horizontalDeg}
+                index={i}
+                emphasis={cam.id === selectedCameraId || cam.id === programCameraId}
+              />
+            );
+          })}
+
+          {/* Rig-Aufbau (Stativ, Schiene, Kran) — eigene Gruppe auf der
+              Parkposition, waehrend die Kamera selbst auf der verfahrenen
+              Position sitzt. Sonst wuerde die Schiene mitfahren. */}
+          {cameras.map((cam) => (
+            <RigStructure key={`rig-${cam.id}`} cam={cam} isSelected={cam.id === selectedCameraId} />
+          ))}
+
+          {/* Cameras with explicit unlock + gizmo editing */}
+          {cameras.map((cam) => (
+            <CameraRig
+              key={cam.id}
+              cam={cam}
+              isSelected={cam.id === selectedCameraId}
+              isUnlocked={cam.id === unlockedCameraId}
+              editMode={editMode}
+              onSelect={selectCamera}
+              onToggleLock={(cameraId) => {
+                // Kein setState im Updater — der muss rein bleiben (React ruft
+                // ihn in StrictMode doppelt auf).
+                const next = unlockedCameraId === cameraId ? null : cameraId;
+                setUnlockedCameraId(next);
+                if (next) setEditMode('move');
+              }}
+              onEditModeChange={setEditMode}
+              venueWidth={venue.widthM}
+              venueHeight={venue.heightM}
+              look={{
+                showFrustum: cam.id === selectedCameraId || !prefs.coverage,
+                showVolume: !prefs.coverage,
+                showLabel: prefs.labels,
+                labelSize,
+                tally: cam.id === programCameraId ? 'pgm' : cam.id === selectedCameraId && programCameraId ? 'pvw' : null,
+                isPov: !!povCam && cam.id === povCam.id,
+              }}
+            />
+          ))}
+
+          {/* Reference persons from store – draggable.
+              Steht die Person auf einem Podest, hebt `groundHeightAt` sie auf
+              dessen Oberkante (#73) — sonst steckt sie im Koerper. Beim Ziehen
+              greift das erst beim Loslassen, weil dabei nur x/z laufen. */}
+          {persons.map((p) => (
+            <DraggableOnFloor
+              key={p.id}
+              x={p.x}
+              z={p.y}
+              onDragEnd={(nx, nz) => updatePerson(p.id, { x: nx, y: nz })}
+            >
+              <group position={[0, groundHeightAt(venue.stages, p.x, p.y), 0]}>
+                <PersonMesh x={0} z={0} height={p.height} label={p.label} objectType={p.objectType} color={p.color} />
+              </group>
+            </DraggableOnFloor>
+          ))}
+
+          {/* Walls */}
+          {walls.map((w) => {
+            const dx = w.x2 - w.x1;
+            const dy = w.y2 - w.y1;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            const cx = (w.x1 + w.x2) / 2;
+            const cy = (w.y1 + w.y2) / 2;
+            const angle = Math.atan2(dy, dx);
+            return (
+              <mesh key={w.id} position={[cx, w.height / 2, cy]} rotation={[0, -angle, 0]}>
+                <boxGeometry args={[len, w.height, 0.15]} />
+                <meshStandardMaterial color={w.color ?? '#6b7280'} opacity={0.6} transparent />
+              </mesh>
+            );
+          })}
+        </Canvas>
       </div>
 
-      {/* Reset View button */}
-      <button
-        onClick={handleReset}
-        style={{
-          position: 'absolute', top: 8, right: 8, zIndex: 10,
-          background: '#1e293bcc', border: '1px solid #334155', color: '#94a3b8',
-          padding: '6px 14px', borderRadius: 6, fontSize: 12, cursor: 'pointer',
-          backdropFilter: 'blur(4px)',
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#60a5fa'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.borderColor = '#334155'; }}
-      >
-        ↻ {t('venue.resetView', 'Reset View')}
-      </button>
-
-      <Canvas shadows gl={{ preserveDrawingBuffer: true }}>
-        <PerspectiveCamera makeDefault position={[camX, camY, camZ]} fov={VIEW3D_FOV_DEG} />
-        <FPSControls mouseLookEnabled={unlockedCameraId === null} defaultPitch={startPitch} />
-
-        {/* Improved lighting */}
-        <ambientLight intensity={0.7} color="#e8eaf0" />
-        <directionalLight position={[10, 20, 10]} intensity={1.0} color="#ffffff" />
-        <directionalLight position={[-10, 15, -5]} intensity={0.3} color="#94a3b8" />
-        <hemisphereLight args={['#b0c4de', '#1e293b', 0.4]} />
-
-        {/* Floor — brighter */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[venue.widthM / 2, 0, venue.heightM / 2]}>
-          <planeGeometry args={[venue.widthM, venue.heightM]} />
-          <meshStandardMaterial color="#252a36" />
-        </mesh>
-
-        {/* Floor plan overlay */}
-        {backgroundPlan && <FloorPlanOverlay plan={backgroundPlan} />}
-
-        {/* Grid — brighter lines */}
-        <Grid
-          args={[venue.widthM, venue.heightM]}
-          position={[venue.widthM / 2, 0.01, venue.heightM / 2]}
-          cellSize={1}
-          cellThickness={0.6}
-          cellColor="#3a4050"
-          sectionSize={5}
-          sectionThickness={1.5}
-          sectionColor="#4a5568"
-        />
-
-        {/* Venue walls wireframe */}
-        <VenueWalls widthM={venue.widthM} heightM={venue.heightM} />
-
-        {/* Floor labels */}
-        <FloorLabels widthM={venue.widthM} heightM={venue.heightM} />
-
-        {/* Stages */}
-        {venue.stages.map((s) => (
-          <StageMesh key={s.id} stage={s} />
-        ))}
-
-        {/* Rig-Aufbau (Stativ, Schiene, Kran) — eigene Gruppe auf der
-            Parkposition, waehrend die Kamera selbst auf der verfahrenen
-            Position sitzt. Sonst wuerde die Schiene mitfahren. */}
-        {cameras.map((cam) => (
-          <RigStructure key={`rig-${cam.id}`} cam={cam} isSelected={cam.id === selectedCameraId} />
-        ))}
-
-        {/* Cameras with explicit unlock + gizmo editing */}
-        {cameras.map((cam) => (
-          <CameraRig
-            key={cam.id}
-            cam={cam}
-            isSelected={cam.id === selectedCameraId}
-            isUnlocked={cam.id === unlockedCameraId}
-            editMode={editMode}
-            onSelect={selectCamera}
-            onToggleLock={(cameraId) => {
-              // Kein setState im Updater — der muss rein bleiben (React ruft
-              // ihn in StrictMode doppelt auf).
-              const next = unlockedCameraId === cameraId ? null : cameraId;
-              setUnlockedCameraId(next);
-              if (next) setEditMode('move');
-            }}
-            onEditModeChange={setEditMode}
-            venueWidth={venue.widthM}
-            venueHeight={venue.heightM}
-          />
-        ))}
-
-        {/* Reference persons from store – draggable.
-            Steht die Person auf einem Podest, hebt `groundHeightAt` sie auf
-            dessen Oberkante (#73) — sonst steckt sie im Koerper. Beim Ziehen
-            greift das erst beim Loslassen, weil dabei nur x/z laufen. */}
-        {persons.map((p) => (
-          <DraggableOnFloor
-            key={p.id}
-            x={p.x}
-            z={p.y}
-            onDragEnd={(nx, nz) => updatePerson(p.id, { x: nx, y: nz })}
-          >
-            <group position={[0, groundHeightAt(venue.stages, p.x, p.y), 0]}>
-              <PersonMesh x={0} z={0} height={p.height} label={p.label} objectType={p.objectType} color={p.color} />
-            </group>
-          </DraggableOnFloor>
-        ))}
-
-        {/* Walls */}
-        {walls.map((w) => {
-          const dx = w.x2 - w.x1;
-          const dy = w.y2 - w.y1;
-          const len = Math.sqrt(dx * dx + dy * dy);
-          const cx = (w.x1 + w.x2) / 2;
-          const cy = (w.y1 + w.y2) / 2;
-          const angle = Math.atan2(dy, dx);
-          return (
-            <mesh key={w.id} position={[cx, w.height / 2, cy]} rotation={[0, -angle, 0]}>
-              <boxGeometry args={[len, w.height, 0.15]} />
-              <meshStandardMaterial color={w.color ?? '#6b7280'} opacity={0.6} transparent />
-            </mesh>
-          );
-        })}
-      </Canvas>
+      <CameraListPanel
+        rows={rows}
+        selectedId={selectedCameraId}
+        programId={programCameraId}
+        povId={povCam?.id ?? null}
+        prefs={prefs}
+        onPrefs={updatePrefs}
+        onPick={pickCamera}
+        hasFloorPlan={!!backgroundPlan}
+      />
     </div>
   );
 }
