@@ -37,6 +37,7 @@ const STRAHL_FRAG = /* glsl */ `
   uniform float uZeit;
   uniform float uWirbel;
   uniform float uCosHuelle;
+  uniform float uEndeWeich;
   // Hash ohne sin (Hoskins): auf GPUs mit schwacher Transzendenten-Einheit
   // ein Vielfaches schneller, und es laeuft je Schritt achtmal.
   float hash3(vec3 p) { p = fract(p * 0.1031); p += dot(p, p.zyx + 31.32); return fract((p.x + p.y) * p.z); }
@@ -105,7 +106,7 @@ const STRAHL_FRAG = /* glsl */ `
       float phase = (1.0 - kk) / pow(max(1e-4, 1.0 + kk - 2.0 * k * cosA), 1.5);
       float trans = exp(-sigT * (d + s));
       float spitze = smoothstep(0.0, 0.05 * uLaenge, axial);
-      float ende = 1.0 - smoothstep(0.82 * uLaenge, uLaenge, axial);
+      float ende = 1.0 - uEndeWeich * smoothstep(0.82 * uLaenge, uLaenge, axial);
       float dichte = 1.0 - uWirbel + uWirbel * 1.6 * rauschen(P * 0.7 + drift);
       summe += E * phase * trans * spitze * ende * dichte;
     }
@@ -114,7 +115,9 @@ const STRAHL_FRAG = /* glsl */ `
     // NaN aus einer entarteten Kegelgleichung waere im Bloom ein schwarzer Fleck.
     if (!(a >= 0.002)) discard;
     // Dichte Kerne duerfen ueber Weiss gehen und im Bloom gluehen.
-    gl_FragColor = vec4(uFarbe * a * (1.0 + 1.5 * smoothstep(0.5, 3.0, tau)), a);
+    // Additiv mit SrcAlpha: die Farbe NICHT noch einmal mit a multiplizieren,
+    // sonst zaehlt die Deckkraft doppelt und duenner Dunst verschwindet.
+    gl_FragColor = vec4(uFarbe * (1.0 + 1.5 * smoothstep(0.5, 3.0, tau)), a);
   }`
 
 export interface StrahlOptionen {
@@ -130,6 +133,15 @@ export interface StrahlOptionen {
   /** 0..1, Dimmer. */
   intensitaet?: number
   schritte?: number
+  /**
+   * Feste Dichte statt der aus dem Feldwinkel abgeleiteten (`strahlGewinn`) —
+   * fuer Planer, die die Lichtstaerke selbst photometrisch rechnen.
+   */
+  lichtstaerke?: number
+  /** Kegel vor dem Ziel weich auslaufen lassen; aus, wenn er auf einer Flaeche endet. Vorgabe an. */
+  endeWeich?: boolean
+  /** Henyey-Greenstein-Asymmetrie (Vorwaertsstreuung), Vorgabe 0,55. */
+  vorwaerts?: number
 }
 
 /** Lichtstaerke relativ zu einem 20°-Scheinwerfer gleicher Leistung. */
@@ -160,8 +172,9 @@ export function erzeugeDunstStrahl(o: StrahlOptionen): THREE.Mesh {
       uDunst: { value: o.dunst },
       // Gleicher Lichtstrom auf engerem Raumwinkel: ein 4°-Beam hat ein
       // Vielfaches der Lichtstaerke eines 30°-Wash.
-      uIntensitaet: { value: Math.max(0.05, o.intensitaet ?? 1) * strahlGewinn(o.feldwinkelDeg) },
-      uHG: { value: 0.55 },
+      uIntensitaet: { value: o.lichtstaerke ?? Math.max(0.05, o.intensitaet ?? 1) * strahlGewinn(o.feldwinkelDeg) },
+      uHG: { value: o.vorwaerts ?? 0.55 },
+      uEndeWeich: { value: o.endeWeich === false ? 0 : 1 },
       uDaempfung: { value: 0.03 },
       uZeit: SZENEN_ZEIT,
       uWirbel: { value: 0.45 },
@@ -198,7 +211,7 @@ const FLECK_FRAG = /* glsl */ `
   void main() {
     float r = length(vUv - 0.5) * 2.0;
     float a = exp(-r * r * 4.6) * (1.0 - smoothstep(0.85, 1.0, r));
-    gl_FragColor = vec4(uFarbe * a, a);
+    gl_FragColor = vec4(uFarbe, a);
   }`
 
 /**

@@ -30,7 +30,7 @@ function ladeBytes(url: string): Promise<ArrayBuffer> {
 
 const geladen = new Map<string, Promise<PersonModell>>()
 
-export function ladePersonModell(url: string, o: { entfernen?: RegExp } = {}): Promise<PersonModell> {
+export function ladePersonModell(url: string, o: { entfernen?: RegExp; umgebung?: number } = {}): Promise<PersonModell> {
   const vorhanden = geladen.get(url)
   if (vorhanden) return vorhanden
   const lader = new GLTFLoader()
@@ -72,6 +72,7 @@ export function ladePersonModell(url: string, o: { entfernen?: RegExp } = {}): P
             m.emissive.setRGB(0, 0, 0)
             m.emissiveIntensity = 0
           }
+          if (o.umgebung !== undefined && 'envMapIntensity' in m) m.envMapIntensity = o.umgebung
           m.needsUpdate = true
         }
       })

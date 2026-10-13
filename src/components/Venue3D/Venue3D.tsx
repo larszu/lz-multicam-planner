@@ -1359,7 +1359,7 @@ export default function Venue3D() {
               <hemisphereLight args={['#8ea2d8', '#0d0a08', draussen ? 0.18 : 0.08]} />
               {/* Streulicht von der Buehne ins Publikum: ohne es waere die Menge ein schwarzes Loch. */}
               <directionalLight position={[boardLook.x, 18, boardLook.y - diag]} intensity={0.22} color="#7f93ff" />
-              <ShowRig venue={venue} look={boardLook} werte={werte} dunst={draussen ? 0.32 : 0.62} />
+              <ShowRig venue={venue} look={boardLook} werte={werte} dunst={draussen ? 0.32 : 0.5} />
             </>
           ) : (
             <>
