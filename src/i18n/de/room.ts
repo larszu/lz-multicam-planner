@@ -57,6 +57,8 @@ export const room: Record<string, string> = {
   'venue.quality.auto': 'Auto',
   'venue.quality.high': 'Hoch',
   'venue.quality.low': 'Niedrig',
+  'venue.quality.simple': 'Einfach',
+  'venue.quality.simple.title': 'Einfache 3D-Ansicht: ohne Lichteffekte und Schatten — schnell auf jedem Rechner',
   'venue.quality.lowered': 'gesenkt',
   'venue.quality.lowered.title': 'Die Bildrate war zu niedrig, darum läuft die Ansicht in der schnelleren Stufe.',
 };

@@ -182,3 +182,21 @@ export function kneifFaktor(abstandVorher: number, fahre: number): number {
   if (neu <= 1) return 1;
   return neu / abstandVorher;
 }
+
+/** Radiant je Bildschirm-Pixel fuer Umsehen — Maus und Finger gleich. */
+export const UMSEHEN_RAD_JE_PX = 0.002;
+
+/**
+ * Ziehen → Drehung der Ansicht (#174).
+ *
+ * Der Inhalt folgt der Hand, wie in jedem 3D- und Kartenprogramm: nach rechts
+ * ziehen dreht die Ansicht nach links, damit das Bild nach rechts wandert;
+ * nach oben ziehen neigt den Blick nach unten. Vorher war es die
+ * Ego-Shooter-Belegung (Maus = Blickrichtung) — gemeldet als „falsch herum".
+ *
+ * `dYaw` positiv = nach links drehen (three.js: rotation.y waechst gegen den
+ * Uhrzeigersinn von oben), `dPitch` positiv = nach oben neigen.
+ */
+export function umsehen(dx: number, dy: number): { dYaw: number; dPitch: number } {
+  return { dYaw: dx * UMSEHEN_RAD_JE_PX, dPitch: dy * UMSEHEN_RAD_JE_PX };
+}

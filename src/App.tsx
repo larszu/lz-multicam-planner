@@ -7,7 +7,7 @@ import CommandPalette, { type Command } from './components/Layout/CommandPalette
 import { history, useHistoryShortcuts } from './store/history';
 import Sidebar from './components/Sidebar/Sidebar';
 import Venue2D from './components/Venue2D/Venue2D';
-import Venue3D from './components/Venue3D/Venue3D';
+import LoadingIndicator from './components/Layout/LoadingIndicator';
 import CameraPreview from './components/Preview/CameraPreview';
 import Multiview from './components/Multiview/Multiview';
 import Calculator from './components/Sidebar/Calculator';
@@ -18,7 +18,7 @@ import ExportPanel from './components/Export/ExportPanel';
 import ErrorBoundary from './components/ErrorBoundary';
 import { getExportRegistry } from './store/exportRegistry';
 import { loadJSON, saveJSON } from './utils/storage';
-import { Suspense, useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { Suspense, lazy, useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { FiChevronLeft, FiChevronRight, FiMaximize2, FiMinimize2, FiMinus, FiX } from 'react-icons/fi';
 import { InventoryDialog } from './inventory/InventoryDialog';
 import { Layout, Model, TabNode, Actions } from 'flexlayout-react';
@@ -161,13 +161,12 @@ function loadUserLayoutPresets(): Record<string, IJsonModel> {
   return loadJSON<Record<string, IJsonModel>>(LAYOUT_PRESETS_KEY, {});
 }
 
+// three.js steckt nur in der 3D-Ansicht; erst laden, wenn sie gebraucht wird.
+const Venue3D = lazy(() => import('./components/Venue3D/Venue3D'));
+
 function LoadingFallback() {
   const { t } = useTranslation();
-  return (
-    <div className="flex items-center justify-center h-full text-bc-dim">
-      <div className="animate-pulse">{t('header.panel.loading3d', 'Loading 3D View...')}</div>
-    </div>
-  );
+  return <LoadingIndicator label={t('header.panel.loading3d', 'Loading 3D View...')} />;
 }
 
 /** Persist layout model across re-renders but not component remounts */

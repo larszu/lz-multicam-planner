@@ -188,14 +188,14 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 - **Camera list** on the right: number, camera, lens range @ current focal length, rig and horizontal FOV. **Click a camera to look through its lens**; the frame is masked to the sensor's aspect ratio and follows pan, tilt and zoom live (e.g. from the Rig panel). Any mouse, key or touch input takes you back to free movement
 - **Coverage** wedges on the floor from each camera to its focus point, with a sight line; the selected camera also shows its 3D FOV pyramid
 - **Tally** from the Multiview: Program camera red, Preview green — on the camera in 3D and in the list
-- **Photoreal by default:** dark arena with haze, trusses with fixtures whose beams stand in the haze, warm front light on the stage with real shadows, LED walls that glow and light the stage, floodlights over pitches, a night sky outdoors. Ambient occlusion, bloom, AgX tone mapping. One **Quality** switch: *Auto* (starts high, lowers once if the frame rate stays low), *High*, *Low*
+- **Photoreal by default:** dark arena with haze, trusses with fixtures whose beams stand in the haze, warm front light on the stage with real shadows, LED walls that glow and light the stage, floodlights over pitches, a night sky outdoors. Ambient occlusion, bloom, AgX tone mapping. One **Quality** switch: *Auto* (starts high, lowers once if the frame rate stays low), *High*, *Low*, and *Simple* — a light 3D view without lighting effects, shadows or post-processing for slow computers. A spinner covers the view until the scene has drawn its first frame
 - **Audience** from the room's audience areas — seated on seats and stands, standing with some hands raised — or, without areas, filling the free floor (centre aisle, clearance around stages, cameras, people and walls). Thousands of people with varied clothing, size and posture, instanced so they stay smooth. Space is kept free around cameras and people. Scenery only: Preview and sight lines do not take it into account; place a person if a head in the shot matters
-- **People on stage** appear as people (standing or seated) in the show view, facing the cameras
+- **People on stage** appear as detailed people (standing or seated) in every view, facing the cameras
 - **Camera view like the camera's picture:** sensor and focal length set the angle, planning overlays (coverage, labels) disappear, and on *High* the depth of field follows focal length, aperture and focus distance
 - **Show light** off = evenly lit planning view with grid. **Video wall** draws one wall per stage when the room has none; **Labels** and **Floor plan** can be toggled; all toggles are remembered
 - Rendering building blocks come from `@avplan/scene3d` (see *Shared suite packages*)
-- FPS-style controls (WASD + mouse look, Space/Shift up/down, Ctrl sprint)
-- **Touch: one finger looks around, two fingers pinch to move forward/back and drag to slide sideways and up/down** — no keyboard needed on a phone or tablet
+- Drag to look around — the picture follows the mouse like in 3D and map apps (drag right, the scene moves right); WASD to move, Space/Shift up/down, Ctrl sprint, scroll to dolly
+- **Touch: one finger looks around (the picture follows the finger), two fingers pinch to move forward/back and drag to slide sideways and up/down** — no keyboard needed on a phone or tablet
 - Drag cameras in space, visualize stage meshes & venue boundaries
 - Background floor plan projection, floor grid with metric labels
 

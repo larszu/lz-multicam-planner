@@ -10,9 +10,10 @@ import RigStructure from './RigStructure';
 import * as THREE from 'three';
 import { configureTextBuilder } from 'troika-three-text';
 import { getExportRegistry } from '../../store/exportRegistry';
-import { FingerNavigation } from '../../lib/fingerNavigation';
+import { FingerNavigation, umsehen } from '../../lib/fingerNavigation';
 import type { FramingState } from '../../store/exportRegistry';
-import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
+import { Suspense, useMemo, useRef, useEffect, useState, useCallback } from 'react';
+import LoadingIndicator from '../Layout/LoadingIndicator';
 import type { BackgroundPlan, Stage, StageObjectType } from '../../types';
 import { FLAT_STAGE_M, groundHeightAt, stageColor, stageOpacity, stageTopZ } from '../../utils/stageBody';
 import { FiLock, FiUnlock } from 'react-icons/fi';
@@ -343,8 +344,9 @@ function FPSControls({ mouseLookEnabled, defaultPitch, onManualMove }: { mouseLo
 
     const onMouseMove = (e: MouseEvent) => {
       if (!isLooking.current && document.pointerLockElement !== canvas) return;
-      yaw.current -= e.movementX * 0.002;
-      pitch.current -= e.movementY * 0.002;
+      const d = umsehen(e.movementX, e.movementY);
+      yaw.current += d.dYaw;
+      pitch.current += d.dPitch;
       pitch.current = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitch.current));
     };
 
@@ -378,7 +380,7 @@ function FPSControls({ mouseLookEnabled, defaultPitch, onManualMove }: { mouseLo
     //
     // Die Geste selbst rechnet `lib/fingerNavigation.ts`; hier steht nur,
     // was ihre Deltas an der Kamera bedeuten. Die Umrechnung ist dieselbe
-    // wie fuer die Maus (0.002 rad/px), damit sich beides gleich anfuehlt.
+    // wie fuer die Maus (`umsehen`), damit sich beides gleich anfuehlt.
     const onPointerDown = (e: PointerEvent) => {
       if (e.pointerType === 'mouse') return;
       takeOver();
@@ -393,8 +395,9 @@ function FPSControls({ mouseLookEnabled, defaultPitch, onManualMove }: { mouseLo
       e.preventDefault();
       const zug = finger.bewegt({ id: e.pointerId, x: e.clientX, y: e.clientY });
       if (finger.anzahl === 1) {
-        yaw.current -= zug.dreheX * 0.002;
-        pitch.current -= zug.dreheY * 0.002;
+        const d = umsehen(zug.dreheX, zug.dreheY);
+        yaw.current += d.dYaw;
+        pitch.current += d.dPitch;
         pitch.current = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitch.current));
         return;
       }
@@ -407,8 +410,10 @@ function FPSControls({ mouseLookEnabled, defaultPitch, onManualMove }: { mouseLo
         -Math.cos(yaw.current) * Math.cos(pitch.current),
       );
       camera.position.add(blick.clone().multiplyScalar(zug.fahre * 0.03));
-      const rechts = new THREE.Vector3(-Math.cos(yaw.current), 0, Math.sin(yaw.current));
-      camera.position.add(rechts.multiplyScalar(zug.schiebeX * 0.02));
+      // Das Bild folgt den Fingern wie beim Umsehen (#174): nach rechts
+      // schieben setzt die Kamera nach LINKS — daher der Vektor nach links.
+      const links = new THREE.Vector3(-Math.cos(yaw.current), 0, Math.sin(yaw.current));
+      camera.position.add(links.multiplyScalar(zug.schiebeX * 0.02));
       camera.position.y += zug.schiebeY * 0.02;
     };
     const onPointerUp = (e: PointerEvent) => {
@@ -1140,6 +1145,21 @@ function RealPerson({ id, height, pose, color, facingDeg }: { id: string; height
   return <primitive object={mesh} rotation={[0, Math.PI / 2 - (facingDeg * Math.PI) / 180, 0]} />;
 }
 
+/**
+ * Meldet „bereit", sobald die Szene samt Schriften (Suspense) zwei Bilder
+ * gezeichnet hat — bis dahin liegt die Lade-Anzeige darueber (#167).
+ * Beim Abbau wieder „nicht bereit", damit ein neuer Renderer sie erneut zeigt.
+ */
+function ErsterFrame({ onBereit }: { onBereit: (b: boolean) => void }) {
+  const frames = useRef(0);
+  useEffect(() => () => onBereit(false), [onBereit]);
+  useFrame(() => {
+    frames.current += 1;
+    if (frames.current === 2) onBereit(true);
+  });
+  return null;
+}
+
 type ViewPreset = 'top' | 'perspective' | 'camera';
 
 /** Bildwinkel einer Planer-Kamera, wie ihn Vorschau und Rechner benutzen. */
@@ -1271,7 +1291,10 @@ export default function Venue3D() {
     return { x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length };
   }, [cameras, venue.widthM, venue.heightM]);
 
-  const show = prefs.showLight;
+  // Einfache Ansicht (#167): ohne Pipeline, Schatten und Showlicht.
+  const simple = prefs.quality === 'simple';
+  const show = prefs.showLight && !simple;
+  const [bereit, setBereit] = useState(false);
   const povInfo = povCam ? fovById.get(povCam.id) : undefined;
 
 
@@ -1348,8 +1371,14 @@ export default function Venue3D() {
           </div>
         )}
 
-        <Canvas gl={{ preserveDrawingBuffer: true, antialias: false }} dpr={[1, 2]} shadows>
-          <ScenePipeline quality={prefs.quality} show={show} dof={dof} onWerte={onWerte} />
+        {!bereit && <LoadingIndicator overlay label={t('venue.loading', 'Loading 3D scene…')} />}
+
+        {/* `key`: Schatten und Kantenglaettung legt der Renderer beim Anlegen
+            fest — der Wechsel zur einfachen Ansicht braucht einen neuen. */}
+        <Canvas key={simple ? 'simple' : 'real'} gl={{ preserveDrawingBuffer: true, antialias: simple }} dpr={simple ? 1 : [1, 2]} shadows={!simple}>
+          <Suspense fallback={null}>
+          <ErsterFrame onBereit={setBereit} />
+          {!simple && <ScenePipeline quality={prefs.quality === 'simple' ? 'low' : prefs.quality} show={show} dof={dof} onWerte={onWerte} />}
           <Atmosphere look={show ? (draussen ? 'nacht' : 'arena') : 'planung'} diagM={diag} domeRadius={farDist * 0.8} />
           <PerspectiveCamera makeDefault position={[camX, camY, camZ]} fov={VIEW3D_FOV_DEG} near={0.1} far={farDist} />
           <FPSControls mouseLookEnabled={unlockedCameraId === null} defaultPitch={startPitch} onManualMove={handleManualMove} />
@@ -1403,7 +1432,7 @@ export default function Venue3D() {
               cameras={audienceInput.cameras}
               persons={audienceInput.persons}
               walls={walls}
-              max={werte.ao ? 40000 : 15000}
+              max={simple ? 4000 : werte.ao ? 40000 : 15000}
             />
           )}
           {ledWaende.length > 0 && <LedWalls walls={ledWaende} maxLichter={show && werte.ao ? 1 : 0} />}
@@ -1472,8 +1501,20 @@ export default function Venue3D() {
               onDragEnd={(nx, nz) => updatePerson(p.id, { x: nx, y: nz })}
             >
               <group position={[0, groundHeightAt(venue.stages, p.x, p.y), 0]}>
-                {show && MENSCH_TYPEN[p.objectType ?? 'person']
-                  ? <RealPerson id={p.id} height={p.height} pose={MENSCH_TYPEN[p.objectType ?? 'person'] as Pose} color={p.color} facingDeg={personBlick(p.x, p.y)} />
+                {/* Menschen sehen in jeder Darstellung gleich aus (#173) — vorher
+                    nur mit Showlicht, sonst als Saeule. */}
+                {MENSCH_TYPEN[p.objectType ?? 'person']
+                  ? (
+                    <>
+                      <RealPerson id={p.id} height={p.height} pose={MENSCH_TYPEN[p.objectType ?? 'person'] as Pose} color={p.color} facingDeg={personBlick(p.x, p.y)} />
+                      {prefs.labels && !show && (
+                        <Text font={LABEL_FONT} position={[0, p.height + 0.25, 0]} fontSize={0.22} color={p.color ?? '#f59e0b'} anchorX="center"
+                          outlineWidth={0.015} outlineColor="#000000">
+                          {p.label}
+                        </Text>
+                      )}
+                    </>
+                  )
                   : <PersonMesh x={0} z={0} height={p.height} label={p.label} objectType={p.objectType} color={p.color} showLabel={!realPov} />}
               </group>
             </DraggableOnFloor>
@@ -1498,6 +1539,7 @@ export default function Venue3D() {
               </mesh>
             );
           })}
+          </Suspense>
         </Canvas>
       </div>
 

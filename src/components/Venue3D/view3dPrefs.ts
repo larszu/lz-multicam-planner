@@ -14,9 +14,15 @@ export interface View3DPrefs {
   floorPlan: boolean;
   /** Kameraliste rechts ein- oder ausgeklappt. */
   listOpen: boolean;
-  /** Bildqualitaet; Auto senkt selbst, wenn der Rechner nicht mitkommt. */
-  quality: Qualitaet;
+  /**
+   * Bildqualitaet; Auto senkt selbst, wenn der Rechner nicht mitkommt.
+   * `simple` ist die einfache 3D-Ansicht (#167): ohne Render-Pipeline,
+   * Schatten und Showlicht — fuer schwache Rechner und reines Planen.
+   */
+  quality: View3DQuality;
 }
+
+export type View3DQuality = Qualitaet | 'simple';
 
 const KEY = 'multicam-3d-view-prefs';
 
@@ -34,7 +40,7 @@ export const DEFAULT_VIEW3D_PREFS: View3DPrefs = {
 export function useView3DPrefs(): [View3DPrefs, (patch: Partial<View3DPrefs>) => void] {
   const [prefs, setPrefs] = useState<View3DPrefs>(() => {
     const p = { ...DEFAULT_VIEW3D_PREFS, ...loadJSON<Partial<View3DPrefs>>(KEY, {}) };
-    return ['auto', 'high', 'low'].includes(p.quality) ? p : { ...p, quality: 'auto' };
+    return ['auto', 'high', 'low', 'simple'].includes(p.quality) ? p : { ...p, quality: 'auto' };
   });
   const update = useCallback((patch: Partial<View3DPrefs>) => {
     setPrefs((prev) => {

@@ -1,8 +1,8 @@
 import { FiChevronRight, FiChevronLeft } from 'react-icons/fi';
 import type { VenueCamera } from '../../types';
 import { useTranslation } from '../../i18n';
-import type { View3DPrefs } from './view3dPrefs';
-import type { Qualitaet, Stufe } from '../../avplan/scene3d';
+import type { View3DPrefs, View3DQuality } from './view3dPrefs';
+import type { Stufe } from '../../avplan/scene3d';
 
 export interface CameraRow {
   cam: VenueCamera;
@@ -56,7 +56,7 @@ export default function CameraListPanel({
     { key: 'coverage', label: t('venue.toggle.coverage', 'Coverage') },
     { key: 'labels', label: t('venue.toggle.labels', 'Labels') },
     { key: 'audience', label: t('venue.toggle.audience', 'Audience') },
-    { key: 'showLight', label: t('venue.toggle.showLight', 'Show light') },
+    { key: 'showLight', label: t('venue.toggle.showLight', 'Show light'), disabled: prefs.quality === 'simple', why: t('venue.toggle.showLightSimple', 'Not in the simple view') },
     { key: 'videoBoard', label: t('venue.toggle.videoBoard', 'Video wall'), disabled: hasRoomWalls, why: t('venue.toggle.videoBoardRoom', 'The room has its own video walls (sidebar, Room)') },
     { key: 'floorPlan', label: t('venue.toggle.floorPlan', 'Floor plan'), disabled: !hasFloorPlan, why: t('venue.toggle.floorPlanNone', 'No floor plan loaded') },
   ];
@@ -103,12 +103,14 @@ export default function CameraListPanel({
             ['auto', t('venue.quality.auto', 'Auto')],
             ['high', t('venue.quality.high', 'High')],
             ['low', t('venue.quality.low', 'Low')],
-          ] as [Qualitaet, string][]).map(([q, label]) => (
+            ['simple', t('venue.quality.simple', 'Simple')],
+          ] as [View3DQuality, string][]).map(([q, label]) => (
             <button
               key={q}
               type="button"
               aria-pressed={prefs.quality === q}
               onClick={() => onPrefs({ quality: q })}
+              title={q === 'simple' ? t('venue.quality.simple.title', 'Simple 3D view: no lighting effects or shadows — fast on any computer') : undefined}
               className={`-ml-px first:ml-0 px-2 py-0.5 text-[11px] font-medium border ${prefs.quality === q ? 'border-bc-accent text-bc-text-bright bg-bc-panel-raised' : 'border-bc-border text-bc-dim hover:text-bc-text'}`}
             >
               {label}

@@ -67,6 +67,8 @@ export const venue: Record<string, string> = {
   'venue.toggle.labels': 'Beschriftung',
   'venue.toggle.audience': 'Publikum',
   'venue.toggle.showLight': 'Showlicht',
+  'venue.toggle.showLightSimple': 'Nicht in der einfachen Ansicht',
+  'venue.loading': '3D-Szene wird geladen…',
   'venue.toggle.videoBoard': 'LED-Wand',
   'venue.toggle.floorPlan': 'Grundriss',
   'venue.toggle.floorPlanNone': 'Kein Grundriss geladen',

@@ -3,7 +3,8 @@
 // sich nicht durch Hinsehen pruefen; genau deshalb steht er nicht in der
 // Komponente.
 import { describe, it, expect } from 'vitest';
-import { FingerNavigation, kneifFaktor, KEIN_ZUG } from '../lib/fingerNavigation';
+import * as THREE from 'three';
+import { FingerNavigation, kneifFaktor, KEIN_ZUG, umsehen } from '../lib/fingerNavigation';
 
 describe('FingerNavigation — ein Finger', () => {
   it('dreht die Ansicht um die gezogene Strecke', () => {
@@ -122,5 +123,25 @@ describe('kneifFaktor', () => {
   it('kippt nicht ins Negative', () => {
     expect(kneifFaktor(100, -500)).toBe(1);
     expect(kneifFaktor(0, 50)).toBe(1);
+  });
+});
+
+// #174: „Wenn ich nach rechts ziehe geht die Kamera nach links." Gemessen
+// wird am Bild, nicht am Vorzeichen: ein Punkt geradeaus muss nach dem Zug
+// dorthin wandern, wohin die Hand gezogen hat.
+describe('umsehen — Inhalt folgt der Hand (#174)', () => {
+  const bildpunktNach = (dx: number, dy: number) => {
+    const cam = new THREE.PerspectiveCamera(60, 16 / 9, 0.1, 100);
+    const { dYaw, dPitch } = umsehen(dx, dy);
+    cam.rotation.set(dPitch, dYaw, 0, 'YXZ');
+    cam.updateMatrixWorld();
+    return new THREE.Vector3(0, 0, -10).project(cam);
+  };
+  it('nach rechts ziehen schiebt das Bild nach rechts', () => {
+    expect(bildpunktNach(100, 0).x).toBeGreaterThan(0.05);
+  });
+  it('nach oben ziehen schiebt das Bild nach oben', () => {
+    // Bildschirm-y waechst nach unten; NDC-y nach oben.
+    expect(bildpunktNach(0, -100).y).toBeGreaterThan(0.05);
   });
 });
