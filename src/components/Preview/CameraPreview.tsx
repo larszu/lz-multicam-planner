@@ -22,6 +22,8 @@ import { captureCurrentShot } from '../../utils/captureShot';
 import { profileForMount } from '../../utils/motionProfile';
 import LensSlider from './LensSlider';
 import { drawCameraView, wallSurfaces, type ProjectedPerson } from './cameraViewRenderer';
+import LookToggle from '../Render3D/LookToggle';
+import { bereit3D, render3D, useBedarf3D, useBildVersion3D, useKameraLook } from '../Render3D/kameraBild3d';
 import {
   assignPreset,
   groupPresets,
@@ -105,6 +107,11 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
   const persistPresets = useCallback((next: PreviewPreset[]) => { setPresets(next); saveJSON(PREVIEW_PRESETS_KEY, next); }, []);
   // Wandbilder laden asynchron (#45): fertig geladen => neu zeichnen.
   const [imageTick, setImageTick] = useState(0);
+  // Gerendert (Standard) oder die einfache Zeichnung (#167).
+  const [look, setLook] = useKameraLook('multicam-preview-look');
+  useBedarf3D(look === 'rendered');
+  const bildVersion = useBildVersion3D();
+  const bildPuffer = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => wallSurfaces.subscribe(() => setImageTick((n) => n + 1)), []);
 
   // Cache projected person positions during draw() so the click handler can hit-test
@@ -144,16 +151,22 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
     if (!canvas || !cam) return;
     if (!target && !wrap) return;
     const { customCameras, customLenses } = useStore.getState();
+    // Offscreen (target) in fester Breite, sonst so breit wie der Rahmen.
+    const cssW = target ? target.cssW : wrap!.getBoundingClientRect().width;
+    const dpr = target ? (target.dpr ?? 1) : (window.devicePixelRatio || 1);
+    // Gerendertes Bild (#167) als Grund — solange die 3D-Szene laedt, die Zeichnung.
+    const gerendert = !target && look === 'rendered' && cssW > 0
+      && render3D(cam.id, (bildPuffer.current ??= document.createElement('canvas')), cssW, dpr, 'gross');
     const projected = drawCameraView({
       canvas,
-      // Offscreen (target) in fester Breite, sonst so breit wie der Rahmen.
-      cssW: target ? target.cssW : wrap!.getBoundingClientRect().width,
-      dpr: target ? (target.dpr ?? 1) : (window.devicePixelRatio || 1),
+      cssW,
+      dpr,
       cam,
       bare: target?.bare ?? false,
       scene: { venue, persons, walls, cameras, customCameras, customLenses },
       overlays: { grid: showGrid, safeAreas: showSafeAreas, thirds: showThirds, crosshair: showCrosshair },
       t,
+      hintergrund: gerendert ? bildPuffer.current : null,
     });
     // Nur das sichtbare Bild bestimmt, welche Personen sich antippen lassen.
     // Die Anzahl wandert in den State, damit das Render sie lesen kann (Refs
@@ -162,7 +175,7 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
       projectedPersons.current = projected;
       setProjectedCount(projected.length);
     }
-  }, [selectedCam, venue, persons, walls, cameras, showGrid, showSafeAreas, showThirds, showCrosshair, t]);
+  }, [selectedCam, venue, persons, walls, cameras, showGrid, showSafeAreas, showThirds, showCrosshair, t, look]);
 
   // Repaint synchronously after every render so pan/tilt drags update the canvas
   // on the very next browser frame. The earlier `useEffect` variant was being
@@ -171,7 +184,7 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
   // painted canvas lagged or skipped frames.
   useLayoutEffect(() => {
     draw();
-  }, [draw, imageTick]);
+  }, [draw, imageTick, bildVersion]);
 
   // Resize observer lives in a normal effect — not time-critical.
   useEffect(() => {
@@ -480,8 +493,10 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
 
         {/* Overlay toggle bar */}
         <div className="flex items-center gap-2 px-2 flex-wrap">
+          <LookToggle value={look} onChange={setLook} laedt={!bereit3D()} />
           {([
-            [t('preview.overlay.grid', 'Grid'), showGrid, setShowGrid],
+            // Das Bodenraster gehoert zur Zeichnung; im gerenderten Bild liegt der echte Boden.
+            ...(look === 'simple' ? [[t('preview.overlay.grid', 'Grid'), showGrid, setShowGrid]] : []),
             [t('preview.overlay.safeAreas', 'Safe areas'), showSafeAreas, setShowSafeAreas],
             [t('preview.overlay.thirds', 'Thirds'), showThirds, setShowThirds],
             [t('preview.overlay.crosshair', 'Crosshair'), showCrosshair, setShowCrosshair],

@@ -8,6 +8,7 @@ import { history, useHistoryShortcuts } from './store/history';
 import Sidebar from './components/Sidebar/Sidebar';
 import Venue2D from './components/Venue2D/Venue2D';
 import LoadingIndicator from './components/Layout/LoadingIndicator';
+import { useBraucht3D } from './components/Render3D/kameraBild3d';
 import CameraPreview from './components/Preview/CameraPreview';
 import Multiview from './components/Multiview/Multiview';
 import Calculator from './components/Sidebar/Calculator';
@@ -174,6 +175,9 @@ function loadUserLayoutPresets(): Record<string, IJsonModel> {
 
 // three.js steckt nur in der 3D-Ansicht; erst laden, wenn sie gebraucht wird.
 const Venue3D = lazy(() => import('./components/Venue3D/Venue3D'));
+// Ein Renderer fuer alle gerenderten Kamerabilder (Vorschau, Multiview) —
+// nur gemountet, solange eine Ansicht ihn braucht.
+const KameraBildHost = lazy(() => import('./components/Render3D/KameraBildHost'));
 
 function LoadingFallback() {
   const { t } = useTranslation();
@@ -197,6 +201,7 @@ function useLayoutModel(t: TFn) {
 export default function App() {
   const { t } = useTranslation();
   const { sidebarCollapsed, setSidebarCollapsed } = useStore();
+  const braucht3D = useBraucht3D();
   useHistoryShortcuts();
   const idRepairCount = useStore((state) => state.lastIdRepair);
   const dismissIdRepair = useStore((state) => state.dismissIdRepair);
@@ -685,6 +690,7 @@ export default function App() {
       <ExportPanel />
       <FirstSteps activeTabId={layoutMode === 'focus' ? focusTabId : 'tab-preview'} onSelectTab={handleSelectTab} />
       <CommandPalette commands={commands} />
+      {braucht3D && <Suspense fallback={null}><KameraBildHost /></Suspense>}
 
       {/* Lager / Bestand — projektübergreifend, App-kompatibel via avplan-inventory.
           Geoeffnet ueber den Button in der Kopfzeile (statt frueher schwebend). */}

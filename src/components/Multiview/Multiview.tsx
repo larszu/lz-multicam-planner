@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useStore } from '../../store/useStore';
 import { renderCamera, wallSurfaces } from '../Preview/cameraViewRenderer';
+import LookToggle from '../Render3D/LookToggle';
+import { bereit3D, bildVersion3D, render3D, useBedarf3D, useBildVersion3D, useKameraLook, type BildRolle } from '../Render3D/kameraBild3d';
 import { getCameraById, getEffectiveSensor } from '../../data/cameras';
 import { getLensById } from '../../data/lenses';
 import { computeFov } from '../../utils/fov';
@@ -11,6 +13,8 @@ import type { VenueCamera } from '../../types';
 import { timecodeOfDay } from './timecode';
 
 const AUTO_SECONDS_KEY = 'multicam-mv-auto-seconds';
+/** Rechenzeit je Bild fuer Kacheln, bevor der Rest aufs naechste Bild wartet. */
+const BUDGET_MS = 12;
 
 interface Mix { from: string | null; to: string; start: number; durMs: number }
 
@@ -77,17 +81,35 @@ export default function Multiview() {
     setProgramCamera(id);
   }, [setProgramCamera]);
 
+  // Gerendert durch die 3D-Szene (Standard) oder die einfache Zeichnung (#168).
+  const [look, setLook] = useKameraLook('multicam-mv-look');
+  useBedarf3D(look === 'rendered');
+  const lookRef = useRef(look);
+  useEffect(() => { lookRef.current = look; }, [look]);
+  useBildVersion3D(); // neu zeichnen, sobald die 3D-Szene bereit ist
+  const laedt3D = !bereit3D();
+
   // Render-Schleife: zeichnet nur neu, wenn sich Szene, Busse, Groessen oder
-  // geladene Wandbilder geaendert haben. Gezeichnet wird ueber
-  // `cameraViewRenderer` — ohne dass die Vorschau gemountet sein muss (#172).
+  // die 3D-Szene geaendert haben. Gezeichnet wird ueber eigene Renderer —
+  // ohne dass die Vorschau gemountet sein muss (#172).
+  //
+  // Gerenderte Bilder kosten GPU-Zeit: nach einer Aenderung kommen erst die
+  // grossen Fenster, dann die Kacheln, und je Bild nur so viele, wie in
+  // `BUDGET_MS` passen — der Rest im naechsten Bild. 20 Kacheln bauen sich so
+  // in wenigen Bildern auf, statt die Oberflaeche einzufrieren.
   useEffect(() => {
     let raf = 0;
     let lastKey: unknown[] = [];
+    let offen: (() => void)[] = [];
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
       if (tcRef.current) tcRef.current.textContent = timecodeOfDay(new Date());
 
-      const render = renderCamera;
+      const r3 = lookRef.current === 'rendered' && bereit3D();
+      const render = (id: string, el: HTMLCanvasElement, w: number, dpr: number, rolle: BildRolle) => {
+        if (!(r3 && render3D(id, el, w, dpr, rolle))) renderCamera(id, el, w, dpr);
+      };
+
       const s = useStore.getState();
       const dpr = window.devicePixelRatio || 1;
       const pvw = pvwRef.current;
@@ -99,37 +121,52 @@ export default function Multiview() {
       const pgmW = widthOf(pgm);
 
       const mix = mixRef.current;
-      const key = [wallSurfaces.version, s.cameras, s.persons, s.venue, s.walls, s.customCameras, s.customLenses, s.language, s.selectedCameraId, s.programCameraId, dpr, pvwW, pgmW, ...tileW];
-      if (!mix && key.length === lastKey.length && key.every((v, i) => v === lastKey[i])) return;
-      lastKey = key;
+      const key = [r3, bildVersion3D(), wallSurfaces.version, s.cameras, s.persons, s.venue, s.walls, s.customCameras, s.customLenses, s.language, s.selectedCameraId, s.programCameraId, dpr, pvwW, pgmW, ...tileW];
+      if (key.length !== lastKey.length || key.some((v, i) => v !== lastKey[i])) {
+        lastKey = key;
+        offen = [];
+        if (pvw && pvwW > 0) {
+          offen.push(() => {
+            if (s.selectedCameraId) render(s.selectedCameraId, pvw, pvwW, dpr, 'gross');
+            else blank(pvw, pvwW, dpr);
+          });
+        }
+        if (pgm && pgmW > 0 && !mix) {
+          offen.push(() => {
+            if (s.programCameraId) render(s.programCameraId, pgm, pgmW, dpr, 'gross');
+            else blank(pgm, pgmW, dpr);
+          });
+        }
+        tiles.forEach(([id, el], i) => {
+          if (el && tileW[i] > 0) offen.push(() => render(id, el, tileW[i], dpr, 'kachel'));
+        });
+      }
+      const start = performance.now();
+      while (offen.length > 0) {
+        offen.shift()!();
+        if (performance.now() - start > BUDGET_MS) break;
+      }
 
-      tiles.forEach(([id, el], i) => { if (el && tileW[i] > 0) render(id, el, tileW[i], dpr); });
-      if (pvw && pvwW > 0) {
-        if (s.selectedCameraId) render(s.selectedCameraId, pvw, pvwW, dpr);
-        else blank(pvw, pvwW, dpr);
-      }
-      if (!pgm || pgmW <= 0) return;
-      if (!mix) {
-        if (s.programCameraId) render(s.programCameraId, pgm, pgmW, dpr);
-        else blank(pgm, pgmW, dpr);
-        return;
-      }
+      if (!mix || !pgm || pgmW <= 0) return;
       const p = Math.min(1, (now - mix.start) / mix.durMs);
       bufA.current ??= document.createElement('canvas');
       bufB.current ??= document.createElement('canvas');
-      if (mix.from) render(mix.from, bufA.current, pgmW, dpr); else blank(bufA.current, pgmW, dpr);
-      render(mix.to, bufB.current, pgmW, dpr);
+      if (mix.from) render(mix.from, bufA.current, pgmW, dpr, 'gross'); else blank(bufA.current, pgmW, dpr);
+      render(mix.to, bufB.current, pgmW, dpr, 'gross');
       blank(pgm, pgmW, dpr);
       const ctx = pgm.getContext('2d');
       if (ctx) {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.globalAlpha = 1;
-        ctx.drawImage(bufA.current, 0, 0);
+        ctx.drawImage(bufA.current, 0, 0, pgm.width, pgm.height);
         ctx.globalAlpha = p;
-        ctx.drawImage(bufB.current, 0, 0);
+        ctx.drawImage(bufB.current, 0, 0, pgm.width, pgm.height);
         ctx.globalAlpha = 1;
       }
-      if (p >= 1) finishTake(mix.to, mix.from);
+      if (p >= 1) {
+        finishTake(mix.to, mix.from);
+        lastKey = [];
+      }
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
@@ -170,6 +207,7 @@ export default function Multiview() {
         <span className="text-[10px] uppercase tracking-wider text-bc-dim">TOD</span>
         <span ref={tcRef} className="font-mono text-sm text-bc-text-bright tabular-nums" />
         <div className="flex-1" />
+        <LookToggle value={look} onChange={setLook} laedt={laedt3D} />
         <button
           type="button"
           onClick={cut}

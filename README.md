@@ -206,8 +206,9 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 - Background floor plan projection, floor grid with metric labels
 
 ### 👀 Camera Preview
-- Live viewfinder simulation with accurate perspective
-- Ground grid, sky/horizon, stage outlines, reference silhouettes
+- **Rendered by default:** the camera's picture through the same scene as the 3D view — stage, people, audience, show light, wall materials — with the lens's focal length, sensor, pan and tilt
+- **3D · Simple** switch under the picture: *Simple* is the classic drawing (ground grid, sky/horizon, stage outlines, reference silhouettes); it is also shown while the 3D scene loads
+- Show light, audience and the *Simple* quality of the 3D view apply to the rendered picture as well
 - Overlays: rule of thirds, safe areas, crosshair, data HUD
 - Pan/tilt by dragging — with the mouse or one finger; pinch with two fingers to zoom the lens
 - On a narrow window the data readout moves **below** the image instead of taking a fixed column beside it: the picture gets the full width
@@ -218,6 +219,8 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 - **CUT** (Space) and **AUTO** dissolve (Enter, duration adjustable); after a take the old program source moves to preview
 - Click a tile for preview, double-click to take it straight to program; keys 1–9 = preview, Shift+1–9 = program
 - Time-of-day timecode (25 fps) in the toolbar
+- **3D · Simple** switch in the toolbar: rendered pictures through the 3D scene (default) or the classic drawing
+- One shared renderer for all tiles; tiles render small (max. 480 px), Preview/Program larger. After a change the big windows come first and the tiles follow within a few frames instead of freezing the window. Quality lowers itself once if pictures take too long
 - Draws every camera itself — Preview and Multiview work side by side, with or without the Preview panel open
 
 ### 📐 FOV & DoF Calculator

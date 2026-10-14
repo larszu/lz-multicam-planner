@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { loadJSON, saveJSON } from '../../utils/storage';
 import type { Qualitaet } from '../../avplan/scene3d';
 
@@ -37,17 +37,33 @@ export const DEFAULT_VIEW3D_PREFS: View3DPrefs = {
   quality: 'auto',
 };
 
+// Ein Stand fuer alle Leser: die 3D-Ansicht schaltet, die gerenderten
+// Kamerabilder in Vorschau und Multiview (#167, #168) folgen sofort.
+let stand: View3DPrefs | null = null;
+const hoerer = new Set<() => void>();
+
+function laden(): View3DPrefs {
+  const p = { ...DEFAULT_VIEW3D_PREFS, ...loadJSON<Partial<View3DPrefs>>(KEY, {}) };
+  return ['auto', 'high', 'low', 'simple'].includes(p.quality) ? p : { ...p, quality: 'auto' };
+}
+
+export function getView3DPrefs(): View3DPrefs {
+  stand ??= laden();
+  return stand;
+}
+
+export function updateView3DPrefs(patch: Partial<View3DPrefs>): void {
+  stand = { ...getView3DPrefs(), ...patch };
+  saveJSON(KEY, stand);
+  hoerer.forEach((fn) => fn());
+}
+
+function abonnieren(fn: () => void): () => void {
+  hoerer.add(fn);
+  return () => { hoerer.delete(fn); };
+}
+
 export function useView3DPrefs(): [View3DPrefs, (patch: Partial<View3DPrefs>) => void] {
-  const [prefs, setPrefs] = useState<View3DPrefs>(() => {
-    const p = { ...DEFAULT_VIEW3D_PREFS, ...loadJSON<Partial<View3DPrefs>>(KEY, {}) };
-    return ['auto', 'high', 'low', 'simple'].includes(p.quality) ? p : { ...p, quality: 'auto' };
-  });
-  const update = useCallback((patch: Partial<View3DPrefs>) => {
-    setPrefs((prev) => {
-      const next = { ...prev, ...patch };
-      saveJSON(KEY, next);
-      return next;
-    });
-  }, []);
-  return [prefs, update];
+  const prefs = useSyncExternalStore(abonnieren, getView3DPrefs, getView3DPrefs);
+  return [prefs, updateView3DPrefs];
 }

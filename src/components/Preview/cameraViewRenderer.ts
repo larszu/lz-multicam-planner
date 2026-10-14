@@ -121,6 +121,13 @@ export interface DrawCameraViewArgs {
   overlays: CameraViewOverlays;
   t: TFn;
   surfaces?: WallSurfaces;
+  /**
+   * Gerendertes Kamerabild (#167): ersetzt die gezeichnete Szene, die
+   * Bedien-Overlays (Lineale, Hilfslinien, Fadenkreuz, Badges) liegen darauf.
+   * Die Szene wird trotzdem durchgerechnet — sie liefert die projizierten
+   * Personen fuers Antippen und die Zaehlung „im Bild".
+   */
+  hintergrund?: CanvasImageSource | null;
 }
 
 /**
@@ -880,6 +887,8 @@ export function drawCameraView(args: DrawCameraViewArgs): ProjectedPerson[] | un
     ctx.fillText(otherCam.label, pos.sx, pos.sy - sz / 2 - 3);
   });
 
+  if (args.hintergrund) ctx.drawImage(args.hintergrund, 0, 0, W, H);
+
   const vRulerW = bare ? 0 : 26;
   const rulerH = 22;
   // ═══ RULERS ═══
@@ -1011,14 +1020,16 @@ export function drawCameraView(args: DrawCameraViewArgs): ProjectedPerson[] | un
     ctx.fillText(badgeText, 10, 16);
   }
 
-  // ═══ VIGNETTE ═══
-  const vigR = Math.max(W, H) * 0.8;
-  const vig = ctx.createRadialGradient(W / 2, H / 2, vigR * 0.4, W / 2, H / 2, vigR);
-  vig.addColorStop(0, 'rgba(0,0,0,0)');
-  vig.addColorStop(0.7, 'rgba(0,0,0,0.05)');
-  vig.addColorStop(1, 'rgba(0,0,0,0.3)');
-  ctx.fillStyle = vig;
-  ctx.fillRect(0, 0, W, H);
+  // ═══ VIGNETTE ═══ (nur auf der Zeichnung; das gerenderte Bild ist fertig)
+  if (!args.hintergrund) {
+    const vigR = Math.max(W, H) * 0.8;
+    const vig = ctx.createRadialGradient(W / 2, H / 2, vigR * 0.4, W / 2, H / 2, vigR);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(0.7, 'rgba(0,0,0,0.05)');
+    vig.addColorStop(1, 'rgba(0,0,0,0.3)');
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, W, H);
+  }
 
   // Compact Pan/Tilt badge top-right
   if (!bare) {

@@ -8,27 +8,28 @@ import { computeFov } from '../../utils/fov';
 import { effectiveCameraPos, rigYaw } from '../../utils/camera';
 import RigStructure from './RigStructure';
 import * as THREE from 'three';
-import { configureTextBuilder } from 'troika-three-text';
 import { getExportRegistry } from '../../store/exportRegistry';
 import { FingerNavigation, umsehen } from '../../lib/fingerNavigation';
 import type { FramingState } from '../../store/exportRegistry';
 import { Suspense, useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import LoadingIndicator from '../Layout/LoadingIndicator';
-import type { BackgroundPlan, Stage, StageObjectType } from '../../types';
+import type { BackgroundPlan, Stage } from '../../types';
 import { FLAT_STAGE_M, groundHeightAt, stageColor, stageOpacity, stageTopZ } from '../../utils/stageBody';
 import { FiLock, FiUnlock } from 'react-icons/fi';
 import { VIEW3D_FOV_DEG, defaultCameraPos, defaultPitchRad } from '../../utils/view3d';
-import robotoFont from '../../assets/fonts/Roboto-Regular.ttf';
 import { useTranslation } from '../../i18n';
 import { easeOut, povFraming, shortestAngleDelta, topFraming, type Framing } from '../../utils/view3dScene';
 import { useSchmal } from '../../lib/useSchmal';
 import { useView3DPrefs } from './view3dPrefs';
 import { PLANUNG_JE_THEMA, PLANUNGS_BODEN } from './planungsLook';
 import { useIstHell } from '../../lib/useIstHell';
-import { Arena, Atmosphere, CoverageWedge, CrowdAndSeating, FieldMesh, LedWalls, ScenePipeline, ShowRig, StageBodyReal, WallSurfaceMaterial } from './ShowScene';
-import { erzeugeMensch, publikumsVariante, stufenWerte, type Pose, type Stufe, type StufenWerte, type Tiefenschaerfe } from '../../avplan/scene3d';
-import { autoVideoWalls, hatSpielfeld, istSpielfeld } from '../../utils/showRig';
+import { Atmosphere, CoverageWedge, ScenePipeline } from './ShowScene';
+import { stufenWerte, type Stufe, type StufenWerte, type Tiefenschaerfe } from '../../avplan/scene3d';
 import { sitzblockNormal } from '../../avplan/floorplan';
+import { Figur } from './Figuren';
+import { Kulisse } from './Kulisse';
+import { useKulissenDaten } from './kulissenDaten';
+import { LABEL_FONT } from './labelFont';
 import CameraListPanel, { type CameraRow } from './CameraListPanel';
 import { cameraRowDetail } from './cameraRow';
 
@@ -45,31 +46,6 @@ export interface FlyDetail {
   durationMs?: number;
 }
 
-// ── Apple-Silicon / Electron 3D-view fix (issue #35) ──
-// drei's <Text> uses troika-three-text, which by default does its font
-// typesetting + SDF generation inside a Web Worker created from a Blob URL.
-// On some platforms (notably M-series Macs and the sandboxed Electron
-// renderer) that worker fails to boot — troika logs
-//   "Worker module function was called but `init` did not return a callable function"
-// and the glyph promise never resolves. Every label then suspends, so the
-// whole <Canvas> stays unmounted behind React's Suspense fallback and the
-// panel hangs forever on "Loading 3D View…".
-//
-// Forcing useWorker:false runs typesetting + SDF generation synchronously on
-// the main thread, sidestepping the broken worker entirely. This app only
-// renders a handful of short labels, so the cost is negligible. Must be called
-// before the first font request (module load time) and against the same troika
-// instance drei imports (single hoisted copy in node_modules).
-configureTextBuilder({ useWorker: false });
-
-// Bundled label font (Roboto Regular, Apache-2.0 — see assets/fonts/Roboto-LICENSE.txt).
-// IMPORTANT: this MUST be a .ttf/.otf/.woff — troika-three-text throws
-// "woff2 fonts not supported" on a .woff2, and its loader swallows the error
-// without resolving the promise, which was the *second* cause of the infinite
-// "Loading 3D View…" hang. Inlined as a base64 data: URL at build time
-// (vite.config.ts assetsInlineLimit) so every 3D <Text> renders fully offline —
-// no runtime CDN/font fetch, CSP stays strict.
-const LABEL_FONT = robotoFont;
 
 /* ── Draggable group that moves on the XZ ground plane ── */
 function DraggableOnFloor({ children, x, z, onDragEnd, onClick }: {
@@ -936,203 +912,6 @@ function FloorPlanOverlay({ plan }: { plan: BackgroundPlan }) {
   );
 }
 
-function PersonMesh({ x, z, height, label, objectType, color, showLabel = true }: { x: number; z: number; height: number; label: string; objectType?: StageObjectType; color?: string; showLabel?: boolean }) {
-  const type = objectType ?? 'person';
-  const defaultColor =
-    type === 'drums' ? '#ef4444' :
-    type === 'keys' ? '#8b5cf6' :
-    type === 'person-guitar' ? '#f97316' :
-    type === 'sitting-person' ? '#38bdf8' :
-    type === 'mic-stand' ? '#6b7280' :
-    type === 'chair' ? '#a16207' :
-    type === 'table' ? '#a16207' :
-    type === 'lectern' ? '#7c3aed' :
-    type === 'schneetiger' ? '#e0f2fe' :
-    '#f59e0b';
-  const col = color ?? defaultColor;
-
-  return (
-    <group position={[x, height / 2, z]}>
-      {type === 'drums' ? (
-        <>
-          <mesh position={[0, -height * 0.15, 0]}>
-            <cylinderGeometry args={[0.5, 0.6, height * 0.5, 12]} />
-            <meshStandardMaterial color={col} emissive={col} emissiveIntensity={0.2} opacity={0.6} transparent />
-          </mesh>
-          <mesh position={[-0.3, height * 0.1, 0]}>
-            <cylinderGeometry args={[0.2, 0.2, 0.05, 12]} />
-            <meshStandardMaterial color="#fbbf24" emissive="#fbbf24" emissiveIntensity={0.3} opacity={0.7} transparent />
-          </mesh>
-          <mesh position={[0.3, height * 0.15, 0]}>
-            <cylinderGeometry args={[0.15, 0.15, 0.05, 12]} />
-            <meshStandardMaterial color="#fbbf24" emissive="#fbbf24" emissiveIntensity={0.3} opacity={0.7} transparent />
-          </mesh>
-        </>
-      ) : type === 'keys' ? (
-        <>
-          <mesh position={[0, -height * 0.1, 0]}>
-            <boxGeometry args={[1.2, height * 0.15, 0.4]} />
-            <meshStandardMaterial color={col} emissive={col} emissiveIntensity={0.2} opacity={0.6} transparent />
-          </mesh>
-          <mesh position={[-0.4, -height * 0.35, 0]}>
-            <cylinderGeometry args={[0.03, 0.03, height * 0.5, 6]} />
-            <meshStandardMaterial color="#9ca3af" opacity={0.5} transparent />
-          </mesh>
-          <mesh position={[0.4, -height * 0.35, 0]}>
-            <cylinderGeometry args={[0.03, 0.03, height * 0.5, 6]} />
-            <meshStandardMaterial color="#9ca3af" opacity={0.5} transparent />
-          </mesh>
-        </>
-      ) : type === 'chair' ? (
-        <>
-          <mesh position={[0, -height * 0.05, 0]}>
-            <boxGeometry args={[0.5, 0.05, 0.5]} />
-            <meshStandardMaterial color={col} opacity={0.75} transparent />
-          </mesh>
-          <mesh position={[0, height * 0.25, -0.22]}>
-            <boxGeometry args={[0.5, height * 0.55, 0.05]} />
-            <meshStandardMaterial color={col} opacity={0.75} transparent />
-          </mesh>
-          {[[-0.22, -0.22], [0.22, -0.22], [-0.22, 0.22], [0.22, 0.22]].map(([lx, lz], i) => (
-            <mesh key={i} position={[lx, -height * 0.3, lz]}>
-              <boxGeometry args={[0.04, height * 0.5, 0.04]} />
-              <meshStandardMaterial color="#57534e" />
-            </mesh>
-          ))}
-        </>
-      ) : type === 'table' ? (
-        <>
-          <mesh position={[0, height * 0.35, 0]}>
-            <boxGeometry args={[1.4, 0.06, 0.8]} />
-            <meshStandardMaterial color={col} opacity={0.8} transparent />
-          </mesh>
-          {[[-0.65, -0.35], [0.65, -0.35], [-0.65, 0.35], [0.65, 0.35]].map(([lx, lz], i) => (
-            <mesh key={i} position={[lx, -height * 0.07, lz]}>
-              <boxGeometry args={[0.06, height * 0.8, 0.06]} />
-              <meshStandardMaterial color="#57534e" />
-            </mesh>
-          ))}
-        </>
-      ) : type === 'lectern' ? (
-        <>
-          {/* Slanted top */}
-          <mesh position={[0, height * 0.42, 0]} rotation={[-0.3, 0, 0]}>
-            <boxGeometry args={[0.7, 0.05, 0.45]} />
-            <meshStandardMaterial color={col} opacity={0.85} transparent />
-          </mesh>
-          {/* Column */}
-          <mesh position={[0, -height * 0.05, 0]}>
-            <boxGeometry args={[0.35, height * 0.85, 0.35]} />
-            <meshStandardMaterial color={col} opacity={0.65} transparent />
-          </mesh>
-        </>
-      ) : type === 'sitting-person' ? (
-        <>
-          {/* Torso shorter, lower */}
-          <mesh position={[0, -height * 0.05, 0]}>
-            <cylinderGeometry args={[0.18, 0.18, height * 0.45, 8]} />
-            <meshStandardMaterial color={col} emissive={col} emissiveIntensity={0.2} opacity={0.6} transparent />
-          </mesh>
-          {/* Head */}
-          <mesh position={[0, height * 0.32, 0]}>
-            <sphereGeometry args={[0.15, 8, 8]} />
-            <meshStandardMaterial color={col} emissive={col} emissiveIntensity={0.2} opacity={0.6} transparent />
-          </mesh>
-          {/* Legs flat */}
-          <mesh position={[0, -height * 0.4, 0.25]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.1, 0.1, 0.5, 6]} />
-            <meshStandardMaterial color={col} opacity={0.5} transparent />
-          </mesh>
-        </>
-      ) : type === 'schneetiger' ? (
-        <>
-          {/* Body */}
-          <mesh position={[0, -height * 0.05, 0]}>
-            <boxGeometry args={[1.5, height * 0.25, 0.6]} />
-            <meshStandardMaterial color={col} opacity={0.95} transparent />
-          </mesh>
-          {/* Head */}
-          <mesh position={[0.85, height * 0.12, 0]}>
-            <sphereGeometry args={[0.22, 12, 12]} />
-            <meshStandardMaterial color={col} opacity={0.95} transparent />
-          </mesh>
-          {/* Tail */}
-          <mesh position={[-0.85, -0.05, 0]} rotation={[0, 0, 0.4]}>
-            <cylinderGeometry args={[0.04, 0.04, 0.8, 6]} />
-            <meshStandardMaterial color={col} />
-          </mesh>
-          {/* Legs */}
-          {[[-0.55, -0.22], [0.55, -0.22], [-0.55, 0.22], [0.55, 0.22]].map(([lx, lz], i) => (
-            <mesh key={i} position={[lx, -height * 0.35, lz]}>
-              <cylinderGeometry args={[0.08, 0.08, height * 0.4, 6]} />
-              <meshStandardMaterial color={col} />
-            </mesh>
-          ))}
-          {/* Stripe band hint */}
-          <mesh position={[0, height * 0.13, 0]}>
-            <boxGeometry args={[1.51, 0.03, 0.61]} />
-            <meshStandardMaterial color="#1f2937" opacity={0.6} transparent />
-          </mesh>
-        </>
-      ) : (
-        <>
-          {/* Generic person (or guitarist / mic-stand) */}
-          <mesh position={[0, -height * 0.1, 0]}>
-            <cylinderGeometry args={[0.15, 0.15, height * 0.65, 8]} />
-            <meshStandardMaterial color={col} emissive={col} emissiveIntensity={0.2} opacity={0.6} transparent />
-          </mesh>
-          <mesh position={[0, height * 0.3, 0]}>
-            <sphereGeometry args={[0.15, 8, 8]} />
-            <meshStandardMaterial color={col} emissive={col} emissiveIntensity={0.2} opacity={0.6} transparent />
-          </mesh>
-          {type === 'person-guitar' && (
-            <mesh position={[0.2, -height * 0.05, 0.15]} rotation={[0, 0, 0.3]}>
-              <boxGeometry args={[0.12, height * 0.4, 0.06]} />
-              <meshStandardMaterial color="#92400e" emissive="#92400e" emissiveIntensity={0.15} opacity={0.7} transparent />
-            </mesh>
-          )}
-          {type === 'mic-stand' && (
-            <mesh position={[0, height * 0.15, 0]}>
-              <cylinderGeometry args={[0.015, 0.015, height * 0.8, 6]} />
-              <meshStandardMaterial color="#9ca3af" opacity={0.7} transparent />
-            </mesh>
-          )}
-        </>
-      )}
-      {showLabel && (
-        <Text font={LABEL_FONT} position={[0, height * 0.5, 0]} fontSize={0.22} color={col} anchorX="center"
-          outlineWidth={0.015} outlineColor="#000000">
-          {label} ({height}m)
-        </Text>
-      )}
-    </group>
-  );
-}
-
-/** Typen, die in der Showansicht als echter Mensch erscheinen. */
-const MENSCH_TYPEN: Partial<Record<StageObjectType, Pose>> = { person: 'stehen', 'person-guitar': 'stehen', 'mic-stand': 'stehen', 'sitting-person': 'sitzen' };
-
-function idZahl(id: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
-  return (h >>> 0) / 4294967295;
-}
-
-/**
- * Referenzperson als Mensch. Kleidung aus der Id, damit dieselbe Person
- * immer gleich aussieht; die Farbe der Person (falls gesetzt) wird das
- * Oberteil. Blickt zur Mitte der Kameras.
- */
-function RealPerson({ id, height, pose, color, facingDeg }: { id: string; height: number; pose: Pose; color?: string; facingDeg: number }) {
-  const mesh = useMemo(() => {
-    const v = publikumsVariante(idZahl(id));
-    // Sitzend ist `height` die Hoehe im Sitzen; die Figur misst stehend.
-    const stehend = pose === 'sitzen' ? Math.max(1.2, height / 0.72) : height;
-    return erzeugeMensch(pose, { oben: color ?? v.oben, unten: v.unten, haut: v.haut, haar: v.haar, langarm: v.langarm }, stehend);
-  }, [id, height, pose, color]);
-  useEffect(() => () => { mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); }, [mesh]);
-  return <primitive object={mesh} rotation={[0, Math.PI / 2 - (facingDeg * Math.PI) / 180, 0]} />;
-}
 
 /**
  * Meldet „bereit", sobald die Szene samt Schriften (Suspense) zwei Bilder
@@ -1163,7 +942,7 @@ function cameraFov(cam: ReturnType<typeof useStore.getState>['cameras'][0]) {
 
 export default function Venue3D() {
   const { t } = useTranslation();
-  const { venue, cameras, persons, backgroundPlan, walls, updatePerson, selectCamera, selectedCameraId, programCameraId } = useStore();
+  const { venue, cameras, persons, backgroundPlan, updatePerson, selectCamera, selectedCameraId, programCameraId } = useStore();
   const [unlockedCameraId, setUnlockedCameraId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState<CameraEditMode>('move');
   const [prefs, updatePrefs] = useView3DPrefs();
@@ -1265,20 +1044,8 @@ export default function Venue3D() {
   const diag = Math.hypot(venue.widthM, venue.heightM);
   const labelSize = Math.min(2.2, Math.max(0.35, diag / 55));
 
-  const audienceInput = useMemo(() => ({
-    widthM: venue.widthM,
-    depthM: venue.heightM,
-    stages: venue.stages,
-    cameras: cameras.map((c) => effectiveCameraPos(c)),
-    persons: persons.map((p) => ({ x: p.x, y: p.y })),
-    walls,
-  }), [venue.widthM, venue.heightM, venue.stages, cameras, persons, walls]);
-
-  const boardLook = useMemo(() => {
-    if (cameras.length === 0) return { x: venue.widthM / 2, y: venue.heightM / 2 };
-    const pts = cameras.map((c) => effectiveCameraPos(c));
-    return { x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length };
-  }, [cameras, venue.widthM, venue.heightM]);
+  const kulisse = useKulissenDaten(prefs.videoBoard);
+  const { draussen, farDist, personBlick } = kulisse;
 
   // Einfache Ansicht (#167): ohne Pipeline, Schatten und Showlicht.
   const simple = prefs.quality === 'simple';
@@ -1304,14 +1071,7 @@ export default function Venue3D() {
       sensorBreiteMm: povInfo.sensor.widthMm,
     };
   }, [realPov, povCam, povInfo]);
-  const draussen = hatSpielfeld(venue.stages) || (!venue.ceilingHeightM && venue.floorMaterial === 'turf');
-  const ledWaende = useMemo(
-    () => (venue.videoWalls?.length ? venue.videoWalls : prefs.videoBoard ? autoVideoWalls(venue.stages, boardLook) : []),
-    [venue.videoWalls, venue.stages, prefs.videoBoard, boardLook],
-  );
-  const farDist = Math.max(500, diag * 6);
   const thema = useIstHell() ? 'hell' : 'dunkel';
-  const personBlick = (x: number, y: number) => (Math.atan2(boardLook.y - y, boardLook.x - x) * 180) / Math.PI;
 
   return (
     <div className="flex w-full h-full" style={{ minHeight: 500 }}>
@@ -1373,23 +1133,15 @@ export default function Venue3D() {
           <PerspectiveCamera makeDefault position={[camX, camY, camZ]} fov={VIEW3D_FOV_DEG} near={0.1} far={farDist} />
           <FPSControls mouseLookEnabled={unlockedCameraId === null} defaultPitch={startPitch} onManualMove={handleManualMove} />
 
-          {show ? (
-            <>
-              <hemisphereLight args={['#8ea2d8', '#0d0a08', draussen ? 0.18 : 0.08]} />
-              {/* Streulicht von der Buehne ins Publikum: ohne es waere die Menge ein schwarzes Loch. */}
-              <directionalLight position={[boardLook.x, 18, boardLook.y - diag]} intensity={0.22} color="#7f93ff" />
-              <ShowRig venue={venue} look={boardLook} werte={werte} dunst={draussen ? 0.32 : 0.5} />
-            </>
-          ) : (
-            <>
-              <ambientLight intensity={0.7} color="#e8eaf0" />
-              <directionalLight position={[10, 20, 10]} intensity={1.0} color="#ffffff" />
-              <directionalLight position={[-10, 15, -5]} intensity={0.3} color="#94a3b8" />
-              <hemisphereLight args={['#b0c4de', '#1e293b', 0.4]} />
-            </>
-          )}
-
-          <Arena venue={venue} show={show} planungsBoden={PLANUNGS_BODEN[thema]} />
+          <Kulisse
+            daten={kulisse}
+            show={show}
+            simple={simple}
+            werte={werte}
+            audience={prefs.audience}
+            planungsBoden={PLANUNGS_BODEN[thema]}
+            einfacheBuehne={(st) => <StageMesh stage={st} />}
+          />
 
           {backgroundPlan && prefs.floorPlan && <FloorPlanOverlay plan={backgroundPlan} />}
 
@@ -1409,23 +1161,6 @@ export default function Venue3D() {
 
           {!show && <VenueWalls widthM={venue.widthM} heightM={venue.heightM} />}
           {prefs.labels && !show && <FloorLabels widthM={venue.widthM} heightM={venue.heightM} />}
-
-          {venue.stages.map((s) => (
-            show
-              ? (istSpielfeld(s) ? <FieldMesh key={s.id} stage={s} /> : <StageBodyReal key={s.id} stage={s} />)
-              : <StageMesh key={s.id} stage={s} />
-          ))}
-
-          {prefs.audience && (
-            <CrowdAndSeating
-              venue={venue}
-              cameras={audienceInput.cameras}
-              persons={audienceInput.persons}
-              walls={walls}
-              max={simple ? 4000 : werte.ao ? 40000 : 15000}
-            />
-          )}
-          {ledWaende.length > 0 && <LedWalls walls={ledWaende} maxLichter={show && werte.ao ? 1 : 0} />}
 
           {prefs.coverage && !realPov && cameras.map((cam, i) => {
             const fov = fovById.get(cam.id)?.fov;
@@ -1491,44 +1226,12 @@ export default function Venue3D() {
               onDragEnd={(nx, nz) => updatePerson(p.id, { x: nx, y: nz })}
             >
               <group position={[0, groundHeightAt(venue.stages, p.x, p.y), 0]}>
-                {/* Menschen sehen in jeder Darstellung gleich aus (#173) — vorher
-                    nur mit Showlicht, sonst als Saeule. */}
-                {MENSCH_TYPEN[p.objectType ?? 'person']
-                  ? (
-                    <>
-                      <RealPerson id={p.id} height={p.height} pose={MENSCH_TYPEN[p.objectType ?? 'person'] as Pose} color={p.color} facingDeg={personBlick(p.x, p.y)} />
-                      {prefs.labels && !show && (
-                        <Text font={LABEL_FONT} position={[0, p.height + 0.25, 0]} fontSize={0.22} color={p.color ?? '#f59e0b'} anchorX="center"
-                          outlineWidth={0.015} outlineColor="#000000">
-                          {p.label}
-                        </Text>
-                      )}
-                    </>
-                  )
-                  : <PersonMesh x={0} z={0} height={p.height} label={p.label} objectType={p.objectType} color={p.color} showLabel={!realPov} />}
+                {/* Menschen sehen in jeder Darstellung gleich aus (#173). */}
+                <Figur person={p} facingDeg={personBlick(p.x, p.y)} name={prefs.labels && !show} objektName={!realPov} />
               </group>
             </DraggableOnFloor>
           ))}
 
-          {/* Walls */}
-          {walls.map((w) => {
-            const dx = w.x2 - w.x1;
-            const dy = w.y2 - w.y1;
-            const len = Math.sqrt(dx * dx + dy * dy);
-            const cx = (w.x1 + w.x2) / 2;
-            const cy = (w.y1 + w.y2) / 2;
-            const angle = Math.atan2(dy, dx);
-            return (
-              <mesh key={w.id} position={[cx, w.height / 2, cy]} rotation={[0, -angle, 0]}>
-                <boxGeometry args={[len, w.height, 0.15]} />
-                {show && venue.wallMaterial
-                  ? <WallSurfaceMaterial art={venue.wallMaterial} laengeM={len} hoeheM={w.height} farbe={w.color} />
-                  : show
-                  ? <meshStandardMaterial color={w.color ?? '#3a3d42'} roughness={0.9} />
-                  : <meshStandardMaterial color={w.color ?? '#6b7280'} opacity={0.6} transparent />}
-              </mesh>
-            );
-          })}
           </Suspense>
         </Canvas>
       </div>
