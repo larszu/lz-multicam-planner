@@ -6,7 +6,7 @@ import { cameraListOf, buildAvPlanExport } from '../../store/avplanExport';
 import { parseAvPlan } from '../../utils/avplan';
 import { useRef, useCallback, useState, useEffect, useMemo } from 'react';
 import type { ExportMode } from '../Export/ExportPanel';
-import type { EditMode } from '../../types';
+import { editModeOf, type EditMode } from '../../types';
 import { useTranslation, format } from '../../i18n';
 import ZoomControl from './ZoomControl';
 import { Menu, MenuItem, MenuSeparator, MenuHeading } from './Menu';
@@ -66,7 +66,7 @@ export default function Header({
   // eingeloest. Wer keinen hat, steht mit seinem Label fuer sich.
   const beschriftung = (tab: TabDef) => (tab.key ? t(tab.key, tab.label) : tab.label);
   const editModes = useMemo(() => getEditModes(t), [t]);
-  const { venue, projectVersion, lastSavedVersion, saveProject, loadProject, newProject, editMode, setEditMode, avForeign, showForeign, toggleShowForeign } = useStore();
+  const { venue, projectVersion, lastSavedVersion, saveProject, loadProject, newProject, editGroups, setEditMode, avForeign, showForeign, toggleShowForeign } = useStore();
   const { canUndo, canRedo } = useHistoryState();
   const modKey = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
   const hasForeignLighting = !!(avForeign.lighting && Array.isArray((avForeign.lighting as { fixtures?: unknown }).fixtures) && (avForeign.lighting as { fixtures: unknown[] }).fixtures.length > 0);
@@ -402,7 +402,7 @@ export default function Header({
               {editModes.map((m) => (
                 <MenuItem
                   key={m.id}
-                  checked={editMode === m.id}
+                  checked={editModeOf(editGroups) === m.id}
                   onClick={() => { close(); setEditMode(m.id); }}
                   note={m.title}
                 >

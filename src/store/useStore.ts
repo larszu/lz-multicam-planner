@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import type { VenueCamera, Venue, ViewTab, EditMode, ReferencePerson, BackgroundPlan, Stage, ProjectFile, VenueTemplate, StageObjectType, Lens, Wall, Camera, Shot, Shotlist, RigTake, PtzPreset } from '../types';
+import type { VenueCamera, Venue, ViewTab, EditMode, EditGroup, ReferencePerson, BackgroundPlan, Stage, ProjectFile, VenueTemplate, StageObjectType, Lens, Wall, Camera, Shot, Shotlist, RigTake, PtzPreset } from '../types';
+import { EDIT_GROUPS } from '../types';
 import { presetFromCamera, nextPresetNumber } from '../utils/ptzPresets';
 import { CAMERAS, CAMERA_COLORS } from '../data/cameras';
 import { LENSES, pickInitialMountAndLens } from '../data/lenses';
@@ -229,8 +230,9 @@ interface AppState {
   showForeign: boolean;
   toggleShowForeign: () => void;
 
-  // Edit mode — restricts editing to one category at a time (issue #43)
-  editMode: EditMode;
+  // Was bearbeitbar ist (#169). Ein Modus (#43) setzt die Gruppen in einem Zug.
+  editGroups: EditGroup[];
+  toggleEditGroup: (group: EditGroup) => void;
   setEditMode: (mode: EditMode) => void;
 
   // Layout UI
@@ -1020,8 +1022,13 @@ export const useStore = create<AppState>((set, get) => ({
     }),
 
   setCurrentShotId: (id) => set({ currentShotId: id }),
-  editMode: 'all',
-  setEditMode: (mode) => set({ editMode: mode }),
+  editGroups: [...EDIT_GROUPS],
+  toggleEditGroup: (group) => set((s) => ({
+    editGroups: s.editGroups.includes(group)
+      ? s.editGroups.filter((g) => g !== group)
+      : EDIT_GROUPS.filter((g) => g === group || s.editGroups.includes(g)),
+  })),
+  setEditMode: (mode) => set({ editGroups: mode === 'all' ? [...EDIT_GROUPS] : [mode] }),
   showAllFov: true,
   toggleShowAllFov: () => set((s) => ({ showAllFov: !s.showAllFov })),
   showDof: false,

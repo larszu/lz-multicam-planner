@@ -177,6 +177,7 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
   the project file
 - Two-point calibration tool for scaling imported floor plans (per axis, X or Y)
 - Draw walls with 45° shift-snapping
+- **What can be edited** sits as a small switch bar in the top-left corner of the plan: Floor plan, Stage, Room, Objects, Cameras. Click a group to lock it (lock icon) and again to free it — e.g. lock everything but cameras while placing cameras. *Edit → Edit mode* offers the same as one-click presets
 - Place stage objects (person, guitarist, drums, keys, mic stand, custom) — new people land on the main stage, side by side
 - **Room (optional, collapsed in the sidebar):** ceiling height, floor (concrete, wood, carpet, grass, tiles, black stage floor), **audience areas** and **video walls**. Add an area with *Seated area* or *Standing area*, then move, resize and rotate it in the 2D plan; rows, row gap, rise per row, first-row height and occupancy sit under *Fine-tune*. Seated areas are rows of seats on a rising stand, standing areas a loose, dense crowd on the floor; one click switches between the two. Video walls are dragged and rotated the same way (the arrow shows where the picture faces). Nothing here is required — without areas the 3D view fills the free floor with people by itself
 

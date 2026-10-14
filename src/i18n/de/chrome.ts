@@ -62,6 +62,7 @@ export const chrome: Record<string, string> = {
   'status.people': '{count} Personen & Objekte',
   'status.walls': '{count} Wände',
   'status.mode.floorplan': 'Bearbeiten: Grundriss',
+  'status.mode.some': 'Gesperrt: {n} von {total}',
   'status.mode.stage': 'Bearbeiten: Bühne',
   'status.mode.objects': 'Bearbeiten: Objekte',
   'status.mode.cameras': 'Bearbeiten: Kameras',

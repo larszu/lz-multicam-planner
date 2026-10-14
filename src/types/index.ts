@@ -868,6 +868,18 @@ export interface RigTake {
 // built up step by step. `all` respects each object's own lock flag instead.
 export type EditMode = 'all' | 'floorplan' | 'stage' | 'objects' | 'cameras';
 
+/** Was im 2D-Plan bearbeitbar ist (#169). Jede Gruppe einzeln an/aus;
+ *  die Edit-Modi (#43) sind Abkuerzungen darauf. */
+export type EditGroup = 'floorplan' | 'stage' | 'room' | 'objects' | 'cameras';
+export const EDIT_GROUPS: readonly EditGroup[] = ['floorplan', 'stage', 'room', 'objects', 'cameras'];
+
+/** Der Modus, den eine Auswahl darstellt — null, wenn sie keiner ist. */
+export function editModeOf(groups: readonly EditGroup[]): EditMode | null {
+  if (EDIT_GROUPS.every((g) => groups.includes(g))) return 'all';
+  if (groups.length === 1 && groups[0] !== 'room') return groups[0] as EditMode;
+  return null;
+}
+
 // ── Saved project ──
 export interface ProjectFile {
   formatVersion: 1;

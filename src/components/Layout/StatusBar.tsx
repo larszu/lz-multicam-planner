@@ -1,6 +1,7 @@
 import { useStore } from '../../store/useStore';
 import { getCameraById } from '../../data/cameras';
 import { useTranslation, format } from '../../i18n';
+import { EDIT_GROUPS, editModeOf } from '../../types';
 
 /**
  * Die Statusleiste — 24 px, ganz unten, in jeder Sicht.
@@ -35,7 +36,8 @@ export default function StatusBar() {
   const persons = useStore((s) => s.persons);
   const walls = useStore((s) => s.walls);
   const selectedCameraId = useStore((s) => s.selectedCameraId);
-  const editMode = useStore((s) => s.editMode);
+  const editGroups = useStore((s) => s.editGroups);
+  const editMode = editModeOf(editGroups);
   // MIT den eigenen Kameras: ohne sie faellt der Name einer selbst
   // angelegten Kamera aus der Leiste, und die Auswahl saehe namenlos aus.
   const customCameras = useStore((s) => s.customCameras);
@@ -48,7 +50,9 @@ export default function StatusBar() {
   // als Schluessel ist fuer `i18n:check` nicht aufloesbar, und die vier
   // Eintraege gaelten dort ab sofort als unerreichbar.
   const modusText = (m: typeof editMode) =>
-    m === 'floorplan'
+    m === null
+      ? format(t('status.mode.some', 'Locked: {n} of {total}'), { n: EDIT_GROUPS.length - editGroups.length, total: EDIT_GROUPS.length })
+      : m === 'floorplan'
       ? t('status.mode.floorplan', 'Editing: floor plan')
       : m === 'stage'
         ? t('status.mode.stage', 'Editing: stage')

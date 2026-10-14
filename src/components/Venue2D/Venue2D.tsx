@@ -19,6 +19,7 @@ import { useTranslation, format } from '../../i18n';
 import { useIstHell } from '../../lib/useIstHell';
 import { planAblage } from '../../avplan/floorplan';
 import { usePlanLaden } from '../../lib/usePlanLaden';
+import EditGroupsBar from './EditGroupsBar';
 import RaumOverlay, { type RaumAuswahl } from './RaumOverlay';
 
 // Shared style for context-menu items (issue #38).
@@ -80,14 +81,15 @@ const PALETTE = {
 export default function Venue2D() {
   const { t } = useTranslation();
   const P = PALETTE[useIstHell() ? 'hell' : 'dunkel'];
-  const { venue, setVenue, cameras, selectedCameraId, selectCamera, moveCamera, updateCamera, removeCamera, duplicateCamera, showAllFov, showDof, pixelsPerMeter, persons, updatePerson, removePerson, duplicatePerson, updateStage, addStage, removeStage, updateSeatingBlock, updateVideoWall, backgroundPlan, setBackgroundPlan, walls, updateWall, addWall, removeWall, wallSnap, editMode, avForeign, showForeign } = useStore();
+  const { venue, setVenue, cameras, selectedCameraId, selectCamera, moveCamera, updateCamera, removeCamera, duplicateCamera, showAllFov, showDof, pixelsPerMeter, persons, updatePerson, removePerson, duplicatePerson, updateStage, addStage, removeStage, updateSeatingBlock, updateVideoWall, backgroundPlan, setBackgroundPlan, walls, updateWall, addWall, removeWall, wallSnap, editGroups, avForeign, showForeign } = useStore();
 
-  // Edit-mode locking (issue #43): each mode locks every category except its own.
-  // 'all' falls through to each object's individual lock flag.
-  const lockStages = editMode !== 'all' && editMode !== 'stage';
-  const lockPersons = editMode !== 'all' && editMode !== 'objects';
-  const lockCameras = editMode !== 'all' && editMode !== 'cameras';
-  const lockWalls = editMode !== 'all' && editMode !== 'floorplan';
+  // Gesperrte Gruppen (#43, #169). Eine freie Gruppe faellt auf die Sperre
+  // des einzelnen Objekts durch.
+  const lockStages = !editGroups.includes('stage');
+  const lockRoom = !editGroups.includes('room');
+  const lockPersons = !editGroups.includes('objects');
+  const lockCameras = !editGroups.includes('cameras');
+  const lockWalls = !editGroups.includes('floorplan');
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   // Grundriss per Drag & Drop auf den Plan (ADR-015, @avplan/floorplan):
@@ -636,6 +638,7 @@ export default function Venue2D() {
         </div>
       )}
       {/* Zoom indicator */}
+      <EditGroupsBar />
       <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 10, background: P.chip, padding: '4px 10px', borderRadius: 4, fontSize: 11, color: P.chipText, pointerEvents: 'none', backdropFilter: 'blur(4px)' }}>
         {(zoom * 100).toFixed(0)}%
       </div>
@@ -780,7 +783,7 @@ export default function Venue2D() {
           ppm={ppm}
           blocks={venue.seatingBlocks ?? []}
           walls={venue.videoWalls ?? []}
-          locked={lockStages || drawingWall || calibActive}
+          locked={lockRoom || drawingWall || calibActive}
           auswahl={raumAuswahl}
           onAuswahl={(a) => { setRaumAuswahl(a); if (a) setSelectedStageId(null); }}
           onBlock={updateSeatingBlock}
