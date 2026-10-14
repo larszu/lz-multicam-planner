@@ -13,7 +13,7 @@ A fast, focused broadcast camera & lens planning tool for multicam setups. Calcu
 Every push to the default branch builds this repo's page from
 `.github/workflows/pages.yml` and publishes it:
 
-**https://larszu.github.io/multicam-planner/**
+**https://larszu.github.io/lz-multicam-planner/** (always the latest release)
 
 The workflow **asks the Pages API before it configures anything.** With no
 Pages site it still builds — that is a real check — and skips only the

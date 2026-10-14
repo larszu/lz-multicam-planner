@@ -141,17 +141,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   sync-version-to-main:
-    name: Persist tag version to master
+    name: Persist tag version to the default branch
     needs: release
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
     steps:
-      - name: Checkout master
+      - name: Checkout default branch
         uses: actions/checkout@v5
         with:
-          ref: master
+          ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -162,11 +162,14 @@ jobs:
       - name: Bump package.json to tag version and commit
         # The build job only syncs the version inside the runner (for the
         # installer filename) — here we persist it so package.json.version on
-        # master keeps pace with the released tags. Idempotent: exits cleanly
+        # the default branch keeps pace with the released tags (until 2026-10-14
+        # this wrote to `master`, which stopped being the default on 23.09.). Idempotent: exits cleanly
         # when already in sync. Pushes with GITHUB_TOKEN intentionally do NOT
         # re-trigger workflows (no loop). Requires that branch protection on
-        # master permits the github-actions[bot] push.
+        # the default branch permits the github-actions[bot] push.
         shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -eu
           TAG_VERSION="${GITHUB_REF#refs/tags/v}"
@@ -180,5 +183,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package.json package-lock.json
           git commit -m "chore(release): bump package.json to v$TAG_VERSION (tag sync)"
-          git pull --rebase origin master
-          git push origin HEAD:master
+          git pull --rebase origin "$DEFAULT_BRANCH"
+          git push origin "HEAD:$DEFAULT_BRANCH"

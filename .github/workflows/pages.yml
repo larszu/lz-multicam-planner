@@ -43,11 +43,13 @@ name: Deploy Web (GitHub Pages)
 
 on:
   push:
-    # `master`, nicht `main`: das ist in DIESEM Repo der Standard-Branch (die
-    # anderen Planer heissen `main`). Ein Trigger auf `main` waere hier kein
-    # Fehler, den man sieht — der Workflow liefe schlicht nie, und die Seite
-    # bliebe auf dem Stand ihres ersten Laufs von Hand.
-    branches: [master]
+    # Die Seite zeigt den RELEASE-Stand: veroeffentlicht wird beim v-Tag,
+    # nicht bei jedem Merge. Bis 2026-10-14 stand hier `branches: [master]`
+    # — seit der Umstellung des Default-Branches auf `main` (23.09.) lief
+    # dadurch kein Deploy mehr, und der Push des Release-Jobs nach `master`
+    # kann keinen Workflow ausloesen (GITHUB_TOKEN). Die Umgebung
+    # `github-pages` muss Tags `v*` zulassen (Deployment branches and tags).
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -120,7 +122,7 @@ jobs:
             echo "**So wird die Seite live:** Repo-Einstellungen -> Pages -> *Source* auf"
             echo "**GitHub Actions** stellen. Danach diesen Workflow einmal von Hand starten"
             echo "(*Run workflow*) und nachsehen, dass er gruen durchlaeuft. Ab dann"
-            echo "veroeffentlicht jeder Push auf master von selbst — an dieser Datei ist"
+            echo "veroeffentlicht jeder Release-Tag (v*) von selbst — an dieser Datei ist"
             echo "nichts zu aendern."
           } >> "$GITHUB_STEP_SUMMARY"
 
