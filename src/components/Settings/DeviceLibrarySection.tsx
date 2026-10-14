@@ -203,7 +203,7 @@ export default function DeviceLibrarySection() {
           </form>
         )}
 
-        {lib.error && <LibraryErrorLine code={lib.error} />}
+        {lib.error && <LibraryErrorLine code={lib.error} detail={lib.errorDetail ?? undefined} />}
       </section>
 
       <section style={{ marginTop: '24px' }}>

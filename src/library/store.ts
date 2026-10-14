@@ -82,6 +82,9 @@ interface LibraryState {
   user: LibraryUser | null;
   phase: LibraryPhase;
   error: LibraryFehler | null;
+  /** HTTP-Status und Code des Servers zu `error: 'server'` (#156) — ohne ihn
+   *  sagte die Meldung nur „spaeter erneut versuchen". */
+  errorDetail: string | null;
   /** Token nur fuer diese Sitzung gemerkt (kein Schluesselbund / Speicher voll). */
   sessionOnly: boolean;
   cache: LibraryCache;
@@ -144,6 +147,15 @@ export const useDeviceLibrary = create<LibraryState>()((set, get) => {
     await get().syncAll();
   };
 
+  const fehlerDetail = (e: unknown): string | null => {
+    if (e instanceof LibraryError) {
+      if (e.code !== 'server') return null;
+      const teile = [e.status ? `HTTP ${e.status}` : '', e.message && e.message !== e.code ? e.message : ''].filter(Boolean);
+      return teile.length ? teile.join(' · ') : null;
+    }
+    return e instanceof Error ? e.message : null;
+  };
+
   const abgemeldetWenn = async (e: unknown): Promise<LibraryFehler> => {
     const code: LibraryErrorCode = e instanceof LibraryError ? e.code : 'server';
     if (code === 'not-signed-in' || code === 'wrong-credentials') await vergiss();
@@ -157,6 +169,7 @@ export const useDeviceLibrary = create<LibraryState>()((set, get) => {
     user: null,
     phase: 'idle',
     error: null,
+    errorDetail: null,
     sessionOnly: false,
     cache: initialCache(initialServer),
     lastSync: null,
@@ -244,7 +257,7 @@ export const useDeviceLibrary = create<LibraryState>()((set, get) => {
         set({ error: 'not-signed-in' });
         return;
       }
-      set({ phase: 'syncing', error: null });
+      set({ phase: 'syncing', error: null, errorDetail: null });
       try {
         const { server, cache } = get();
         // Ob der Server noch derselbe ist, entscheidet `syncFrom` — dieselbe
@@ -257,7 +270,7 @@ export const useDeviceLibrary = create<LibraryState>()((set, get) => {
         publish(r.cache);
         set({ cache: r.cache, lastSync: { at: new Date().toISOString(), stats: r.stats }, phase: 'idle' });
       } catch (e) {
-        set({ phase: 'idle', error: await abgemeldetWenn(e) });
+        set({ phase: 'idle', error: await abgemeldetWenn(e), errorDetail: fehlerDetail(e) });
       }
     },
 
@@ -278,7 +291,7 @@ export const useDeviceLibrary = create<LibraryState>()((set, get) => {
         }
         return;
       }
-      set({ phase: 'uploading', error: null });
+      set({ phase: 'uploading', error: null, errorDetail: null });
       try {
         const ergebnis = await uploadRequest(
           get().server,
@@ -290,7 +303,7 @@ export const useDeviceLibrary = create<LibraryState>()((set, get) => {
         saveJSON(LEDGER_KEY, uploads);
         set({ uploads, phase: 'idle' });
       } catch (e) {
-        set({ phase: 'idle', error: await abgemeldetWenn(e) });
+        set({ phase: 'idle', error: await abgemeldetWenn(e), errorDetail: fehlerDetail(e) });
       }
     },
 

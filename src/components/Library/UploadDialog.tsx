@@ -141,7 +141,7 @@ export default function UploadDialog({ item, onClose }: { item: LibraryItem; onC
             </div>
           )}
 
-          {lib.error && <LibraryErrorLine code={lib.error} />}
+          {lib.error && <LibraryErrorLine code={lib.error} detail={lib.errorDetail ?? undefined} />}
         </div>
       </div>
     </div>
