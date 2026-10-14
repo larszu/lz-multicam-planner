@@ -55,7 +55,7 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 - Adapter system: automatic adapter detection with T-stop light loss, sensor crop info, Speed Booster support (e.g., EF→MFT)
 - Custom lens support: create and save your own lenses
 - **Built-in lenses (PTZ, camcorders, action cams):** a camera with a built-in lens only ever gets its *own* lens — never another model's. Where the catalogue has no data for it yet, a marked placeholder (typical 20x) stands in so preview and field of view work right away; *Enter values from the data sheet* saves the real range for that camera
-- **AI auto-fill** for custom cameras (Gemini): key and model are set under the key button and shared with the AI floor-plan analysis; the model is selectable because providers retire old ones
+- **AI auto-fill** for custom cameras: fills sensor, mount and modes from manufacturer + model, with a source per value. Uses the provider from **Settings → AI**
 - **Custom cameras and lenses travel with the project:** the ones the placed
   cameras use are written into the `.mcplan` (and the `.avplan` cameras slot)
   and added to the local library when the project is opened on another
@@ -77,6 +77,16 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
   every camera whose GUID has to be added or removed.
 
 ### 🗄 Device library (devices.zumpelars.de)
+- **Settings → AI**: one place for every AI feature. Pick the provider —
+  Google Gemini (free key), ChatGPT (OpenAI), Claude (Anthropic), Mistral or
+  Grok (xAI) —, paste the API key (masked, kept only in this device's local
+  storage, removable) and optionally change the model. Defaults:
+  `gemini-3.5-flash-lite`, `gpt-5.6`, `claude-sonnet-5-5`,
+  `mistral-medium-latest`, `grok-4`. **Test connection** sends a minimal
+  request and shows success or the provider's exact error (rejected key,
+  unknown model, rate limit, blocked network). Requests go straight from the
+  app to the provider; keys saved by older versions are picked up
+  automatically
 - **Settings → Device library**: server address (default
   `https://devices.zumpelars.de`, changeable, *Reset* returns to it), sign-in
   with email or username and password, a second step for the two-factor code,
@@ -184,6 +194,7 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
   edge, PDFs are rendered to at most 2000 px, so a phone photo no longer bloats
   the project file
 - Two-point calibration tool for scaling imported floor plans (per axis, X or Y)
+- **AI floor-plan analysis** (sidebar, Floor plan): reads walls, stages and scale from the uploaded plan. Uses the provider from **Settings → AI**
 - Draw walls with 45° shift-snapping
 - **What can be edited** sits as a small switch bar in the top-left corner of the plan: Floor plan, Stage, Room, Objects, Cameras. Click a group to lock it (lock icon) and again to free it — e.g. lock everything but cameras while placing cameras. *Edit → Edit mode* offers the same as one-click presets
 - Place stage objects (person, guitarist, drums, keys, mic stand, custom) — new people land on the main stage, side by side

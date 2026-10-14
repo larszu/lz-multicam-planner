@@ -1,0 +1,23 @@
+// Einstellungen → AI (settings.ai.*)
+export const ai: Record<string, string> = {
+  'settings.tab.ai': 'KI',
+  'settings.ai.intro': 'Grundriss-Analyse und Kamera-Autofill nutzen den hier gewählten Anbieter. Der Schlüssel bleibt auf diesem Gerät und geht nur an den Anbieter.',
+  'settings.ai.provider': 'Anbieter',
+  'settings.ai.freeKey': ' – kostenloser Schlüssel',
+  'settings.ai.key': 'API-Schlüssel',
+  'settings.ai.keyPlaceholder': '{label}-API-Schlüssel einfügen',
+  'settings.ai.showKey': 'Schlüssel zeigen',
+  'settings.ai.hideKey': 'Schlüssel verbergen',
+  'settings.ai.removeKey': 'Schlüssel entfernen',
+  'settings.ai.keyHint': 'Schlüssel gibt es unter {url}. Nur auf diesem Gerät gespeichert.',
+  'settings.ai.model': 'Modell',
+  'settings.ai.modelHint': 'Leer heißt Standard: {model}.',
+  'settings.ai.test': 'Verbindung testen',
+  'settings.ai.testOk': '{label} hat geantwortet – Schlüssel und Modell funktionieren.',
+  'settings.ai.err.auth': 'Der Schlüssel wurde abgelehnt. Prüfen, ob er vollständig ist und zu diesem Anbieter gehört.',
+  'settings.ai.err.model': 'Das Modell ist unbekannt oder für diesen Schlüssel nicht freigegeben. In Einstellungen → KI ein anderes wählen.',
+  'settings.ai.err.rate': 'Anfragelimit oder Kontingent erreicht. Kurz warten oder Tarif und Abrechnung beim Anbieter prüfen.',
+  'settings.ai.err.refusal': 'Das Modell hat die Anfrage abgelehnt. Erneut versuchen oder ein anderes Modell wählen.',
+  'settings.ai.err.network': 'Keine Verbindung zum Anbieter – offline oder vom Browser blockiert. Am zuverlässigsten laufen KI-Anfragen in der Desktop-App.',
+  'settings.ai.err.empty': 'Der Anbieter hat ohne Text geantwortet. Erneut versuchen oder ein anderes Modell wählen.',
+};

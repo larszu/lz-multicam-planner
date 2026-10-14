@@ -4,8 +4,11 @@ import { SENSORS } from '../../data/cameras';
 import { CABLE_CAMERA_IDS } from '../../data/cableCameraCatalogIds';
 import type { Camera, SensorSize } from '../../types';
 import { isEstimate } from '../../types';
-import { useTranslation } from '../../i18n';
-import { AI_PROVIDERS, GEMINI_DEFAULT_MODEL, loadAiModel, saveAiModel } from '../../utils/aiProviders';
+import { format, useTranslation } from '../../i18n';
+import { AiError, callText, parseJsonResponse } from '../../utils/aiProviders';
+import { openSettings } from '../Settings/openSettings';
+import { useAiSettings } from '../Settings/useAiSettings';
+import { aiErrorHint } from '../Settings/aiErrorHint';
 
 /**
  * Shared form for both creating and editing a custom camera. Used inline in the
@@ -17,25 +20,9 @@ import { AI_PROVIDERS, GEMINI_DEFAULT_MODEL, loadAiModel, saveAiModel } from '..
  *    URSA Broadcast G2's 6K / 4K S16 / 2/3" B4 modes) with auto-calculated
  *    crop factor against the 43.267 mm full-frame diagonal.
  *  - Adapter mounts are a multi-select (mount plates the body can swap to).
- *  - When a Gemini API key is stored in localStorage, an "Auto-fill from AI"
- *    button calls the Gemini API to populate the fields from a manufacturer +
- *    model name. The key is set/cleared via the inline ⚙ key button.
+ *  - With an API key in Settings → AI, an "AI auto-fill" button asks the
+ *    chosen provider to populate the fields from manufacturer + model name.
  */
-
-// Schluessel und Modell teilt das Formular mit der Grundriss-Analyse
-// (`aiProviders`). Der alte eigene Schluessel wird beim Lesen uebernommen.
-const GEMINI_KEY_STORAGE = AI_PROVIDERS.gemini.keyStorageKey;
-const LEGACY_GEMINI_KEY_STORAGE = 'multicam-gemini-api-key';
-
-function loadGeminiKey(): string {
-  try {
-    const key = localStorage.getItem(GEMINI_KEY_STORAGE) ?? localStorage.getItem(LEGACY_GEMINI_KEY_STORAGE) ?? '';
-    if (key && !localStorage.getItem(GEMINI_KEY_STORAGE)) localStorage.setItem(GEMINI_KEY_STORAGE, key);
-    return key;
-  } catch {
-    return '';
-  }
-}
 
 const MOUNTS = ['B4', 'EF', 'PL', 'E', 'MFT', 'RF', 'L', 'FZ', 'integrated', 'M12'] as const;
 const TYPES = [
@@ -106,11 +93,7 @@ export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, tit
     (initial?.sensorModes ?? []).map((m) => ({ name: m.name, widthMm: String(m.widthMm), heightMm: String(m.heightMm) })),
   );
 
-  // Gemini state
-  const [apiKey, setApiKey] = useState<string>(loadGeminiKey);
-  const [aiModel, setAiModel] = useState<string>(() => loadAiModel('gemini'));
-  const [showKeyInput, setShowKeyInput] = useState(false);
-  const [pendingKey, setPendingKey] = useState('');
+  const ai = useAiSettings();
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   // Der Beleg je Feld, wie ihn die Abfrage geliefert hat. Ohne ihn sah eine
@@ -170,7 +153,7 @@ export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, tit
   };
 
   const runAiAutofill = async () => {
-    if (!apiKey) { setShowKeyInput(true); return; }
+    if (!ai.apiKey) { openSettings('ai'); return; }
     if (!manufacturer.trim() && !model.trim()) {
       setAiError(t('sidebar.form.aiErrNeedName', 'Enter at least a manufacturer or model first.'));
       return;
@@ -179,19 +162,19 @@ export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, tit
     setAiError(null);
     try {
       const prompt = buildPrompt(manufacturer, model);
-      const data = await callGemini(apiKey, aiModel, prompt);
+      const data = parseJsonResponse<AiCameraResult>(await callText(ai, prompt));
+      if (typeof data !== 'object' || data === null) throw new Error('The AI returned a non-object response');
       applyAiResult(data);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t('sidebar.form.aiErrFailed', 'AI request failed');
-      setAiError(/\b404\b/.test(msg)
-        ? `${msg} — ${t('sidebar.form.aiErrModel', 'The model is no longer available. Pick another one under the key button.')}`
-        : msg);
+      const hint = aiErrorHint(err instanceof AiError ? err.kind : 'other', t);
+      setAiError(hint ? `${msg} — ${hint}` : msg);
     } finally {
       setAiLoading(false);
     }
   };
 
-  const applyAiResult = (data: GeminiCameraResult) => {
+  const applyAiResult = (data: AiCameraResult) => {
     if (Array.isArray(data.verification)) {
       const entries = data.verification
         .filter((v) => typeof v?.field === 'string' && typeof v?.source === 'string')
@@ -233,46 +216,28 @@ export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, tit
     }
   };
 
-  const saveKey = () => {
-    const trimmed = pendingKey.trim();
-    if (trimmed) {
-      localStorage.setItem(GEMINI_KEY_STORAGE, trimmed);
-      setApiKey(trimmed);
-    }
-    saveAiModel('gemini', aiModel);
-    setPendingKey('');
-    setShowKeyInput(false);
-  };
-
-  const clearKey = () => {
-    localStorage.removeItem(GEMINI_KEY_STORAGE);
-    localStorage.removeItem(LEGACY_GEMINI_KEY_STORAGE);
-    setApiKey('');
-    setPendingKey('');
-    setShowKeyInput(false);
-  };
-
   return (
     <div className="bg-bc-dark p-2 border border-bc-border space-y-1.5">
       <div className="flex items-center justify-between">
         <span className="text-bc-text font-medium text-[11px]">{resolvedTitle}</span>
         <div className="flex items-center gap-1">
-          {apiKey && (
+          {ai.apiKey && (
             <button
               type="button"
               onClick={runAiAutofill}
               disabled={aiLoading}
               className="flex items-center gap-1 px-1.5 py-0.5 bg-bc-accent/20 text-bc-accent text-[10px] hover:bg-bc-accent/30 disabled:opacity-50"
-              title={t('sidebar.form.aiAutofillTitle', 'Auto-fill the form from Gemini AI based on the manufacturer + model')}
+              title={format(t('sidebar.form.aiAutofillTitle', 'Fill the form via {label} from manufacturer + model'), { label: ai.provider.label })}
             >
               <FiZap size={10} /> {aiLoading ? t('sidebar.form.askingAi', 'Asking AI…') : t('sidebar.form.aiAutofill', 'AI auto-fill')}
             </button>
           )}
           <button
             type="button"
-            onClick={() => { setPendingKey(apiKey); setShowKeyInput(!showKeyInput); }}
+            onClick={() => openSettings('ai')}
             className="p-1 text-bc-dim hover:text-bc-accent"
-            title={apiKey ? t('sidebar.form.manageKey', 'Manage Gemini API key') : t('sidebar.form.setKey', 'Set Gemini API key for AI auto-fill')}
+            title={ai.apiKey ? t('sidebar.form.aiSettings', 'AI settings') : t('sidebar.form.setKey', 'Add an AI key in Settings to enable auto-fill')}
+            aria-label={t('sidebar.form.aiSettings', 'AI settings')}
           >
             <FiKey size={11} />
           </button>
@@ -281,38 +246,6 @@ export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, tit
           </button>
         </div>
       </div>
-
-      {showKeyInput && (
-        <div className="bg-bc-panel p-1.5 border border-bc-border space-y-1">
-          <div className="text-[10px] text-bc-dim leading-tight">
-            {t('sidebar.form.keyHintPre', 'Paste a free Gemini API key from')} <span className="text-bc-accent">aistudio.google.com</span>.
-            {' '}{t('sidebar.form.keyHintPost', 'Stored locally only.')}
-          </div>
-          <input
-            type="password"
-            className="w-full border border-bc-border bg-bc-panel-raised px-1 py-0.5 text-bc-text-bright text-xs"
-            placeholder="AIza…"
-            value={pendingKey}
-            onChange={(e) => setPendingKey(e.target.value)}
-          />
-          <label className="flex items-center gap-1 text-[10px] text-bc-dim">
-            {t('sidebar.form.aiModel', 'Model')}
-            <input
-              className="min-w-0 flex-1 bg-bc-dark border border-bc-border px-1 py-0.5 text-bc-text-bright text-xs"
-              placeholder={GEMINI_DEFAULT_MODEL}
-              value={aiModel}
-              onChange={(e) => setAiModel(e.target.value)}
-            />
-          </label>
-          <div className="flex gap-1">
-            <button onClick={saveKey} className="flex-1 py-0.5 bg-bc-green/20 text-bc-green-text text-[10px] hover:bg-bc-green/30">{t('sidebar.form.save', 'Save')}</button>
-            {apiKey && (
-              <button onClick={clearKey} className="flex-1 py-0.5 bg-bc-red/20 text-bc-red-text text-[10px] hover:bg-bc-red/30">{t('sidebar.form.clear', 'Clear')}</button>
-            )}
-            <button onClick={() => setShowKeyInput(false)} className="flex-1 py-0.5 border border-bc-border bg-bc-panel-raised text-bc-muted text-[10px] hover:text-bc-text">{t('sidebar.form.cancel', 'Cancel')}</button>
-          </div>
-        </div>
-      )}
 
       {aiError && (
         <div className="text-[10px] text-bc-red-text bg-bc-red/10 border border-bc-red/30 px-1.5 py-1">
@@ -602,7 +535,7 @@ export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, tit
   );
 }
 
-// ── Gemini helpers ───────────────────────────────────────────────────────────
+// ── AI auto-fill helpers ───────────────────────────────────────────────────────────
 
 function buildPrompt(manufacturer: string, model: string): string {
   return [
@@ -637,7 +570,7 @@ function buildPrompt(manufacturer: string, model: string): string {
   ].join('\n');
 }
 
-interface GeminiCameraResult {
+interface AiCameraResult {
   manufacturer?: string;
   model?: string;
   /** Beleg je geliefertem Feld — siehe `Camera.specSource`. */
@@ -647,37 +580,4 @@ interface GeminiCameraResult {
   adaptedMounts?: string[];
   type?: string;
   sensorModes?: { name?: string; widthMm: number; heightMm: number }[];
-}
-
-async function callGemini(apiKey: string, model: string, prompt: string): Promise<GeminiCameraResult> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model.trim() || GEMINI_DEFAULT_MODEL}:generateContent`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-    body: JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        temperature: 0.2,
-      },
-    }),
-  });
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new Error(`Gemini ${response.status}: ${text.slice(0, 200) || response.statusText}`);
-  }
-  const data = await response.json();
-  const text: string | undefined = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('Gemini returned an empty response');
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    const stripped = text.replace(/^```(?:json)?/i, '').replace(/```\s*$/, '').trim();
-    parsed = JSON.parse(stripped);
-  }
-  if (typeof parsed !== 'object' || parsed === null) {
-    throw new Error('Gemini returned a non-object response');
-  }
-  return parsed as GeminiCameraResult;
 }

@@ -38,16 +38,17 @@
 //
 // DER SCHNITT folgt dem Cable Planner (SettingsBody): links die Bereiche,
 // rechts Titel, Schliessen und der scrollende Inhalt. Seit der
-// Geraetebibliothek sind es zwei Bereiche; der Knopf „Anmelden" beim
-// Einreichen oeffnet den Dialog direkt auf „Device library"
-// (`initialSection`).
+// Geraetebibliothek sind es zwei Bereiche, seit der KI-Einstellung drei; der
+// Knopf „Anmelden" beim Einreichen oeffnet den Dialog direkt auf „Device
+// library", die KI-Hinweise in der Seitenleiste auf „AI" (`initialSection`).
 // ───────────────────────────────────────────────────────────────────────────
 import { useEffect, useState } from 'react';
-import { FiDatabase, FiSliders, FiX } from 'react-icons/fi';
+import { FiCpu, FiDatabase, FiSliders, FiX } from 'react-icons/fi';
 import { APP_VERSION } from '../../store/useStore';
 import { useTranslation, type Language } from '../../i18n';
 import { liesThema, setzeThema, type Thema } from '../../lib/thema';
 import DeviceLibrarySection from './DeviceLibrarySection';
+import AiSection from './AiSection';
 import type { SettingsSection } from './openSettings';
 import hauptlogoDunkel from '../../assets/brand/lzm_hauptlogo_offwhite.svg';
 import hauptlogoHell from '../../assets/brand/lzm_hauptlogo_navy.svg';
@@ -64,6 +65,7 @@ export default function SettingsDialog({ onClose, initialSection = 'general' }: 
   const SECTIONS: { id: SettingsSection; label: string; icon: typeof FiX }[] = [
     { id: 'general', label: t('settings.tab.general', 'General'), icon: FiSliders },
     { id: 'library', label: t('settings.tab.library', 'Device library'), icon: FiDatabase },
+    { id: 'ai', label: t('settings.tab.ai', 'AI'), icon: FiCpu },
   ];
   const aktiv = SECTIONS.find((s) => s.id === section) ?? SECTIONS[0];
 
@@ -138,6 +140,7 @@ export default function SettingsDialog({ onClose, initialSection = 'general' }: 
         {/* Der Rumpf scrollt, der Kopf bleibt — ADR-007 Abschnitt 6. */}
         <div className="min-h-0 flex-1 overflow-y-auto" style={{ padding: '8px 20px 20px' }}>
           {section === 'library' && <DeviceLibrarySection />}
+          {section === 'ai' && <AiSection />}
           {section === 'general' && (<>
           <section>
             <h3 className="text-sm font-semibold text-bc-text-bright">
