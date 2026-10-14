@@ -363,6 +363,7 @@ export type ControlPath =
   // und weil es die Frage beantwortet, die sonst in der Probe kommt:
   // ob sich die Blende dieser Position vom Pult aus stellen laesst.
   | 'b4-lens'
+  | 'telemetrics'
   | 'none';
 
 export interface VenueCamera {
