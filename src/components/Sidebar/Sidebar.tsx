@@ -61,6 +61,12 @@ import { useTranslation, format } from '../../i18n';
 import { mountTypeLabel } from '../../i18n/mount';
 import { MOUNT_TYPE_LABELS } from '../../types';
 
+// Ausgeblendet (Lars, 14.10.2026): Coverage brief, Rigging & Comms und
+// Network source waren fuer den Kern — Kameras einzeichnen, Optik pruefen —
+// mehr verwirrend als hilfreich. Code und Daten bleiben; die Schalter-
+// stelle ist diese eine Konstante.
+const ZEIGE_PLANUNGS_EXTRAS = false;
+
 /**
  * Einheitlicher Akkordeon-Kopf fuer die linke Sidebar. Icon im getoenten
  * Quadrat (Akzent, wenn offen), Titel mit Hover-/Offen-Zustaenden, optionaler
@@ -1365,6 +1371,7 @@ function CameraCard({
               Zugeklappt, solange kein Auftrag steht: eine Position ohne
               geforderten Ausschnitt hat keine Anforderung, und ein offenes
               Feld dafuer waere eine Frage, die niemand gestellt hat. */}
+          {ZEIGE_PLANUNGS_EXTRAS && (
           <Group
             id="coverage"
             title={t('sidebar.coverage.title', 'Coverage brief')}
@@ -1480,6 +1487,7 @@ function CameraCard({
               )}
             </div>
           </Group>
+          )}
 
           {/* Bedarf 63 — der Bildzustand dieser Position.
 
@@ -1793,6 +1801,7 @@ function CameraCard({
               eingetragen werden und dann stehen, nicht Regler, an denen man
               waehrend der Planung dreht. Die Befunde stehen darin, damit sie
               dort sichtbar sind, wo man sie beheben kann. */}
+          {ZEIGE_PLANUNGS_EXTRAS && (
           <Group
             id="rigging"
             title={t('sidebar.rigging.title', 'Rigging & comms')}
@@ -1955,6 +1964,7 @@ function CameraCard({
               )}
             </div>
           </Group>
+          )}
 
           {/* ── BEDARF 130 — wem gehoert dieses Bild? ────────────────────
               „After a NIC outage and an OBS restart, NDI ports were reshuffled
@@ -1965,6 +1975,7 @@ function CameraCard({
               Der PLAN ist die Autoritaet: hier steht, wie die Quelle heisst.
               Danebengelegt wird die Liste, wie sie JETZT im Empfaenger steht —
               und ein Treffer auf der blossen Position macht nichts gruen. */}
+          {ZEIGE_PLANUNGS_EXTRAS && (
           <Group
             id="source"
             title={t('sidebar.cam.source', 'Network source')}
@@ -2081,6 +2092,7 @@ function CameraCard({
               )}
             </div>
           </Group>
+          )}
 
           <Group id="note" title={t('sidebar.cam.notes', 'Notes')} defaultOpen={false} summary={cam.notes ? cam.notes.slice(0, 24) : undefined}>
             <textarea
@@ -2130,6 +2142,7 @@ export default function Sidebar() {
   const [stagesOpen, setStagesOpen] = useState(false);
   const [roomOpen, setRoomOpen] = useState(false);
   const [personsOpen, setPersonsOpen] = useState(false);
+  const [camerasOpen, setCamerasOpen] = useState(true);
   const [wallsOpen, setWallsOpen] = useState(false);
   const [bgOpen, setBgOpen] = useState(false);
   const [wallDrawMode, setWallDrawMode] = useState(false);
@@ -2738,18 +2751,14 @@ export default function Sidebar() {
 
       {/* Camera list — nicht klappbar, aber gleicher Header-Stil wie das Akkordeon */}
       <div className="flex-1 overflow-y-auto flex flex-col">
-        <div className="flex items-center gap-2.5" style={{ minHeight: '44px', padding: '10px 14px' }}>
-          <span className="grid h-7 w-7 shrink-0 place-items-center bg-bc-accent/20 text-bc-accent">
-            <FiVideo size={14} />
-          </span>
-          <span className="text-[13.5px] font-semibold text-bc-text-bright">{t('sidebar.cameras.title', 'Cameras')}</span>
-          <span
-            style={{ padding: '2px 7px' }}
-            className="bg-bc-dark text-[10.5px] font-semibold tabular-nums text-bc-text"
-          >
-            {cameras.length}
-          </span>
-          <div className="ml-auto flex items-center gap-1">
+        <AccordionHeader
+          icon={<FiVideo size={14} />}
+          title={t('sidebar.cameras.title', 'Cameras')}
+          count={cameras.length}
+          open={camerasOpen}
+          onToggle={() => setCamerasOpen(!camerasOpen)}
+          right={
+            <div className="flex items-center gap-1">
             <button
               onClick={toggleShowAllFov}
               style={{ padding: '6px' }}
@@ -2786,9 +2795,10 @@ export default function Sidebar() {
               <FiPlus size={12} /> {t('sidebar.add', 'Add')}
             </button>
           </div>
-        </div>
+          }
+        />
 
-        <div style={{ padding: '0 14px 12px' }}>
+        {camerasOpen && <div style={{ padding: '0 14px 12px' }}>
           {cameras.map((cam) => (
             <CameraCard
               key={cam.id}
@@ -2801,7 +2811,7 @@ export default function Sidebar() {
           {cameras.length === 0 && (
             <p className="text-bc-dim text-xs text-center mt-8">{t('sidebar.noCameras', 'No cameras yet. Add one with "Add" or load a template.')}</p>
           )}
-        </div>
+        </div>}
       </div>
 
       {/* Bottom actions */}
