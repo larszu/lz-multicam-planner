@@ -76,7 +76,7 @@ export default function FirstSteps({ activeTabId, onSelectTab }: FirstStepsProps
   return (
     <section
       aria-labelledby="first-steps-title"
-      className="fixed bottom-10 right-4 z-40 w-[300px] max-w-[calc(100vw-32px)] rounded-bc-card border border-bc-border bg-bc-panel p-4 shadow-bc-2"
+      className="fixed bottom-10 right-4 z-40 w-[300px] max-w-[calc(100vw-32px)] rounded-bc-l border border-bc-border bg-bc-panel p-4 shadow-bc-2"
     >
       <div className="flex items-center gap-2">
         <h2 id="first-steps-title" className="flex-1 text-sm font-semibold text-bc-text-bright">
@@ -102,9 +102,9 @@ export default function FirstSteps({ activeTabId, onSelectTab }: FirstStepsProps
         </button>
       </div>
 
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-bc-sunken" aria-hidden>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-bc-full bg-bc-sunken" aria-hidden>
         <div
-          className={`h-full rounded-full transition-[width] duration-300 ${complete ? 'bg-bc-green' : 'bg-bc-accent'}`}
+          className={`h-full rounded-bc-full transition-[width] duration-300 ${complete ? 'bg-bc-green' : 'bg-bc-accent'}`}
           style={{ width: `${(doneCount / steps.length) * 100}%` }}
         />
       </div>
@@ -119,7 +119,7 @@ export default function FirstSteps({ activeTabId, onSelectTab }: FirstStepsProps
                 className={`flex w-full items-center gap-3 px-2 py-1.5 text-left text-sm hover:bg-bc-hover ${s.done ? 'text-bc-muted line-through' : 'text-bc-text'}`}
               >
                 <span
-                  className={`first-steps-check flex h-5 w-5 flex-none items-center justify-center rounded-full border-2 ${s.done ? 'is-done border-bc-green bg-bc-green text-bc-on-media' : 'border-bc-border'}`}
+                  className={`first-steps-check flex h-5 w-5 flex-none items-center justify-center rounded-bc-full border-2 ${s.done ? 'is-done border-bc-green bg-bc-green text-bc-on-media' : 'border-bc-border'}`}
                 >
                   {s.done && <FiCheck size={12} strokeWidth={3} />}
                 </span>

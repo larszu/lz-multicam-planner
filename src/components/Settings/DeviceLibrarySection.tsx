@@ -13,10 +13,10 @@ import LibraryErrorLine from '../Library/LibraryErrorLine';
 import { usesKeychain } from '../../library/tokenStore';
 import { uploadBucket } from '../../library/upload';
 
-const feld = 'block w-full border border-bc-border bg-bc-dark text-xs text-bc-text-bright';
-const knopf = 'border border-bc-border text-xs text-bc-text transition-colors hover:bg-bc-panel-raised disabled:opacity-50';
-const knopfHaupt = 'border border-bc-accent bg-bc-accent text-xs text-bc-accent-text disabled:opacity-50';
-const kopf = 'text-xs font-bold uppercase tracking-wider text-bc-muted';
+const feld = 'block w-full border border-bc-border bg-bc-panel-raised text-xs text-bc-text-bright';
+const knopf = 'bc-btn-soft text-xs disabled:opacity-50';
+const knopfHaupt = 'bc-btn-primary text-xs';
+const kopf = 'text-sm font-semibold text-bc-text-bright';
 
 export default function DeviceLibrarySection() {
   const { t } = useTranslation();

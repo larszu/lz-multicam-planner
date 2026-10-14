@@ -74,7 +74,8 @@ jobs:
 
       # Nutzer-Rueckmeldung 2026-09-07: "die ui ist nicht konsistent. lege
       # globale ui regeln fest die fuer alle repos gelten." Die Regeln stehen
-      # in ADR-007 der av-planner-suite; dieser Check haelt sie hier.
+      # in ADR-007 der Suite (seit 2026-10-13 Design-Vertrag 2026-10: Hell +
+      # Dunkel, neutrale Flaechen); dieser Check haelt sie hier.
       - name: Oberflaechen-Regeln (ADR-007)
         run: npm run brand:check
 
@@ -94,12 +95,11 @@ jobs:
       - name: Keine rohen Farben (B-70)
         run: npm run farben:check
 
-      # Die FORM (ADR-007 Abschnitt 3): keine Rundungen, keine Schatten.
-      # `brand:check` gab es laengst — er las aber nur `src/index.css`, und
-      # die 237 Rundungen standen als Tailwind-Utilities im JSX. Ein
-      # Waechter, der die eine Haelfte prueft und die andere nicht erwaehnt,
-      # liest sich wie eine Zusage fuer beide.
-      - name: Keine Rundungen/Schatten (ADR-007)
+      # Die FORM (ADR-007, geaendert 2026-10-13 mit dem Design-Vertrag
+      # 2026-10): Rundungen und Schatten nur ueber Tokens. Bis dahin hiess
+      # die Regel „keine Rundungen, keine Schatten"; der Lauf liest Stilblatt,
+      # Klassenlisten, Zeichenketten und Style-Objekte.
+      - name: Rundungen/Schatten nur ueber Tokens (ADR-007)
         run: npm run form:check
 
       # Die LESBARKEIT, seit der Nutzer-Meldung vom 2026-09-12 („man kann

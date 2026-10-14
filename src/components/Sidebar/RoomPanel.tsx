@@ -59,14 +59,14 @@ export default function RoomPanel() {
   };
 
   const art = (b: VenueSeatingBlock) => (
-    <div className="flex" role="group" aria-label={t('room.kind', 'Seated or standing')}>
+    <div className="bc-seg bc-seg-kompakt" role="group" aria-label={t('room.kind', 'Seated or standing')}>
       {([[false, t('room.seated', 'Seated')], [true, t('room.standing', 'Standing')]] as [boolean, string][]).map(([stehend, label]) => (
         <button
           key={label}
           type="button"
           aria-pressed={!!b.standing === stehend}
           onClick={() => updateSeatingBlock(b.id, { standing: stehend })}
-          className={`-ml-px first:ml-0 px-2 py-0.5 text-[11px] border ${!!b.standing === stehend ? 'border-bc-accent text-bc-text-bright bg-bc-panel-raised' : 'border-bc-border text-bc-dim hover:text-bc-text'}`}
+          className="px-3 text-[11px] font-medium"
         >
           {label}
         </button>
@@ -83,7 +83,7 @@ export default function RoomPanel() {
           <span className="text-bc-muted">{t('room.ceiling', 'Ceiling (m)')}</span>
           <input
             type="number"
-            className="w-full bg-bc-dark border border-bc-border px-2 py-1 text-bc-text-bright tabular-nums"
+            className="w-full border border-bc-border bg-bc-panel-raised px-2 py-1 text-bc-text-bright tabular-nums"
             value={venue.ceilingHeightM ?? ''}
             placeholder={t('room.ceiling.open', 'open')}
             min={2}
@@ -99,7 +99,7 @@ export default function RoomPanel() {
         <label>
           <span className="text-bc-muted">{t('room.floor', 'Floor')}</span>
           <select
-            className="w-full bg-bc-dark border border-bc-border px-2 py-1 text-bc-text-bright"
+            className="w-full border border-bc-border bg-bc-panel-raised px-2 py-1 text-bc-text-bright"
             value={venue.floorMaterial ?? 'concrete'}
             onChange={(e) => setVenue({ ...venue, floorMaterial: e.target.value as RaumBoden })}
           >
@@ -123,7 +123,7 @@ export default function RoomPanel() {
         </label>
       </div>
 
-      <div className="pt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-bc-muted">{t('room.audience', 'Audience')}</div>
+      <div className="pt-1 text-[13px] font-semibold text-bc-text-bright">{t('room.audience', 'Audience')}</div>
       {blocks.map((roh) => {
         const b = sitzblockNormal(roh);
         return (
@@ -170,7 +170,7 @@ export default function RoomPanel() {
         </button>
       </div>
 
-      <div className="pt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-bc-muted">{t('room.videoWalls', 'Video walls')}</div>
+      <div className="pt-1 text-[13px] font-semibold text-bc-text-bright">{t('room.videoWalls', 'Video walls')}</div>
       {walls.map((roh) => {
         const w = videowandNormal(roh);
         return (

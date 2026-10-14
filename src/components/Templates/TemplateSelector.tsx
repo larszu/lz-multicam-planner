@@ -84,15 +84,15 @@ export default function TemplateSelector() {
       {/* Save current as template button */}
       <button
         onClick={() => setShowSave(!showSave)}
-        className="w-full mb-3 px-3 py-2 text-sm font-medium bg-bc-accent/20 border border-bc-accent text-bc-accent hover:bg-bc-accent/30 transition-colors flex items-center gap-2 justify-center"
+        className="bc-btn-soft w-full mb-3 py-2 text-sm transition-colors flex items-center gap-2 justify-center"
       >
         <FiSave size={14} />
-        {t('header.templates.saveCurrent', 'Save Current as Template')}
+        {t('header.templates.saveCurrent', 'Save current as template')}
       </button>
 
       {/* Save form */}
       {showSave && (
-        <div className="mb-3 p-3 bg-bc-dark border border-bc-border space-y-2">
+        <div className="rounded-bc-m mb-3 p-3 border border-bc-border bg-bc-panel-raised space-y-2">
           <input
             type="text"
             value={newName}
@@ -115,13 +115,13 @@ export default function TemplateSelector() {
             <button
               onClick={handleSave}
               disabled={!newName.trim()}
-              className="px-3 py-1.5 text-sm bg-bc-accent text-bc-accent-text font-medium disabled:opacity-40 hover:bg-bc-accent/80"
+              className="rounded-bc-full px-3 py-1.5 text-sm bg-bc-accent text-bc-accent-text font-medium disabled:opacity-40 hover:bg-bc-accent/80"
             >
               {t('header.templates.save', 'Save')}
             </button>
             <button
               onClick={() => setShowSave(false)}
-              className="px-3 py-1.5 text-sm bg-bc-dark border border-bc-border text-bc-muted hover:text-bc-text"
+              className="px-3 py-1.5 text-sm border border-bc-border bg-bc-panel-raised text-bc-muted hover:text-bc-text"
             >
               {t('header.templates.cancel', 'Cancel')}
             </button>
@@ -130,7 +130,7 @@ export default function TemplateSelector() {
       )}
 
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold text-bc-text-bright">{t('header.templates.heading', 'Venue Templates')}</h3>
+        <h3 className="text-sm font-semibold text-bc-text-bright">{t('header.templates.heading', 'Venue templates')}</h3>
         {hiddenCount > 0 && (
           <button
             onClick={() => {
@@ -146,7 +146,7 @@ export default function TemplateSelector() {
 
       {categories.map((cat) => (
         <div key={cat} className="mb-3">
-          <h4 className="text-xs text-bc-muted uppercase tracking-wider mb-1">{CATEGORIES.find((c) => c.value === cat)?.label ?? cat}</h4>
+          <h4 className="text-xs font-semibold text-bc-muted mb-1">{CATEGORIES.find((c) => c.value === cat)?.label ?? cat}</h4>
           <div className="space-y-1">
             {allTemplates.filter((tpl) => tpl.category === cat).map((tpl) => (
               <div key={tpl.id}>
@@ -171,13 +171,13 @@ export default function TemplateSelector() {
                           <option key={c.value} value={c.value}>{c.label}</option>
                         ))}
                       </select>
-                      <button onClick={handleEditSave} className="px-2 py-1 text-xs bg-bc-accent text-bc-accent-text">{t('header.templates.save', 'Save')}</button>
+                      <button onClick={handleEditSave} className="rounded-bc-full px-2 py-1 text-xs bg-bc-accent text-bc-accent-text">{t('header.templates.save', 'Save')}</button>
                       <button onClick={() => setEditingId(null)} className="px-2 py-1 text-xs text-bc-muted hover:text-bc-text">{t('header.templates.cancel', 'Cancel')}</button>
                     </div>
                   </div>
                 ) : (
                   /* ── Template card ── */
-                  <div className="group w-full text-left px-3 py-2 text-sm text-bc-text bg-bc-dark border border-bc-border hover:border-bc-accent/50 transition-colors">
+                  <div className="group w-full rounded-bc-m text-left px-3 py-2 text-sm text-bc-text bg-bc-panel-raised hover:bg-bc-hover transition-colors">
                     <div className="flex items-start justify-between gap-2">
                       <button
                         onClick={() => handleLoad(tpl.id)}

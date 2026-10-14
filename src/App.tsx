@@ -75,8 +75,8 @@ function createFocusLayoutJson(t: TFn, selectedTabId = 'tab-2d'): IJsonModel {
           selected: getSelectedIndexForTab(selectedTabId),
           weight: 100,
           children: [
-            { type: 'tab', name: t('header.tab.2dPlan', '2D Plan'), component: 'venue2d', id: 'tab-2d' },
-            { type: 'tab', name: t('header.tab.3dView', '3D View'), component: 'venue3d', id: 'tab-3d' },
+            { type: 'tab', name: t('header.tab.2dPlan', '2D plan'), component: 'venue2d', id: 'tab-2d' },
+            { type: 'tab', name: t('header.tab.3dView', '3D view'), component: 'venue3d', id: 'tab-3d' },
             { type: 'tab', name: t('header.tab.preview', 'Preview'), component: 'preview', id: 'tab-preview' },
             { type: 'tab', name: t('header.tab.multiview', 'Multiview'), component: 'multiview', id: 'tab-multiview' },
             { type: 'tab', name: t('header.tab.calculator', 'Calculator'), component: 'calculator', id: 'tab-calc' },
@@ -114,7 +114,7 @@ function createGridLayoutJson(t: TFn): IJsonModel {
               id: 'ts-left-2d',
               selected: 0,
               children: [
-                { type: 'tab', name: t('header.tab.2dPlan', '2D Plan'), component: 'venue2d', id: 'tab-2d' },
+                { type: 'tab', name: t('header.tab.2dPlan', '2D plan'), component: 'venue2d', id: 'tab-2d' },
               ],
             },
             {
@@ -123,7 +123,7 @@ function createGridLayoutJson(t: TFn): IJsonModel {
               id: 'ts-left-3d',
               selected: 0,
               children: [
-                { type: 'tab', name: t('header.tab.3dView', '3D View'), component: 'venue3d', id: 'tab-3d' },
+                { type: 'tab', name: t('header.tab.3dView', '3D view'), component: 'venue3d', id: 'tab-3d' },
               ],
             },
           ],
@@ -310,8 +310,8 @@ export default function App() {
   }, [applyLayoutJson, t]);
 
   const TAB_CONFIGS: Record<string, { component: string; name: string }> = {
-    'tab-2d': { component: 'venue2d', name: t('header.tab.2dPlan', '2D Plan') },
-    'tab-3d': { component: 'venue3d', name: t('header.tab.3dView', '3D View') },
+    'tab-2d': { component: 'venue2d', name: t('header.tab.2dPlan', '2D plan') },
+    'tab-3d': { component: 'venue3d', name: t('header.tab.3dView', '3D view') },
     'tab-preview': { component: 'preview', name: t('header.tab.preview', 'Preview') },
     'tab-multiview': { component: 'multiview', name: t('header.tab.multiview', 'Multiview') },
     'tab-calc': { component: 'calculator', name: t('header.tab.calculator', 'Calculator') },
@@ -575,7 +575,7 @@ export default function App() {
         onOpenInventory={() => setInventoryOpen(true)}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 gap-1.5 overflow-hidden px-1.5 pb-1.5">
         {/* ── Linke Seitenleiste ──
             Breite skaliert mit dem Fenster statt fest 320 px: auf grossen
             Schirmen darf die Spalte mitwachsen (die Kamera-Karte nutzt das per
@@ -593,13 +593,13 @@ export default function App() {
             ist. Wer zwischen den Apps wechselt, muss den Griff neu suchen.
             ADR-007 Abschnitt 6 legt den Rahmen fest; der Griff gehoert dazu. */}
         {sidebarCollapsed ? (
-          <aside className="flex h-full w-8 shrink-0 flex-col items-center border-r border-bc-border bg-bc-panel transition-colors hover:bg-bc-panel-raised">
+          <aside className="bc-card flex h-full w-8 shrink-0 flex-col items-center overflow-hidden transition-colors hover:bg-bc-panel-raised">
             <button
               type="button"
               onClick={() => setSidebarCollapsed(false)}
               title={t('header.sidebar.open', 'Open column')}
               aria-label={t('header.sidebar.open.aria', 'Open the side column')}
-              className="mt-2 flex h-7 w-7 items-center justify-center border border-bc-border bg-bc-panel-raised text-bc-text transition-colors hover:border-bc-accent hover:text-bc-text-bright"
+              className="mt-1 flex h-7 w-7 items-center justify-center rounded-bc-full bg-bc-panel-raised text-bc-text transition-colors hover:bg-bc-accent-soft hover:text-bc-text-bright"
             >
               <FiChevronRight size={14} />
             </button>
@@ -607,7 +607,7 @@ export default function App() {
               type="button"
               onClick={() => setSidebarCollapsed(false)}
               aria-label={t('header.sidebar.open.aria', 'Open the side column')}
-              className="mt-3 flex-1 self-stretch text-[10px] font-semibold uppercase tracking-[0.18em] text-bc-muted transition-colors hover:text-bc-text"
+              className="mt-3 flex-1 self-stretch text-xs font-semibold text-bc-muted transition-colors hover:text-bc-text"
               style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
             >
               {sidebarTab === 'cameras'
@@ -618,18 +618,18 @@ export default function App() {
         ) : (
           <div
             style={{ width: 'clamp(264px, 22vw, 420px)' }}
-            className="border-r border-bc-border flex flex-col bg-bc-panel shrink-0"
+            className="bc-card flex flex-col overflow-hidden shrink-0"
           >
             {/* DIE KOPFZEILE DER SPALTE (2026-09-11).
                 ADR-007 Abschnitt 6 verlangt fuer jede Spalte eine Kopfzeile
-                mit ihrem Namen und dem Griff darin, und Abschnitt 3 gibt ihr
-                die Kopflinie im Akzent. Diese Spalte hatte beides nicht: der
+                mit ihrem Namen und dem Griff darin (die Kopflinie im Akzent
+                ist seit dem Design-Vertrag 2026-10 entfallen). Diese Spalte hatte beides nicht: der
                 Name stand nur senkrecht im eingeklappten Streifen, offen
                 begann sie unvermittelt mit zwei Registern. Wer die App
                 oeffnet, sieht jetzt, WAS links steht, bevor er waehlt,
                 welche Sicht darauf. */}
-            <div className="spaltenkopf flex items-center gap-2 border-b border-bc-accent px-3 py-2">
-              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-bc-text">
+            <div className="spaltenkopf flex items-center gap-2 px-4 pt-3 pb-2">
+              <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-bc-text-bright">
                 {t('header.sidebar.title', 'Camera setup')}
               </span>
               <button
@@ -637,20 +637,24 @@ export default function App() {
                 onClick={() => setSidebarCollapsed(true)}
                 title={t('header.sidebar.collapse', 'Collapse column')}
                 aria-label={t('header.sidebar.collapse.aria', 'Collapse the side column')}
-                className="flex h-7 w-7 shrink-0 items-center justify-center text-bc-dim transition-colors hover:bg-bc-hover hover:text-bc-text-bright"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-bc-full text-bc-dim transition-colors hover:bg-bc-hover hover:text-bc-text-bright"
               >
                 <FiChevronLeft size={14} />
               </button>
             </div>
-            <div className="flex items-stretch border-b border-bc-border">
+            <div className="bc-seg bc-seg-kompakt mx-3 mb-2 flex" role="group">
               <button
-                className={`flex-1 py-2 text-xs font-medium ${sidebarTab === 'cameras' ? 'text-bc-accent border-b-2 border-bc-accent' : 'text-bc-dim hover:text-bc-text'}`}
+                type="button"
+                aria-pressed={sidebarTab === 'cameras'}
+                className="flex-1 text-xs font-medium"
                 onClick={() => setSidebarTab('cameras')}
               >
                 {t('header.sidebar.settings', 'Settings')}
               </button>
               <button
-                className={`flex-1 py-2 text-xs font-medium ${sidebarTab === 'templates' ? 'text-bc-accent border-b-2 border-bc-accent' : 'text-bc-dim hover:text-bc-text'}`}
+                type="button"
+                aria-pressed={sidebarTab === 'templates'}
+                className="flex-1 text-xs font-medium"
                 onClick={() => setSidebarTab('templates')}
               >
                 {t('header.sidebar.templates', 'Templates')}

@@ -9,6 +9,7 @@
 // Schatten nach `StufenWerte`, das Publikum als Instanzen.
 // ───────────────────────────────────────────────────────────────────────────
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { PLANUNGS_BODEN } from './planungsLook';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import type { Stage, Venue, VenueCamera } from '../../types';
@@ -34,6 +35,7 @@ import {
   oberflaechenMaterial,
   wendeHintergrundAn,
   type HintergrundArt,
+  type Hintergrund,
   type Qualitaet,
   type Stufe,
   type StufenWerte,
@@ -91,7 +93,7 @@ export function ScenePipeline({ quality, show, dof, onWerte }: {
 }
 
 /* ── Umgebungslicht, Kuppel, Nebel ── */
-export function Atmosphere({ look, diagM, domeRadius }: { look: HintergrundArt; diagM: number; domeRadius: number }) {
+export function Atmosphere({ look, diagM, domeRadius, hintergrund }: { look: HintergrundArt; diagM: number; domeRadius: number; hintergrund?: Hintergrund }) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
@@ -103,15 +105,15 @@ export function Atmosphere({ look, diagM, domeRadius }: { look: HintergrundArt; 
     return () => { scene.environment = null; u.dispose(); };
   }, [gl, scene]);
   useEffect(() => {
-    wendeHintergrundAn(scene, kuppel, HINTERGRUENDE[look], diagM);
+    wendeHintergrundAn(scene, kuppel, hintergrund ?? HINTERGRUENDE[look], diagM);
     return () => { scene.fog = null; };
-  }, [scene, kuppel, look, diagM]);
+  }, [scene, kuppel, look, diagM, hintergrund]);
   useFrame(() => { kuppel.position.copy(camera.position); });
   return <primitive object={kuppel} />;
 }
 
 /* ── Halle: Boden, Waende, Decke ── */
-export function Arena({ venue, show }: { venue: Venue; show: boolean }) {
+export function Arena({ venue, show, planungsBoden = PLANUNGS_BODEN.dunkel }: { venue: Venue; show: boolean; planungsBoden?: string }) {
   const boden: RaumBoden = venue.floorMaterial ?? 'concrete';
   const w = venue.widthM;
   const d = venue.heightM;
@@ -119,7 +121,7 @@ export function Arena({ venue, show }: { venue: Venue; show: boolean }) {
   const wandArt = venue.wallMaterial;
   const obj = useMemo(() => {
     const g = new THREE.Group();
-    const flaeche = new THREE.Mesh(new THREE.PlaneGeometry(w, d), show ? oberflaechenMaterial(boden, { breiteM: w, tiefeM: d }) : new THREE.MeshStandardMaterial({ color: '#252a36', roughness: 1 }));
+    const flaeche = new THREE.Mesh(new THREE.PlaneGeometry(w, d), show ? oberflaechenMaterial(boden, { breiteM: w, tiefeM: d }) : new THREE.MeshStandardMaterial({ color: planungsBoden, roughness: 1 }));
     flaeche.rotation.x = -Math.PI / 2;
     flaeche.position.set(w / 2, 0, d / 2);
     flaeche.receiveShadow = true;
@@ -152,7 +154,7 @@ export function Arena({ venue, show }: { venue: Venue; show: boolean }) {
       g.add(deckeM);
     }
     return g;
-  }, [w, d, boden, decke, wandArt, show]);
+  }, [w, d, boden, decke, wandArt, show, planungsBoden]);
   useEntsorgen(obj);
   return obj ? <primitive object={obj} /> : null;
 }

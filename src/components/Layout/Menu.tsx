@@ -121,8 +121,8 @@ export function Menu({ label, children }: MenuProps) {
           setAnker({ links: r.left, oben: r.bottom + 4 });
           setOpen((o) => !o);
         }}
-        style={{ padding: '4px 6px' }}
-        className={`flex items-center gap-0.5 text-xs text-bc-text-bright transition-colors hover:bg-bc-panel-raised ${open ? 'bg-bc-panel-raised' : ''}`}
+        style={{ padding: '4px 10px' }}
+        className={`flex items-center gap-1 rounded-bc-full text-xs font-medium text-bc-text-bright transition-colors hover:bg-bc-hover ${open ? 'bg-bc-accent-soft' : ''}`}
       >
         {label}
         <FiChevronDown size={11} className="text-bc-muted" />
@@ -134,7 +134,7 @@ export function Menu({ label, children }: MenuProps) {
              werden als das Fenster hoch ist, sonst stehen ihre letzten Punkte
              unter dem Fensterrand und existieren fuer den Nutzer nicht. */
           ref={klappe}
-          className="fixed left-0 top-0 z-[100] max-h-[calc(100vh-3.5rem)] min-w-[16rem] overflow-y-auto border border-bc-border bg-bc-panel py-1"
+          className="fixed left-0 top-0 z-[100] max-h-[calc(100vh-3.5rem)] min-w-[16rem] overflow-y-auto bc-popover p-1.5"
         >
           {children(() => setOpen(false))}
         </div>
@@ -161,32 +161,32 @@ export function MenuItem({ onClick, icon, note, checked, disabled, children }: M
       role="menuitem"
       onClick={onClick}
       disabled={disabled}
-      style={{ padding: '6px 12px' }}
-      className={`flex w-full items-center gap-2 text-left text-xs transition-colors disabled:cursor-not-allowed disabled:text-bc-muted disabled:opacity-50 ${
-        checked ? 'text-bc-yellow' : 'text-bc-text hover:bg-bc-panel-raised hover:text-bc-text-bright'
+      style={{ padding: '6px 10px' }}
+      className={`flex w-full items-center gap-2.5 rounded-bc-s text-left text-[13px] transition-colors disabled:cursor-not-allowed disabled:text-bc-muted disabled:opacity-50 ${
+        checked ? 'bg-bc-accent-soft font-medium text-bc-text-bright' : 'text-bc-text hover:bg-bc-hover hover:text-bc-text-bright'
       }`}
     >
-      <span className="inline-flex w-[13px] shrink-0 items-center justify-center text-bc-muted">
+      <span className={`inline-flex w-[13px] shrink-0 items-center justify-center ${checked ? 'text-bc-accent' : 'text-bc-muted'}`}>
         {checked ? <FiCheck size={13} /> : icon}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate">{children}</span>
-        {note && <span className="block truncate text-[10px] text-bc-muted">{note}</span>}
+        {note && <span className="block truncate text-[11px] text-bc-muted">{note}</span>}
       </span>
     </button>
   );
 }
 
 export function MenuSeparator() {
-  return <div role="separator" className="my-1 border-t border-bc-border" />;
+  return <div role="separator" className="mx-2 my-1.5 border-t border-bc-border" />;
 }
 
 /** Ueberschrift innerhalb einer Klappe — gruppiert, ohne anklickbar zu sein. */
 export function MenuHeading({ children }: { children: ReactNode }) {
   return (
     <div
-      style={{ padding: '6px 12px 4px' }}
-      className="text-[10px] uppercase tracking-wider text-bc-muted"
+      style={{ padding: '8px 10px 4px' }}
+      className="text-[11px] font-semibold text-bc-muted"
     >
       {children}
     </div>

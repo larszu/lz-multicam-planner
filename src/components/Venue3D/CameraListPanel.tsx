@@ -64,12 +64,12 @@ export default function CameraListPanel({
   return (
     <aside className="h-full w-[300px] max-w-[45%] shrink-0 flex flex-col bg-bc-panel border-l border-bc-border text-bc-text">
       <div className="flex items-center gap-2 px-3 pt-3 pb-2">
-        <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-bc-muted">{t('venue.list.title', 'Cameras')}</span>
-        <span className="flex-1 h-px bg-bc-border" />
+        <span className="text-sm font-semibold text-bc-text-bright">{t('venue.list.title', 'Cameras')}</span>
+        <span className="flex-1" />
         <button
           type="button"
           onClick={() => onPrefs({ listOpen: false })}
-          className="p-1 text-bc-dim hover:text-bc-text-bright hover:bg-bc-hover"
+          className="grid place-items-center rounded-bc-full p-1 text-bc-dim hover:text-bc-text-bright hover:bg-bc-hover"
           title={t('venue.list.close', 'Hide camera list')}
           aria-label={t('venue.list.close', 'Hide camera list')}
         >
@@ -87,7 +87,7 @@ export default function CameraListPanel({
               disabled={disabled}
               aria-pressed={on}
               onClick={() => onPrefs({ [key]: !prefs[key] } as Partial<View3DPrefs>)}
-              className={`px-2 py-0.5 text-[11px] font-medium border disabled:opacity-40 disabled:cursor-not-allowed ${on ? 'border-bc-accent text-bc-text-bright bg-bc-panel-raised' : 'border-bc-border text-bc-dim hover:text-bc-text'}`}
+              className={`rounded-bc-full px-3 py-0.5 text-[11px] font-medium disabled:opacity-40 disabled:cursor-not-allowed ${on ? 'bg-bc-accent-soft text-bc-text-bright' : 'bg-bc-panel-raised text-bc-muted hover:text-bc-text'}`}
               title={disabled ? why : undefined}
             >
               {label}
@@ -98,7 +98,7 @@ export default function CameraListPanel({
 
       <div className="flex items-center gap-2 px-3 pb-2">
         <span className="text-[11px] text-bc-muted">{t('venue.quality.label', 'Quality')}</span>
-        <div className="flex" role="group" aria-label={t('venue.quality.label', 'Quality')}>
+        <div className="bc-seg bc-seg-kompakt" role="group" aria-label={t('venue.quality.label', 'Quality')}>
           {([
             ['auto', t('venue.quality.auto', 'Auto')],
             ['high', t('venue.quality.high', 'High')],
@@ -111,7 +111,7 @@ export default function CameraListPanel({
               aria-pressed={prefs.quality === q}
               onClick={() => onPrefs({ quality: q })}
               title={q === 'simple' ? t('venue.quality.simple.title', 'Simple 3D view: no lighting effects or shadows — fast on any computer') : undefined}
-              className={`-ml-px first:ml-0 px-2 py-0.5 text-[11px] font-medium border ${prefs.quality === q ? 'border-bc-accent text-bc-text-bright bg-bc-panel-raised' : 'border-bc-border text-bc-dim hover:text-bc-text'}`}
+              className="px-3 text-[11px] font-medium"
             >
               {label}
             </button>
@@ -126,7 +126,7 @@ export default function CameraListPanel({
 
       <p className="px-3 pb-1 text-[11px] text-bc-muted">{t('venue.list.hint', 'Click a camera for its view')}</p>
 
-      <ul className="flex-1 overflow-y-auto border-t border-bc-border">
+      <ul className="flex-1 space-y-0.5 overflow-y-auto px-2 pb-2">
         {rows.length === 0 && (
           <li className="px-3 py-3 text-xs text-bc-dim">{t('venue.list.empty', 'No cameras yet — add one in the sidebar.')}</li>
         )}
@@ -139,10 +139,10 @@ export default function CameraListPanel({
                 type="button"
                 onClick={() => onPick(cam.id)}
                 aria-current={cam.id === povId ? 'true' : undefined}
-                className={`w-full flex items-start gap-2 px-3 py-1.5 text-left border-b border-bc-border border-l-2 ${selected ? 'bg-bc-panel-raised border-l-bc-accent' : 'border-l-transparent hover:bg-bc-hover'}`}
+                className={`w-full flex items-start gap-2 rounded-bc-m px-2.5 py-1.5 text-left ${selected ? 'bg-bc-accent-soft' : 'hover:bg-bc-hover'}`}
               >
                 <span
-                  className="mt-0.5 w-6 h-6 shrink-0 flex items-center justify-center text-[11px] font-bold text-bc-on-media"
+                  className="mt-0.5 w-6 h-6 shrink-0 flex items-center justify-center rounded-bc-s text-[11px] font-bold text-bc-on-media"
                   style={{ background: cam.color }}
                 >
                   {number}

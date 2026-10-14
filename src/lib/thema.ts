@@ -21,6 +21,9 @@ export type Thema = 'hell' | 'dunkel' | 'system';
 
 const SCHLUESSEL = 'multicam-planner:thema';
 
+/** Ereignis nach jeder Wahl — Kopf-Umschalter und Einstellungen bleiben gleich. */
+export const THEMA_EVENT = 'multicam-planner:thema';
+
 /** Die gespeicherte Wahl — `system`, wenn keine getroffen wurde. */
 export const liesThema = (): Thema => {
   try {
@@ -50,6 +53,7 @@ export const setzeThema = (t: Thema): void => {
   const wurzel = document.documentElement;
   if (t === 'system') wurzel.removeAttribute('data-theme');
   else wurzel.setAttribute('data-theme', t === 'hell' ? 'light' : 'dark');
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(THEMA_EVENT, { detail: t }));
 };
 
 /** Beim Start einmal anwenden, was gespeichert ist. */

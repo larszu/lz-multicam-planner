@@ -482,7 +482,7 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
         <div className="flex items-center gap-2 px-2 flex-wrap">
           {([
             [t('preview.overlay.grid', 'Grid'), showGrid, setShowGrid],
-            [t('preview.overlay.safeAreas', 'Safe Areas'), showSafeAreas, setShowSafeAreas],
+            [t('preview.overlay.safeAreas', 'Safe areas'), showSafeAreas, setShowSafeAreas],
             [t('preview.overlay.thirds', 'Thirds'), showThirds, setShowThirds],
             [t('preview.overlay.crosshair', 'Crosshair'), showCrosshair, setShowCrosshair],
             [t('preview.overlay.data', 'Data'), showData, setShowData],
@@ -569,13 +569,13 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
                   <input
                     type="number" min={1} max={manualMax - 1} value={manualMin}
                     onChange={(e) => setManualMin(Math.max(1, Math.min(manualMax - 1, parseFloat(e.target.value) || 1)))}
-                    className="w-12 bg-bc-dark border border-bc-border px-1 text-[11px] text-bc-text font-mono"
+                    className="w-12 border border-bc-border bg-bc-panel-raised px-1 text-[11px] text-bc-text font-mono"
                     title={t('preview.manualMin', 'Manual minimum focal length (mm)')}
                   />
                   <input
                     type="number" min={manualMin + 1} max={2000} value={manualMax}
                     onChange={(e) => setManualMax(Math.max(manualMin + 1, Math.min(2000, parseFloat(e.target.value) || 500)))}
-                    className="w-12 bg-bc-dark border border-bc-border px-1 text-[11px] text-bc-text font-mono"
+                    className="w-12 border border-bc-border bg-bc-panel-raised px-1 text-[11px] text-bc-text font-mono"
                     title={t('preview.manualMax', 'Manual maximum focal length (mm)')}
                   />
                 </>
@@ -617,13 +617,13 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
                   <input
                     type="number" min={0.1} max={manualApMax - 0.1} step={0.1} value={manualApMin}
                     onChange={(e) => setManualApMin(Math.max(0.1, Math.min(manualApMax - 0.1, parseFloat(e.target.value) || 0.1)))}
-                    className="w-12 bg-bc-dark border border-bc-border px-1 text-[11px] text-bc-text font-mono"
+                    className="w-12 border border-bc-border bg-bc-panel-raised px-1 text-[11px] text-bc-text font-mono"
                     title={t('preview.apertureManualMin', 'Manual minimum (aperture)')}
                   />
                   <input
                     type="number" min={manualApMin + 0.1} max={64} step={0.1} value={manualApMax}
                     onChange={(e) => setManualApMax(Math.max(manualApMin + 0.1, Math.min(64, parseFloat(e.target.value) || 32)))}
-                    className="w-12 bg-bc-dark border border-bc-border px-1 text-[11px] text-bc-text font-mono"
+                    className="w-12 border border-bc-border bg-bc-panel-raised px-1 text-[11px] text-bc-text font-mono"
                     title={t('preview.apertureManualMax', 'Manual maximum (aperture)')}
                   />
                 </>
@@ -755,7 +755,7 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
               saveJSON(PREVIEW_TRANSITION_MODE_KEY, 'manual');
               saveJSON(PREVIEW_TRANSITION_SEC_KEY, v);
             }}
-            className="w-14 bg-bc-dark border border-bc-border px-1 py-0.5 text-[10px] text-bc-text font-mono"
+            className="w-14 border border-bc-border bg-bc-panel-raised px-1 py-0.5 text-[10px] text-bc-text font-mono"
             title={t('preview.transitionSeconds', 'Transition time in seconds (editing switches to Manual)')}
           />
           <span className="text-[10px] text-bc-faint">s</span>
@@ -802,13 +802,13 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
           )}
 
           {/* Data cells */}
-          <DataCell label={t('preview.data.focalLength', 'Focal Length')} value={`${cam.focalLength.toFixed(1)}mm`} sub={cam.extenderActive > 1 ? `eff. ${(cam.focalLength * cam.extenderActive).toFixed(0)}mm` : `eq. ${fov.equivalentFocalLength.toFixed(0)}mm`} />
+          <DataCell label={t('preview.data.focalLength', 'Focal length')} value={`${cam.focalLength.toFixed(1)}mm`} sub={cam.extenderActive > 1 ? `eff. ${(cam.focalLength * cam.extenderActive).toFixed(0)}mm` : `eq. ${fov.equivalentFocalLength.toFixed(0)}mm`} />
           <DataCell label={t('preview.data.aperture', 'Aperture')} value={`f/${cam.aperture.toFixed(1)}`} sub={adapterInfo && adapterInfo.lightLossStops !== 0 ? `eff. T${(cam.aperture * Math.pow(2, adapterInfo.lightLossStops / 2)).toFixed(1)}` : undefined} />
           <DataCell label={t('preview.data.distance', 'Distance')} value={`${cam.focusDistance.toFixed(1)}m`} />
           <DataCell label={t('preview.data.fovH', 'FOV H')} value={`${fov.horizontalDeg.toFixed(1)}°`} />
           <DataCell label={t('preview.data.fovV', 'FOV V')} value={`${fov.verticalDeg.toFixed(1)}°`} />
-          <DataCell label={t('preview.data.imageWidth', 'Image Width')} value={`${fov.imageWidthAtDistance.toFixed(1)}m`} sub={`@ ${cam.focusDistance.toFixed(0)}m`} />
-          <DataCell label={t('preview.data.imageHeight', 'Image Height')} value={`${fov.imageHeightAtDistance.toFixed(1)}m`} sub={`@ ${cam.focusDistance.toFixed(0)}m`} />
+          <DataCell label={t('preview.data.imageWidth', 'Image width')} value={`${fov.imageWidthAtDistance.toFixed(1)}m`} sub={`@ ${cam.focusDistance.toFixed(0)}m`} />
+          <DataCell label={t('preview.data.imageHeight', 'Image height')} value={`${fov.imageHeightAtDistance.toFixed(1)}m`} sub={`@ ${cam.focusDistance.toFixed(0)}m`} />
           <DataCell label={t('preview.data.dofNear', 'DoF Near')} value={dof.nearLimit < 0.01 ? '0m' : `${dof.nearLimit.toFixed(2)}m`} />
           <DataCell label={t('preview.data.dofFar', 'DoF Far')} value={dof.farLimit === Infinity ? '∞' : `${dof.farLimit.toFixed(2)}m`} />
           <DataCell label={t('preview.data.dofTotal', 'DoF Total')} value={dof.totalDof === Infinity ? '∞' : `${dof.totalDof.toFixed(2)}m`} />
@@ -820,7 +820,7 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
 
 function DataCell({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="bg-bc-dark border border-bc-border px-2 py-1.5">
+    <div className="border border-bc-border bg-bc-panel-raised px-2 py-1.5">
       <div className="text-[10px] text-bc-dim leading-tight">{label}</div>
       <div className="text-bc-text-bright text-sm font-mono font-semibold leading-tight">{value}</div>
       {sub && <div className="text-[10px] text-bc-dim leading-tight">{sub}</div>}

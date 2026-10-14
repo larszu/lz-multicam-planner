@@ -200,7 +200,7 @@ export default function Multiview() {
               setAutoSeconds(v);
               saveJSON(AUTO_SECONDS_KEY, v);
             }}
-            className="w-14 border border-bc-border bg-bc-dark px-1 py-0.5 text-xs text-bc-text"
+            className="w-14 border border-bc-border bg-bc-panel-raised px-1 py-0.5 text-xs text-bc-text"
             aria-label={t('multiview.autoSeconds', 'Dissolve duration in seconds')}
           />
           s

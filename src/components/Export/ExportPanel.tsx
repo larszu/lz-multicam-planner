@@ -199,9 +199,9 @@ export default function ExportPanel() {
     const view3D = capture3DCanvas();
     const previewCanvas = capturePreviewCanvas();
 
-    drawTile(plan2D, padding, headerH + padding, t('preview.export.tile2d', '2D Plan'));
-    drawTile(view3D, padding * 2 + tileW, headerH + padding, t('preview.export.tile3d', '3D View'));
-    drawTile(previewCanvas, padding, headerH + padding + tileH + padding, t('preview.export.tilePreview', 'Camera Preview'));
+    drawTile(plan2D, padding, headerH + padding, t('preview.export.tile2d', '2D plan'));
+    drawTile(view3D, padding * 2 + tileW, headerH + padding, t('preview.export.tile3d', '3D view'));
+    drawTile(previewCanvas, padding, headerH + padding + tileH + padding, t('preview.export.tilePreview', 'Camera preview'));
 
     // Calculator data tile
     const calcX = padding * 2 + tileW;
@@ -217,7 +217,7 @@ export default function ExportPanel() {
     ctx.fillStyle = '#e5e7eb';
     ctx.font = 'bold 14px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(t('preview.export.calcData', 'Calculator / Data'), calcX + 8, calcY + 19);
+    ctx.fillText(t('preview.export.calcData', 'Calculator / data'), calcX + 8, calcY + 19);
 
     const cx = calcX + 20;
     let cy = calcY + 50;
@@ -238,9 +238,9 @@ export default function ExportPanel() {
       { label: t('preview.export.d.sensor', 'Sensor:'), value: `${sensor.name} (${sensor.widthMm.toFixed(1)}×${sensor.heightMm.toFixed(1)}mm, ×${sensor.cropFactor.toFixed(2)})` },
       { label: t('preview.export.d.mount', 'Mount:'), value: `${camDef.mount}` },
       { label: t('preview.export.d.lens', 'Lens:'), value: `${lensDef.manufacturer} ${lensDef.model}` },
-      { label: t('preview.export.d.focalLength', 'Focal Length:'), value: `${focalLength.toFixed(1)}mm${targetCam.extenderActive > 1 ? ` (×${targetCam.extenderActive} = ${(focalLength * targetCam.extenderActive).toFixed(0)}mm)` : ''}` },
+      { label: t('preview.export.d.focalLength', 'Focal length:'), value: `${focalLength.toFixed(1)}mm${targetCam.extenderActive > 1 ? ` (×${targetCam.extenderActive} = ${(focalLength * targetCam.extenderActive).toFixed(0)}mm)` : ''}` },
       { label: t('preview.export.d.aperture', 'Aperture:'), value: `f/${targetCam.aperture}` },
-      { label: t('preview.export.d.focusDist', 'Focus Dist:'), value: `${targetCam.focusDistance.toFixed(1)}m` },
+      { label: t('preview.export.d.focusDist', 'Focus dist:'), value: `${targetCam.focusDistance.toFixed(1)}m` },
       { label: t('preview.export.d.position', 'Position:'), value: `X=${targetCam.x.toFixed(1)}m Y=${targetCam.y.toFixed(1)}m Z=${targetCam.z.toFixed(1)}m` },
       { raw: `Pan: ${targetCam.pan.toFixed(1)}°  Tilt: ${targetCam.tilt.toFixed(1)}°` },
       { gap: true },
@@ -667,7 +667,7 @@ export default function ExportPanel() {
   if (exporting) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-bc-scrim">
-        <div className="bg-bc-panel p-6 text-bc-text-bright text-center min-w-[260px]">
+        <div className="bc-dialog p-6 text-bc-text-bright text-center min-w-[260px]">
           <div className="animate-pulse mb-2">{t('preview.export.generating', 'Generating export…')}</div>
           {exportProgress.total > 1 && (
             <div className="text-xs text-bc-muted">

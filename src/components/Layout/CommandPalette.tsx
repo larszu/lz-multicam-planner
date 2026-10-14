@@ -80,7 +80,7 @@ export default function CommandPalette({ commands }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
-        className="w-[560px] max-w-[92vw] border border-bc-border bg-bc-panel text-bc-text"
+        className="bc-dialog w-[560px] max-w-[92vw] text-bc-text"
       >
         <div className="bc-panel-head">
           <input
@@ -109,7 +109,7 @@ export default function CommandPalette({ commands }: Props) {
             className="w-full bg-transparent text-sm text-bc-text-bright outline-none placeholder:text-bc-muted"
           />
         </div>
-        <ul className="max-h-[50vh] overflow-y-auto py-1">
+        <ul className="max-h-[50vh] overflow-y-auto p-2">
           {treffer.length === 0 && (
             <li className="px-3 py-2 text-xs text-bc-muted">No matching command.</li>
           )}
@@ -119,11 +119,11 @@ export default function CommandPalette({ commands }: Props) {
                 type="button"
                 onMouseEnter={() => setAktiv(i)}
                 onClick={() => ausfuehren(c)}
-                className={`flex w-full items-baseline gap-3 px-3 py-1.5 text-left text-sm ${
+                className={`flex w-full items-baseline gap-3 rounded-bc-m px-3 py-1.5 text-left text-sm ${
                   i === aktiv ? 'bg-bc-panel-raised text-bc-text-bright' : 'text-bc-text'
                 }`}
               >
-                <span className="w-20 shrink-0 text-[10.5px] font-bold uppercase tracking-[0.16em] text-bc-muted">
+                <span className="w-20 shrink-0 text-[11px] font-semibold text-bc-muted">
                   {c.group}
                 </span>
                 <span className="truncate">{c.label}</span>

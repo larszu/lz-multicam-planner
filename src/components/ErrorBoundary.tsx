@@ -37,20 +37,18 @@ export default class ErrorBoundary extends Component<Props, State> {
       const lang = useStore.getState().language;
       const t = (key: string, en: string) => translate(lang, key, en);
       return (
-        <div style={{ padding: 32, color: '#ef4444', background: '#0f1117', minHeight: '100vh' }}>
+        <div className="bg-bc-dark text-bc-red" style={{ padding: 32, minHeight: '100vh' }}>
           <h1 style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 12 }}>{t('error.title', 'Something went wrong')}</h1>
-          <p style={{ color: '#9ca3af', marginBottom: 16 }}>
+          <p className="text-bc-text" style={{ marginBottom: 16 }}>
             {t('error.hint', 'The application encountered an unexpected error. Try refreshing the page.')}
           </p>
-          <pre style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          <pre className="text-bc-muted" style={{ fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
             {this.state.error?.message}
           </pre>
           <button
             onClick={() => window.location.reload()}
-            style={{
-              marginTop: 16, padding: '8px 20px', background: '#3b82f6', color: '#fff',
-              border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 14,
-            }}
+            className="bc-btn-primary"
+            style={{ marginTop: 16, padding: '8px 20px', fontSize: 14 }}
           >
             {t('error.reload', 'Reload')}
           </button>

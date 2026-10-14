@@ -1,6 +1,11 @@
 // ───────────────────────────────────────────────────────────────────────────
 // Lesbarkeit — gemessen, nicht geschaetzt.
 //
+// WARUM ES DAS GIBT — Stand 2026-10-13: seit dem Design-Vertrag 2026-10
+// (ADR-007, lz-planner-suite) gibt es zwei gleichrangige Modi auf neutralen
+// Flaechen; dieser Lauf misst beide (Block 0 = @theme/dunkel, Block 1 = hell)
+// gegen ALLE Flaechenstufen. Die Geschichte darunter ist die vom 2026-09-12.
+//
 // NUTZER-MELDUNG 2026-09-12: „in der av planner suite sieht der multicam
 // planner besser aus als der multicam planner einzeln, aber man kann manche
 // texte nicht lesen."
@@ -65,25 +70,27 @@ export const kontrast = (a, b) => {
 
 const GRENZE = 4.5
 /**
- * Welcher Ton auf welchem Grund geprueft wird.
+ * Welcher Ton auf welchem Grund geprueft wird — Stand 2026-10-13
+ * (Design-Vertrag 2026-10, ADR-007 der lz-planner-suite).
  *
- * `bc-panel-raised` (#24405F) steht bewusst NUR bei den beiden hellen Toenen.
- * Stahlblau — die Markenfarbe fuer gedaempften Text, von `brand:check`
- * festgehalten — liegt dort bei 3.81. Das gehoert auf `raised` an eine
- * Trennlinie oder ein Symbol und nicht an Text, und diese Zeile IST die Regel
- * dazu: sie steht in der Liste und nicht in einem Kommentar, damit jemand sie
- * AENDERN muss, statt sie zu vergessen.
+ * Mit den neutralen Flaechen geht die Rampe wieder auf: der gedaempfte Ton
+ * haelt jetzt auch auf Flaeche 2 (`bc-panel-raised`, Felder und Chips) und
+ * auf erhobenen Flaechen (Menues, Dialoge). Bis 2026-10-13 stand
+ * `panel-raised` hier nur bei den hellen Toenen, weil Stahlblau auf Navy
+ * bei 3.81 lag.
  *
- * Was daraus folgt, wenn jemand doch gedaempften Text auf einem Chip braucht:
- * nicht den Ton aufhellen (das bricht die Marke), sondern den Chip dunkler
- * machen oder den Text in `bc-text` setzen.
+ * Dazu der Akzent: Text AUF dem Akzent (Hauptknopf) und der Akzent als
+ * Schrift (Links, Auswahl) auf den Gruenden.
  */
+const ALLE = ['bc-dark', 'bc-panel', 'bc-panel-raised', 'bc-elevated', 'bc-sunken']
 const PAARE = [
-  ['bc-text', ['bc-dark', 'bc-panel', 'bc-panel-raised']],
-  ['bc-text-bright', ['bc-dark', 'bc-panel', 'bc-panel-raised']],
-  ['bc-muted', ['bc-dark', 'bc-panel']],
-  ['bc-dim', ['bc-dark', 'bc-panel']],
-  ['bc-faint', ['bc-dark', 'bc-panel']],
+  ['bc-text', ALLE],
+  ['bc-text-bright', ALLE],
+  ['bc-muted', ALLE],
+  ['bc-dim', ALLE],
+  ['bc-faint', ALLE],
+  ['bc-accent', ['bc-dark', 'bc-panel', 'bc-elevated']],
+  ['bc-accent-text', ['bc-accent']],
 ]
 
 const befunde = []

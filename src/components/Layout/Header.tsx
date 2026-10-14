@@ -13,8 +13,8 @@ import { Menu, MenuItem, MenuSeparator, MenuHeading } from './Menu';
 import SettingsDialog from '../Settings/SettingsDialog';
 import { OPEN_SETTINGS_EVENT, type SettingsSection } from '../Settings/openSettings';
 import { TABS, type TabDef } from './tabs';
-import signetDunkel from '../../assets/brand/lzm_signet_offwhite_tally.svg';
-import signetHell from '../../assets/brand/lzm_signet_navy_tally.svg';
+import Signet from './Signet';
+import ThemaUmschalter from './ThemaUmschalter';
 
 // Die Uebersetzungsfunktion, wie sie `useTranslation` liefert.
 type TFn = (key: string, en: string) => string;
@@ -28,7 +28,7 @@ import { openFirstSteps } from './firstStepsEvent';
 // own category in the 2D plan; "All" honours each object's manual lock flag.
 const getEditModes = (t: TFn): { id: EditMode; label: string; title: string }[] => [
   { id: 'all', label: t('header.editMode.all', 'All'), title: t('header.editMode.all.title', 'Edit everything (respects per-object locks)') },
-  { id: 'floorplan', label: t('header.editMode.floorplan', 'Floor Plan'), title: t('header.editMode.floorplan.title', 'Edit only the floor plan & walls') },
+  { id: 'floorplan', label: t('header.editMode.floorplan', 'Floor plan'), title: t('header.editMode.floorplan.title', 'Edit only the floor plan & walls') },
   { id: 'stage', label: t('header.editMode.stage', 'Stage'), title: t('header.editMode.stage.title', 'Edit only stages') },
   { id: 'objects', label: t('header.editMode.objects', 'Objects'), title: t('header.editMode.objects.title', 'Edit only objects & persons') },
   { id: 'cameras', label: t('header.editMode.cameras', 'Cameras'), title: t('header.editMode.cameras.title', 'Edit only cameras') },
@@ -257,17 +257,17 @@ export default function Header({
           ───────────────────────────────────────────────────────────────── */}
       <header className="bc-topbar">
         <div className="flex min-w-0 shrink-0 items-center gap-2 text-bc-text-bright">
-          <img src={signetDunkel} alt="lz." className="lz-logo-dunkel h-8 w-auto shrink-0 mr-2" />
-          <img src={signetHell} alt="lz." className="lz-logo-hell h-8 w-auto shrink-0 mr-2" />
+          <Signet className="mr-1 h-5 w-auto shrink-0" />
           <span className="hidden text-sm font-bold sm:inline">LZ Multicam Planner</span>
           <span className="ml-2 hidden text-xs text-bc-muted lg:inline">— {venue.name}</span>
           {/* Minimal unsaved-changes indicator (no project-version counter). */}
           {unsaved && (
             <span
-              className="ml-2 shrink-0 bg-bc-yellow/20 px-1.5 py-0.5 text-xs text-bc-yellow"
+              className="shrink-0 rounded-bc-full bg-bc-yellow/15 px-2 py-0.5 text-xs font-medium text-bc-yellow sm:ml-2"
               title={t('header.unsaved.title', 'There are unsaved changes — use Save to write a .mcplan file')}
             >
-              {t('header.unsaved', '● unsaved')}
+              <span aria-hidden="true" className="sm:hidden">●</span>
+              <span className="hidden sm:inline">{t('header.unsaved', '● unsaved')}</span>
             </span>
           )}
         </div>
@@ -452,7 +452,7 @@ export default function Header({
                 {t('header.presets.focus', 'Focus')}
               </MenuItem>
               <MenuItem onClick={() => { close(); onApplyPreset('grid'); }}>
-                {t('header.presets.defaultGrid', 'Default Grid')}
+                {t('header.presets.defaultGrid', 'Default grid')}
               </MenuItem>
 
               {layoutPresetOptions.length > 0 && (
@@ -549,11 +549,12 @@ export default function Header({
             nur das Zeichen, damit die Zeile auf schmalen nicht bricht. */}
         <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
           <ZoomControl />
+          <ThemaUmschalter />
           <button
             type="button"
             onClick={() => setSettingsOpen('general')}
-            style={{ padding: '4px 8px' }}
-            className="flex items-center gap-1 text-xs text-bc-text transition-colors hover:bg-bc-panel-raised hover:text-bc-text-bright"
+            style={{ padding: '4px 10px' }}
+            className="flex items-center gap-1.5 rounded-bc-full text-xs font-medium text-bc-text transition-colors hover:bg-bc-hover hover:text-bc-text-bright"
             title={t('settings.title', 'Settings')}
           >
             <FiSettings size={14} />
@@ -579,9 +580,9 @@ export default function Header({
             onDragStart={(e) => {
               onDragNewPanel(tab.id, e.nativeEvent);
             }}
-            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors sm:px-3.5 ${
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-bc-full px-3 py-1 text-xs font-medium transition-colors sm:px-3.5 ${
               tab.id === activeTabId
-                ? 'bg-bc-accent/15 font-semibold text-bc-text-bright'
+                ? 'bg-bc-accent-soft font-semibold text-bc-text-bright'
                 : 'text-bc-muted hover:bg-bc-hover hover:text-bc-text-bright'
             } ${
               layoutMode === 'grid' ? 'cursor-grab active:cursor-grabbing' : ''

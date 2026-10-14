@@ -36,14 +36,14 @@ export default function ZoomControl() {
 
   return (
     <div
-      className="hidden lg:flex items-center border border-bc-border bg-bc-dark p-0.5"
+      className="bc-seg bc-seg-kompakt hidden lg:flex items-center"
       title={t('header.zoom.title', 'UI zoom (Ctrl + / - / 0)')}
     >
       <button
         type="button"
         onClick={dec}
         disabled={zoom <= ZOOM_MIN + 1e-6}
-        className="p-1.5 text-bc-muted hover:text-bc-text-bright hover:bg-bc-border disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+        className="p-1.5 disabled:opacity-30"
         title={t('header.zoom.out.title', 'Smaller (Ctrl -)')}
         aria-label={t('header.zoom.out', 'Zoom out')}
       >
@@ -52,7 +52,7 @@ export default function ZoomControl() {
       <button
         type="button"
         onClick={reset}
-        className="px-1.5 min-w-[3rem] text-center text-xs tabular-nums text-bc-text hover:text-bc-text-bright transition-colors"
+        className="px-1.5 min-w-[3rem] text-center text-xs tabular-nums"
         title={t('header.zoom.reset', 'Reset to 100 % (Ctrl 0)')}
       >
         {pct}%
@@ -61,7 +61,7 @@ export default function ZoomControl() {
         type="button"
         onClick={inc}
         disabled={zoom >= ZOOM_MAX - 1e-6}
-        className="p-1.5 text-bc-muted hover:text-bc-text-bright hover:bg-bc-border disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+        className="p-1.5 disabled:opacity-30"
         title={t('header.zoom.in.title', 'Larger (Ctrl +)')}
         aria-label={t('header.zoom.in', 'Zoom in')}
       >

@@ -77,7 +77,7 @@ function detectSensorPreset(sensor?: SensorSize): string {
 export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, title }: CustomCameraFormProps) {
   const { t } = useTranslation();
   const resolvedSubmitLabel = submitLabel ?? t('sidebar.form.create', 'Create');
-  const resolvedTitle = title ?? t('sidebar.form.newCamera', 'New Custom Camera');
+  const resolvedTitle = title ?? t('sidebar.form.newCamera', 'New custom camera');
   const [manufacturer, setManufacturer] = useState(initial?.manufacturer ?? '');
   const [model, setModel] = useState(initial?.model ?? '');
   // Anschluss-Vorlage (#145): eine eigene Kamera bekommt ihre Ports im
@@ -290,7 +290,7 @@ export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, tit
           </div>
           <input
             type="password"
-            className="w-full bg-bc-dark border border-bc-border px-1 py-0.5 text-bc-text-bright text-xs"
+            className="w-full border border-bc-border bg-bc-panel-raised px-1 py-0.5 text-bc-text-bright text-xs"
             placeholder="AIza…"
             value={pendingKey}
             onChange={(e) => setPendingKey(e.target.value)}
@@ -309,7 +309,7 @@ export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, tit
             {apiKey && (
               <button onClick={clearKey} className="flex-1 py-0.5 bg-bc-red/20 text-bc-red text-[10px] hover:bg-bc-red/30">{t('sidebar.form.clear', 'Clear')}</button>
             )}
-            <button onClick={() => setShowKeyInput(false)} className="flex-1 py-0.5 bg-bc-dark border border-bc-border text-bc-muted text-[10px] hover:text-bc-text">{t('sidebar.form.cancel', 'Cancel')}</button>
+            <button onClick={() => setShowKeyInput(false)} className="flex-1 py-0.5 border border-bc-border bg-bc-panel-raised text-bc-muted text-[10px] hover:text-bc-text">{t('sidebar.form.cancel', 'Cancel')}</button>
           </div>
         </div>
       )}
@@ -418,7 +418,7 @@ export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, tit
 
       <div className="grid grid-cols-2 gap-1">
         <label>
-          <span className="text-bc-dim text-[10px]">{t('sidebar.form.nativeMount', 'Native Mount')}</span>
+          <span className="text-bc-dim text-[10px]">{t('sidebar.form.nativeMount', 'Native mount')}</span>
           <select
             className="block w-full bg-bc-panel border border-bc-border px-1 py-0.5 text-bc-text-bright text-xs"
             value={mountIsCustom ? '__custom__' : mount}

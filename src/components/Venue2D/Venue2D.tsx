@@ -29,7 +29,7 @@ const ctxItemStyle: React.CSSProperties = {
   gap: 8,
   width: '100%',
   padding: '6px 8px',
-  borderRadius: 6,
+  borderRadius: 'var(--radius-bc-s)',
   background: 'transparent',
   border: 'none',
   color: 'inherit',
@@ -56,25 +56,29 @@ const ctxItemStyle: React.CSSProperties = {
  * dieselben wie im Stilblatt — wer eine aendert, aendert beide.
  */
 const PALETTE = {
+  // Neutral wie die Oberflaeche (Design-Vertrag 2026-10): Anthrazit dunkel,
+  // warmes Weiss hell. Grund = Flaeche um das Blatt, Blatt = Zeichenflaeche.
   dunkel: {
-    grund: '#0a0b0f',
-    blatt: '#111318',
-    raster: '#1D324F',
-    rasterText: '#555555',
-    rahmen: '#2a2d3a',
-    massstab: '#666666',
-    chip: '#000000aa',
-    chipText: '#9ca3af',
+    grund: '#28292E',
+    blatt: '#33343A',
+    raster: '#45464D',
+    rasterText: '#A9ACB4',
+    rahmen: '#4A4B52',
+    massstab: '#A9ACB4',
+    chip: '#28292Ecc',
+    chipText: '#E6E6E3',
+    beschriftung: '#F6F5F0',
   },
   hell: {
-    grund: '#E8E9E4',
+    grund: '#F1F1EE',
     blatt: '#FFFFFF',
-    raster: '#C7CEDA',
-    rasterText: '#8A93A3',
-    rahmen: '#AAB3C2',
-    massstab: '#6E7684',
-    chip: '#ffffffcc',
-    chipText: '#4E6180',
+    raster: '#E3E3DF',
+    rasterText: '#6A6E77',
+    rahmen: '#C9CAC5',
+    massstab: '#6A6E77',
+    chip: '#FFFFFFcc',
+    chipText: '#2B2E35',
+    beschriftung: '#16181D',
   },
 } as const;
 
@@ -618,7 +622,7 @@ export default function Venue2D() {
   return (
     <div
       ref={containerRef}
-      style={{ width: '100%', height: '100%', background: P.grund, borderRadius: 8, overflow: 'hidden', position: 'relative' }}
+      style={{ width: '100%', height: '100%', background: P.grund, overflow: 'hidden', position: 'relative' }}
       onDragOver={planAblageHandler.onDragOver}
       onDragLeave={(e) => {
         // dragleave feuert auch beim Wechsel auf das Konva-Canvas darunter;
@@ -639,7 +643,7 @@ export default function Venue2D() {
       )}
       {/* Zoom indicator */}
       <EditGroupsBar />
-      <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 10, background: P.chip, padding: '4px 10px', borderRadius: 4, fontSize: 11, color: P.chipText, pointerEvents: 'none', backdropFilter: 'blur(4px)' }}>
+      <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, background: P.chip, padding: '4px 10px', borderRadius: 'var(--radius-bc-full)', fontSize: 11, color: P.chipText, pointerEvents: 'none', backdropFilter: 'blur(4px)' }}>
         {(zoom * 100).toFixed(0)}%
       </div>
       <Stage
@@ -952,7 +956,7 @@ export default function Venue2D() {
                   />
                 </>
               )}
-              <Text x={-16} y={12} text={cam.locked ? `${cam.label} 🔒` : cam.label} fontSize={11} fill="#fff" fontStyle="bold" align="center" width={32} />
+              <Text x={-16} y={12} text={cam.locked ? `${cam.label} 🔒` : cam.label} fontSize={11} fill={P.beschriftung} fontStyle="bold" align="center" width={32} />
             </Group>
           );
         })}
@@ -1033,28 +1037,23 @@ export default function Venue2D() {
           top: Math.min(menu.y, containerSize.h - 110),
           zIndex: 50,
           minWidth: 150,
-          background: 'rgba(15,23,42,0.97)',
-          border: '1px solid #334155',
-          borderRadius: 8,
-          boxShadow: '0 10px 30px rgba(0,0,0,0.45)',
           padding: 4,
           fontSize: 12,
-          color: '#e2e8f0',
-          backdropFilter: 'blur(6px)',
         }}
+        className="bc-popover text-bc-text"
       >
         {menu.kind !== 'wall' && (
           <>
-            <button type="button" onClick={() => handleMenuAction('duplicate')} style={ctxItemStyle}>
+            <button type="button" onClick={() => handleMenuAction('duplicate')} style={ctxItemStyle} className="hover:bg-bc-hover">
               <FiCopy size={13} /> {t('venue.duplicate', 'Duplicate')}
             </button>
-            <button type="button" onClick={() => handleMenuAction('lock')} style={ctxItemStyle}>
+            <button type="button" onClick={() => handleMenuAction('lock')} style={ctxItemStyle} className="hover:bg-bc-hover">
               {menu.locked ? <FiUnlock size={13} /> : <FiLock size={13} />} {menu.locked ? t('venue.unlockPosition', 'Unlock position') : t('venue.lockPosition', 'Lock position')}
             </button>
-            <div style={{ height: 1, background: '#334155', margin: '4px 6px' }} />
+            <div className="border-t border-bc-border" style={{ margin: '4px 6px' }} />
           </>
         )}
-        <button type="button" onClick={() => handleMenuAction('delete')} style={{ ...ctxItemStyle, color: '#f87171' }}>
+        <button type="button" onClick={() => handleMenuAction('delete')} style={ctxItemStyle} className="text-bc-red hover:bg-bc-hover">
           <FiTrash2 size={13} /> {format(t('venue.delete', 'Delete {kind}'), { kind: menu.kind })}
         </button>
       </div>

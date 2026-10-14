@@ -28,8 +28,8 @@ export interface TabDef {
 // Uebersetzung dem Quell-String gleicht, ist nur eine Stelle mehr, an der
 // jemand spaeter etwas anderes eintragen kann.
 export const TABS: TabDef[] = [
-  { id: 'tab-2d', key: 'header.tab.2dPlan', label: '2D Plan', Icon: FiLayout },
-  { id: 'tab-3d', key: 'header.tab.3dView', label: '3D View', Icon: FiBox },
+  { id: 'tab-2d', key: 'header.tab.2dPlan', label: '2D plan', Icon: FiLayout },
+  { id: 'tab-3d', key: 'header.tab.3dView', label: '3D view', Icon: FiBox },
   { id: 'tab-preview', key: 'header.tab.preview', label: 'Preview', Icon: FiMonitor },
   { id: 'tab-multiview', key: 'header.tab.multiview', label: 'Multiview', Icon: FiGrid },
   { id: 'tab-calc', key: 'header.tab.calculator', label: 'Calculator', Icon: FiSliders },

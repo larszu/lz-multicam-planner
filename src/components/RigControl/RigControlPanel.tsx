@@ -409,7 +409,7 @@ export default function RigControlPanel() {
         {/* Kopf: welche Kamera, welches Rig */}
         <div className="flex items-center gap-2">
           <select
-            className="bg-bc-dark border border-bc-border px-2 py-1 text-bc-text-bright"
+            className="border border-bc-border bg-bc-panel-raised px-2 py-1 text-bc-text-bright"
             value={cam.id}
             onChange={(e) => selectCamera(e.target.value)}
           >
@@ -481,7 +481,7 @@ export default function RigControlPanel() {
         </div>
 
         {/* Tastenlegende */}
-        <div className="border border-bc-border bg-bc-dark px-2 py-1.5 text-[10px] text-bc-muted leading-relaxed">
+        <div className="border border-bc-border bg-bc-panel-raised px-2 py-1.5 text-[10px] text-bc-muted leading-relaxed">
           <b className="text-bc-text">{t('rig.keys', 'Keys')}</b> — <b>J/L</b> {t('rig.key.track', 'track')} · <b>← →</b> {t('rig.key.pan', 'pan')} · <b>↑ ↓</b> {t('rig.key.tilt', 'tilt')} ·
           {' '}<b>R/F</b> {t('rig.key.height', 'height')} · <b>[ ]</b> {t('rig.key.align', 'align rig')} · <b>, .</b> {t('rig.key.zoom', 'zoom')} · <b>0</b> {t('rig.key.park', 'park')} ·
           {' '}<b>1/2/3</b> {t('rig.key.speed', 'speed')}. {t('rig.keys.hint', 'Several keys at once move several axes together.')}
@@ -562,7 +562,7 @@ export default function RigControlPanel() {
 
 function Readout({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="border border-bc-border bg-bc-dark px-2 py-1">
+    <div className="border border-bc-border bg-bc-panel-raised px-2 py-1">
       <div className="text-bc-dim text-[10px]">{label}</div>
       <div className="text-bc-text-bright tabular-nums">{value}</div>
       {sub && <div className="text-bc-faint text-[10px]">{sub}</div>}

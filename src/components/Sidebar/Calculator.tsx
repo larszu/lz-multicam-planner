@@ -137,9 +137,9 @@ export default function Calculator() {
       <div className="grid grid-cols-2 gap-4 mb-6">
         {/* Sensor */}
         <label className="block text-xs">
-          <span className="text-bc-muted">{t('sidebar.calc.sensorSize', 'Sensor Size')}</span>
+          <span className="text-bc-muted">{t('sidebar.calc.sensorSize', 'Sensor size')}</span>
           <select
-            className="block w-full mt-1 bg-bc-dark border border-bc-border px-2 py-1.5 text-bc-text-bright text-sm"
+            className="block w-full mt-1 border border-bc-border bg-bc-panel-raised px-2 py-1.5 text-bc-text-bright text-sm"
             value={sensorKey}
             onChange={(e) => eigen(setSensorKey)(e.target.value)}
           >
@@ -151,7 +151,7 @@ export default function Calculator() {
 
         {/* Focal length */}
         <label className="block text-xs">
-          <span className="text-bc-muted">{format(t('sidebar.calc.focalLength', 'Focal Length: {v}mm'), { v: focalLength })}</span>
+          <span className="text-bc-muted">{format(t('sidebar.calc.focalLength', 'Focal length: {v}mm'), { v: focalLength })}</span>
           <input
             type="range"
             className="w-full mt-1 accent-bc-accent"
@@ -195,7 +195,7 @@ export default function Calculator() {
         <label className="block text-xs">
           <span className="text-bc-muted">{t('sidebar.calc.extender', 'Extender')}</span>
           <select
-            className="block w-full mt-1 bg-bc-dark border border-bc-border px-2 py-1.5 text-bc-text-bright text-sm"
+            className="block w-full mt-1 border border-bc-border bg-bc-panel-raised px-2 py-1.5 text-bc-text-bright text-sm"
             value={extender}
             onChange={(e) => eigen(setExtender)(parseFloat(e.target.value))}
           >
@@ -208,19 +208,19 @@ export default function Calculator() {
 
       {/* Results */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-bc-dark border border-bc-border p-4">
+        <div className="rounded-bc-m border border-bc-border bg-bc-panel-raised p-4">
           <h3 className="text-sm font-bold text-bc-accent mb-2">{t('sidebar.calc.fieldOfView', 'Field of View')}</h3>
           <div className="space-y-1 text-sm text-bc-text">
             <div>{t('sidebar.calc.horizontal', 'Horizontal:')} <strong>{fov.horizontalDeg.toFixed(2)}°</strong></div>
             <div>{t('sidebar.calc.vertical', 'Vertical:')} <strong>{fov.verticalDeg.toFixed(2)}°</strong></div>
             <div>{t('sidebar.calc.diagonal', 'Diagonal:')} <strong>{fov.diagonalDeg.toFixed(2)}°</strong></div>
-            <div className="pt-2">{t('sidebar.calc.imageWidth', 'Image Width:')} <strong>{fov.imageWidthAtDistance.toFixed(2)}m</strong></div>
-            <div>{t('sidebar.calc.imageHeight', 'Image Height:')} <strong>{fov.imageHeightAtDistance.toFixed(2)}m</strong></div>
+            <div className="pt-2">{t('sidebar.calc.imageWidth', 'Image width:')} <strong>{fov.imageWidthAtDistance.toFixed(2)}m</strong></div>
+            <div>{t('sidebar.calc.imageHeight', 'Image height:')} <strong>{fov.imageHeightAtDistance.toFixed(2)}m</strong></div>
             <div className="pt-2">{t('sidebar.calc.eqFl', '35mm eq. FL:')} <strong>{fov.equivalentFocalLength.toFixed(0)}mm</strong></div>
           </div>
         </div>
 
-        <div className="bg-bc-dark border border-bc-border p-4">
+        <div className="rounded-bc-m border border-bc-border bg-bc-panel-raised p-4">
           <h3 className="text-sm font-bold text-bc-green mb-2">{t('sidebar.calc.depthOfField', 'Depth of Field')}</h3>
           <div className="space-y-1 text-sm text-bc-text">
             <div>{t('sidebar.calc.near', 'Near:')} <strong>{dof.nearLimit < 0.01 ? '0' : dof.nearLimit.toFixed(2)}m</strong></div>
@@ -231,7 +231,7 @@ export default function Calculator() {
           </div>
         </div>
 
-        <div className="bg-bc-dark border border-bc-border p-4 col-span-2">
+        <div className="rounded-bc-m border border-bc-border bg-bc-panel-raised p-4 col-span-2">
           <h3 className="text-sm font-bold text-bc-yellow mb-2">{t('sidebar.calc.personInFrame', 'Person in Frame (1.80m)')}</h3>
           <div className="text-sm text-bc-text">
             {t('sidebar.calc.heightIn1080p', 'Height in 1080p:')} <strong>{personPx.toFixed(0)}px</strong> ({((personPx / 1080) * 100).toFixed(1)}% {t('sidebar.calc.ofFrame', 'of frame')})

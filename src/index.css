@@ -1,136 +1,158 @@
 @import "tailwindcss";
 
-/* Tokens nach lzm-web (Oktober 2026): Flaechen und Text neutral, Markenblau
- * nur als Akzent, Dunkel ist Anthrazit statt Navy. Die bc-*-Namen bleiben,
- * damit kein Aufrufer umgebaut werden muss; getauscht werden nur Werte.
+/* ─── Tokens (Design-Vertrag 2026-10, ADR-007 in der Fassung vom 2026-10-13) ──
  *
- * Textstufen: text-bright (Ueberschriften) · text (Fliesstext) · muted/dim/
- * faint (Meta). Die drei Meta-Namen tragen denselben Wert — eine Stufe
- * darunter laege unter 4.5:1 (`kontrast:check`). */
+ * Tailwind v4 erzeugt aus diesen Variablen die Utilities (bg-bc-panel,
+ * rounded-bc-l, shadow-bc-2 …). Die NAMEN der Farb-Token sind seit B-70
+ * dieselben; geaendert haben sich die WERTE: Flaechen sind neutral
+ * (Anthrazit dunkel, warmes Fast-Weiss hell), Markenblau ist nur noch
+ * Akzent. Werte, Rollen und beide Modi stehen im Design-Vertrag und werden
+ * von `brand:check` und `kontrast:check` gemessen.
+ *
+ * Der @theme-Block ist das DUNKEL-Thema (Vorgabe); hell tauscht darunter nur
+ * Werte, keine Regel. Rundungen und Schatten gibt es nur ueber diese Token
+ * (`form:check`).
+ *
+ *   bc-dark          Grund
+ *   bc-panel         Flaeche (Panels, Karten)
+ *   bc-panel-raised  Flaeche 2 (Felder, Toolbars, Hover-Flaechen)
+ *   bc-elevated      Erhoben (Menues, Popover, Dialoge)
+ *   bc-sunken        Versenkt (Leisten, Bahnen)
+ *   bc-text-bright / bc-text / bc-muted   Text stark / Text / gedaempft
+ *   bc-dim, bc-faint  Alias fuer gedaempft — die Namen bleiben, damit die
+ *                     Aufrufer sagen, was gemeint ist (siehe B-70).
+ */
 @theme {
-  --color-bc-dark: #1E1F23;          /* Grund */
-  --color-bc-panel: #28292E;         /* Panels, Karten */
-  --color-bc-sunken: #232428;        /* Leisten */
-  --color-bc-panel-raised: #33343A;  /* Eingaben, Chips, Hover */
-  --color-bc-border: rgba(246, 245, 240, 0.12);
-  /* Akzent: helles Markenblau (Stahlblau + Eisblau), darauf Deep Navy. */
+  --color-bc-dark: #1E1F23;
+  --color-bc-panel: #28292E;
+  --color-bc-panel-raised: #33343A;
+  --color-bc-elevated: #3B3C42;
+  --color-bc-sunken: #19191D;
+  --color-bc-border: rgba(246, 245, 240, 0.09);
+  --color-bc-border-strong: rgba(246, 245, 240, 0.20);
   --color-bc-accent: #B9C7D8;
   --color-bc-accent-text: #132040;
-  --color-bc-text: #E4E4E1;
+  --color-bc-accent-soft: rgba(185, 199, 216, 0.12);
+  --color-bc-text: #E6E6E3;
   --color-bc-text-bright: #F6F5F0;
   --color-bc-muted: #A9ACB4;
   --color-bc-dim: #A9ACB4;
   --color-bc-faint: #A9ACB4;
-  /* Zustand und Grund, keine Farbe: `bg-white/[0.06]` waere im Hell-Thema
-   * unsichtbar, `bg-black/60` dort ein schwarzer Balken. */
+  /* Logo nur in Kit-Farben, nie an den Akzent gekoppelt. */
+  --color-bc-logo: #F6F5F0;
   --color-bc-hover: rgba(246, 245, 240, 0.06);
-  --color-bc-hover-soft: rgba(246, 245, 240, 0.02);
-  --color-bc-scrim: rgba(0, 0, 0, 0.6);
-  /* Grund hinter einem Kamerabild: schwarz in jedem Thema. */
+  --color-bc-hover-soft: rgba(246, 245, 240, 0.015);
+  --color-bc-scrim: rgba(0, 0, 0, 0.55);
+  /* Letterbox hinter einem Framegrab: in jedem Thema schwarz — das ist
+   * kein Oberflaechenton, sondern die Abwesenheit von Bild. */
   --color-bc-media: #000000;
-  /* Schrift auf dem Bild (Multiview, Tally-Leisten): hell in jedem Thema. */
+  /* Schrift AUF dem Bild: hell in jedem Thema. */
   --color-bc-on-media: #F6F5F0;
+  --color-bc-glow-1: rgba(185, 199, 216, 0.16);
+  --color-bc-glow-2: rgba(200, 137, 43, 0.10);
   /* Status: nur Meldungen. */
   --color-bc-green: #2F7D5C;
   --color-bc-red: #B04A3F;
   --color-bc-yellow: #C8892B;
-  /* Das Aufnahmelicht: Tally, Live, Fokusring — nie Flaeche, nie Text. */
+  /* Das Aufnahmelicht: Tally, REC, Live, Fokusring, Claim-Punkt. Nie
+   * Flaeche, nie Text, nie Rahmen. */
   --color-bc-signal: #D6402E;
 
-  /* Formen und Tiefe: weiche Rundungen, sehr weiche Schatten.
-   * Logo und Tally-Punkt bleiben eckig. */
-  --radius-bc-chip: 6px;
-  --radius-bc-control: 10px;
-  --radius-bc-card: 20px;
-  --radius-bc-modal: 24px;
-  --shadow-bc-1: 0 1px 2px rgb(0 0 0 / 0.3);
-  --shadow-bc-2: 0 4px 16px rgb(0 0 0 / 0.4);
-  --shadow-bc-3: 0 16px 48px rgb(0 0 0 / 0.55);
+  --radius-bc-s: 6px;
+  --radius-bc-m: 10px;
+  --radius-bc-l: 20px;
+  --radius-bc-xl: 24px;
+  --radius-bc-full: 999px;
+
+  /* Die Schatten haengen an Laufzeit-Variablen, weil sie je Thema anders
+   * stark sind; ein Literal hier wuerde Tailwind beim Bauen einfrieren. */
+  --shadow-bc-1: var(--bc-schatten-1);
+  --shadow-bc-2: var(--bc-schatten-2);
+  --shadow-bc-3: var(--bc-schatten-3);
+
+  --ease-bc: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-/* ─── DAS HELL-THEMA (B-70) ────────────────────────────────────────────────
+:root {
+  --bc-schatten-1: 0 1px 2px rgba(0, 0, 0, 0.30);
+  --bc-schatten-2: 0 4px 16px rgba(0, 0, 0, 0.40);
+  --bc-schatten-3: 0 16px 48px rgba(0, 0, 0, 0.55);
+  --bc-dauer-1: 120ms;
+  --bc-dauer-2: 220ms;
+  --bc-dauer-3: 360ms;
+  color-scheme: dark;
+}
+
+/* ─── DAS HELL-THEMA ───────────────────────────────────────────────────────
  *
- * Nur die WERTE der Token werden getauscht, keine Regel und keine Klasse.
- * Das ist die ganze Zusage dieses Blocks — und sie haelt nur, solange
- * `src/` keine rohen Farb-Utilities mehr traegt. Bis zum 2026-09-11 waren es
- * 406 (`text-white`, `text-gray-200/300/400/500/600`, `bg-white/[0.06]`,
- * `bg-black/60`), und jede davon waere im Hell-Thema stehengeblieben:
- * hellgrauer Text auf weissem Grund, unlesbar. `scripts/rohe-farben-check.mjs`
- * misst, dass es null bleiben.
+ * DREI ZUSTAENDE, NICHT ZWEI: `[data-theme]` am Wurzelelement fuer die
+ * ausdrueckliche Wahl, die Medienabfrage fuer „Auto" — gegen eine
+ * ausdrueckliche Dunkel-Wahl abgesichert. Beide Bloecke tragen dieselben
+ * Werte; `kontrast:check` misst den ersten.
  *
- * DREI ZUSTAENDE, NICHT ZWEI. „System" ist keine Umschreibung fuer „dunkel":
- * wer nichts waehlt, folgt dem Betriebssystem; wer waehlt, gewinnt gegen es.
- * Deshalb `[data-theme]` am Wurzelelement UND eine Medienabfrage, und die
- * Medienabfrage ist gegen eine ausdrueckliche Wahl abgesichert.
- *
- * WAS NICHT MITSPRINGT, und warum das kein Rest ist:
- *
- *   Die Kamera-Vorschau und die 3D-Ansicht. Sie zeigen einen SIMULIERTEN
- *   Raum — Himmel, Boden, Waende, wie ihn ein Objektiv sehen wuerde. Ein
- *   „helles" Kamerabild waere kein anderes Aussehen, sondern eine andere
- *   Beleuchtung, also eine Aussage ueber den Saal, die niemand gemacht hat.
- *   Ein Foto wird auch nicht heller, weil die Bildbetrachter-App es ist.
- *
- *   Die Statusfarben (gruen/rot/gelb) und das Signalrot. Sie bedeuten etwas,
- *   und ihre Bedeutung haengt nicht am Thema. Sie sind auf beiden Gruenden
- *   auf Kontrast geprueft.
- */
+ * Status- und Signalfarben springen nicht mit: ihre Bedeutung haengt nicht
+ * am Thema. */
 :root[data-theme='light'] {
-  --color-bc-dark: #FAFAF8;          /* warmes Fast-Weiss — Grund */
-  --color-bc-panel: #FFFFFF;         /* Panels, Karten */
-  --color-bc-sunken: #F1F1EE;        /* Leisten, Eingaben */
-  --color-bc-panel-raised: #F6F6F3;  /* Chips, Hover */
-  --color-bc-border: rgba(22, 24, 29, 0.12);
-  /* Auf Hell ist Navy die Aktionsflaeche, Off-White die Schrift darauf. */
+  --color-bc-dark: #FAFAF8;
+  --color-bc-panel: #FFFFFF;
+  --color-bc-panel-raised: #F1F1EE;
+  --color-bc-elevated: #FFFFFF;
+  --color-bc-sunken: #F4F4F1;
+  --color-bc-border: rgba(22, 24, 29, 0.08);
+  --color-bc-border-strong: rgba(22, 24, 29, 0.18);
   --color-bc-accent: #1D324F;
   --color-bc-accent-text: #F6F5F0;
+  --color-bc-accent-soft: rgba(29, 50, 79, 0.10);
   --color-bc-text: #2B2E35;
   --color-bc-text-bright: #16181D;
-  --color-bc-muted: #5F636B;
-  --color-bc-dim: #5F636B;
-  --color-bc-faint: #5F636B;
-  --color-bc-hover: rgba(22, 24, 29, 0.06);
+  --color-bc-muted: #6A6E77;
+  --color-bc-dim: #6A6E77;
+  --color-bc-faint: #6A6E77;
+  --color-bc-logo: #1D324F;
+  --color-bc-hover: rgba(22, 24, 29, 0.05);
   --color-bc-hover-soft: rgba(22, 24, 29, 0.02);
-  /* Der Schleier bleibt dunkel — er trennt nach UNTEN, und das tut er auf
-   * hellem Grund genauso. */
-  --color-bc-scrim: rgba(0, 0, 0, 0.45);
-  --color-bc-media: #000000;
-  /* Schrift AUF dem Bild (Multiview-Beschriftung, Tally-Leisten): hell in
-   * jedem Thema, weil der Grund immer Bild oder Schleier ist. */
-  --color-bc-on-media: #F6F5F0;
+  --color-bc-scrim: rgba(22, 24, 29, 0.40);
+  --color-bc-glow-1: rgba(29, 50, 79, 0.10);
+  --color-bc-glow-2: rgba(200, 137, 43, 0.10);
+  --bc-schatten-1: 0 1px 2px rgba(22, 24, 29, 0.06);
+  --bc-schatten-2: 0 4px 16px rgba(22, 24, 29, 0.08);
+  --bc-schatten-3: 0 16px 48px rgba(22, 24, 29, 0.14);
   color-scheme: light;
 }
 
-/* Ohne ausdrueckliche Wahl entscheidet das Betriebssystem. Die Abfrage ist
- * gegen `data-theme='dark'` abgesichert: wer ausdruecklich dunkel gewaehlt
- * hat, bekommt dunkel, auch auf einem hell eingestellten Rechner. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme='dark']) {
     --color-bc-dark: #FAFAF8;
     --color-bc-panel: #FFFFFF;
-    --color-bc-sunken: #F1F1EE;
-    --color-bc-panel-raised: #F6F6F3;
-    --color-bc-border: rgba(22, 24, 29, 0.12);
+    --color-bc-panel-raised: #F1F1EE;
+    --color-bc-elevated: #FFFFFF;
+    --color-bc-sunken: #F4F4F1;
+    --color-bc-border: rgba(22, 24, 29, 0.08);
+    --color-bc-border-strong: rgba(22, 24, 29, 0.18);
     --color-bc-accent: #1D324F;
     --color-bc-accent-text: #F6F5F0;
+    --color-bc-accent-soft: rgba(29, 50, 79, 0.10);
     --color-bc-text: #2B2E35;
     --color-bc-text-bright: #16181D;
-    --color-bc-muted: #5F636B;
-    --color-bc-dim: #5F636B;
-    --color-bc-faint: #5F636B;
-    --color-bc-hover: rgba(22, 24, 29, 0.06);
+    --color-bc-muted: #6A6E77;
+    --color-bc-dim: #6A6E77;
+    --color-bc-faint: #6A6E77;
+    --color-bc-logo: #1D324F;
+    --color-bc-hover: rgba(22, 24, 29, 0.05);
     --color-bc-hover-soft: rgba(22, 24, 29, 0.02);
-    --color-bc-scrim: rgba(0, 0, 0, 0.45);
-    --color-bc-media: #000000;
-  /* Schrift AUF dem Bild (Multiview-Beschriftung, Tally-Leisten): hell in
-   * jedem Thema, weil der Grund immer Bild oder Schleier ist. */
-  --color-bc-on-media: #F6F5F0;
+    --color-bc-scrim: rgba(22, 24, 29, 0.40);
+    --color-bc-glow-1: rgba(29, 50, 79, 0.10);
+    --color-bc-glow-2: rgba(200, 137, 43, 0.10);
+    --bc-schatten-1: 0 1px 2px rgba(22, 24, 29, 0.06);
+    --bc-schatten-2: 0 4px 16px rgba(22, 24, 29, 0.08);
+    --bc-schatten-3: 0 16px 48px rgba(22, 24, 29, 0.14);
     color-scheme: light;
   }
 }
 
-/* Brand logo: the contour files come in Navy and Off-White only, so each
-   place carries both and the theme picks one (Off-White on dark, Navy on light). */
+/* Hauptlogo als Bilddatei: es gibt sie nur in Navy und Off-White (Kit),
+   jede Stelle traegt beide, das Thema waehlt. Das Signet im Kopf ist inline
+   und folgt `--color-bc-logo`. */
 .lz-logo-hell { display: none; }
 :root[data-theme='light'] .lz-logo-dunkel { display: none; }
 :root[data-theme='light'] .lz-logo-hell { display: block; }
@@ -139,20 +161,194 @@
   :root:not([data-theme='dark']) .lz-logo-hell { display: block; }
 }
 
-/* Tastatur-Fokus: 2 px Rot, 3 px Abstand (ADR-007). */
+/* Tastatur-Fokus: 2 px Signal, 2 px Abstand (Design-Vertrag 2026-10). */
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [role="button"]:focus-visible,
-[role="tab"]:focus-visible {
+[role="tab"]:focus-visible,
+[role="radio"]:focus-visible {
   outline: 2px solid var(--color-bc-signal);
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
 
-/* Im Base-Layer, nicht frei: ausserhalb der Layer schlug diese Regel jede
- * Tailwind-Utility (`p-4`, `px-3` …), und Abstaende im JSX blieben wirkungslos. */
+/* ─── Grundformen ─────────────────────────────────────────────────────────
+ * In @layer base, damit jede Utility am Element (rounded-none, rounded-bc-full)
+ * gewinnt. Knoepfe und Felder sind weich gerundet, Kaestchen folgen dem
+ * Akzent. Bewegung kurz, bei reduzierter Bewegung gar nicht. */
+@layer base {
+  button,
+  select,
+  textarea,
+  summary,
+  input:not([type='checkbox']):not([type='radio']):not([type='range']) {
+    border-radius: var(--radius-bc-m);
+  }
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: var(--color-bc-accent);
+  }
+  button {
+    transition-timing-function: var(--ease-bc);
+  }
+  button:not(:disabled):active,
+  [role='button']:active {
+    scale: 0.97;
+  }
+  [role='menuitem'],
+  [role='option'] {
+    border-radius: var(--radius-bc-s);
+  }
+  /* Logo, Tally-Punkt und Canvas bleiben eckig. */
+  .lz-logo-dunkel,
+  .lz-logo-hell,
+  canvas {
+    border-radius: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}
+
+@layer components {
+/* ─── Bausteine ───────────────────────────────────────────────────────────
+ * Wiederverwendet statt pro Feature neu gebaut (lzm-web, Abschnitt 6). */
+
+/* Karte: Haarlinie, weicher Schatten, Radius l. */
+.bc-card {
+  background: var(--color-bc-panel);
+  border: 1px solid var(--color-bc-border);
+  border-radius: var(--radius-bc-l);
+  box-shadow: var(--shadow-bc-1);
+}
+
+/* Dialog: erhobene Flaeche, Radius xl, Schatten 3. */
+.bc-dialog {
+  background: var(--color-bc-elevated);
+  border: 1px solid var(--color-bc-border);
+  border-radius: var(--radius-bc-xl);
+  box-shadow: var(--shadow-bc-3);
+  overflow: hidden;
+}
+
+/* Klappe/Popover: erhoben, Radius m … l, Schatten 2. */
+.bc-popover {
+  background: var(--color-bc-elevated);
+  border: 1px solid var(--color-bc-border);
+  border-radius: var(--radius-bc-m);
+  box-shadow: var(--shadow-bc-2);
+}
+
+/* Pill-Hauptknopf mit weichem Akzentschein. */
+.bc-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 16px;
+  border-radius: var(--radius-bc-full);
+  background: var(--color-bc-accent);
+  color: var(--color-bc-accent-text);
+  font-weight: 600;
+  box-shadow: 0 6px 20px var(--color-bc-glow-1), var(--shadow-bc-1);
+  transition: translate var(--bc-dauer-1) var(--ease-bc), box-shadow var(--bc-dauer-2) var(--ease-bc), scale var(--bc-dauer-1) var(--ease-bc);
+}
+@media (hover: hover) {
+  .bc-btn-primary:hover:not(:disabled) {
+    translate: 0 -1px;
+    box-shadow: 0 10px 28px var(--color-bc-glow-1), var(--shadow-bc-1);
+  }
+}
+.bc-btn-primary:active:not(:disabled) { scale: 0.97; }
+.bc-btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Weicher Sekundaerknopf: Akzent weich, keine Kontur. */
+.bc-btn-soft {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 14px;
+  border-radius: var(--radius-bc-full);
+  background: var(--color-bc-accent-soft);
+  color: var(--color-bc-text-bright);
+  font-weight: 600;
+  transition: background-color var(--bc-dauer-1) var(--ease-bc), scale var(--bc-dauer-1) var(--ease-bc);
+}
+.bc-btn-soft:hover:not(:disabled) { background: var(--color-bc-hover); }
+.bc-btn-soft:active:not(:disabled) { scale: 0.97; }
+
+/* Segment-Control: Pill-Schiene, gewaehlte Stellung als helle Flaeche. */
+.bc-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-bc-full);
+  background: var(--color-bc-panel-raised);
+}
+.bc-seg > button {
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-bc-full);
+  color: var(--color-bc-muted);
+  background: transparent;
+  transition: background-color var(--bc-dauer-2) var(--ease-bc), color var(--bc-dauer-2) var(--ease-bc), box-shadow var(--bc-dauer-2) var(--ease-bc);
+}
+.bc-seg > button:hover { color: var(--color-bc-text-bright); }
+.bc-seg > button[aria-pressed='true'],
+.bc-seg > button[aria-checked='true'] {
+  background: var(--color-bc-elevated);
+  color: var(--color-bc-text-bright);
+  box-shadow: var(--shadow-bc-1);
+}
+/* Der Umschalter in der 40-px-Kopfzeile ist kompakter als 32 px — die
+ * Schiene selbst ist das Ziel und misst 32 px. */
+.bc-seg-kompakt { padding: 2px; }
+.bc-seg-kompakt > button {
+  min-height: 28px;
+  min-width: 30px;
+  height: 28px;
+}
+@media (max-width: 639px) {
+  .bc-topbar .bc-seg-kompakt > button { min-width: 26px; }
+}
+
+/* Overline: kleine Pill mit Punkt, Versalien erlaubt (≤ 12 px). */
+.bc-overline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--radius-bc-full);
+  background: var(--color-bc-accent-soft);
+  color: var(--color-bc-text-bright);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Weicher Hintergrundschein — nur auf Start- und Leerflaechen. */
+.bc-schein {
+  background:
+    radial-gradient(56rem 36rem at 8% -12%, var(--color-bc-glow-1), transparent 62%),
+    radial-gradient(44rem 30rem at 105% 4%, var(--color-bc-glow-2), transparent 60%),
+    var(--color-bc-dark);
+}
+}
+
+/* Im Base-Layer, nicht ungeschichtet: ungeschichtet schlug dieser Reset
+ * jede Tailwind-Abstandsklasse (p-*, m-*, gap bleibt unberuehrt) — deshalb
+ * stehen im Code so viele `style={{ padding }}`. Seit 2026-10-13 wirken
+ * die Klassen wieder. */
 @layer base {
   * {
     margin: 0;
@@ -189,8 +385,8 @@ html, body, #root {
 /* Scrollbar */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--color-bc-border); border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: var(--color-bc-muted); }
+::-webkit-scrollbar-thumb { background: var(--color-bc-border-strong); border-radius: var(--radius-bc-full); border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-bc-muted); background-clip: padding-box; }
 
 /* ── Schieberegler ─────────────────────────────────────────────────────────
  *
@@ -210,7 +406,10 @@ html, body, #root {
  *     restlichen 18 px sind unsichtbare Trefferflaeche. Ein dicker Balken
  *     waere die naheliegende und falsche Loesung: er wuerde jede Zeile
  *     sprengen, in der ein Regler neben einer Beschriftung sitzt.
- *  2. Der Griff wird 18 px und rund (lzm-web, Oktober 2026).
+ *  2. Der Griff wird 18 px und rund (Radius full). Bis 2026-10-13 blieb er
+ *     eckig, weil ADR-007 damals „keine Rundungen" verlangte; seit dem
+ *     Design-Vertrag 2026-10 ist die Oberflaeche weich gerundet, und ein
+ *     eckiger Griff waere jetzt der Fremdkoerper.
  *  3. `touch-action: manipulation` nimmt die 300-ms-Wartezeit auf
  *     Doppeltipp weg. Ohne sie fuehlt sich jeder Regler auf dem Tablet
  *     traege an, und zwar unabhaengig von seiner Groesse.
@@ -231,9 +430,9 @@ input[type="range"] {
 }
 input[type="range"]::-webkit-slider-runnable-track {
   height: 6px;
-  background: var(--color-bc-sunken);
+  background: var(--color-bc-panel-raised);
   border: 1px solid var(--color-bc-border);
-  border-radius: 999px;
+  border-radius: var(--radius-bc-full);
 }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -242,7 +441,7 @@ input[type="range"]::-webkit-slider-thumb {
   height: 18px;
   background: var(--color-bc-accent);
   border: 2px solid var(--color-bc-panel);
-  border-radius: 999px;
+  border-radius: var(--radius-bc-full);
   box-shadow: var(--shadow-bc-1);
   /* Der Griff sitzt auf der Bahn, nicht daneben: (6 px Bahn - 18 px Griff)
      / 2 = -6 px, plus 1 px Rahmen der Bahn. */
@@ -251,24 +450,24 @@ input[type="range"]::-webkit-slider-thumb {
 }
 input[type="range"]::-moz-range-track {
   height: 6px;
-  background: var(--color-bc-sunken);
+  background: var(--color-bc-panel-raised);
   border: 1px solid var(--color-bc-border);
-  border-radius: 999px;
+  border-radius: var(--radius-bc-full);
 }
 input[type="range"]::-moz-range-thumb {
   width: 18px;
   height: 18px;
   background: var(--color-bc-accent);
   border: 2px solid var(--color-bc-panel);
-  border-radius: 999px;
+  border-radius: var(--radius-bc-full);
   box-shadow: var(--shadow-bc-1);
   cursor: pointer;
 }
 input[type="range"]:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-bc-accent) 45%, transparent);
+  box-shadow: 0 0 0 2px var(--color-bc-signal);
 }
 input[type="range"]:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-bc-accent) 45%, transparent);
+  box-shadow: 0 0 0 2px var(--color-bc-signal);
 }
 input[type="range"]:disabled {
   cursor: not-allowed;
@@ -281,10 +480,12 @@ select {
   cursor: pointer;
 }
 
-/* ── FlexLayout: schwebende Panels ─────────────────────────────────────────
- * Jedes Panel ist eine gerundete Karte auf dem Grund; die Splitter sind der
- * sichtbare Abstand dazwischen. Tabs sind Pills, der aktive traegt die
- * Akzentflaeche. */
+/* ── FlexLayout: Panels als Karten auf dem Grund ─────────────────────────
+ *
+ * Jedes Tabset ist eine Karte (Radius l, Haarlinie, Schatten 1); der
+ * Splitter ist der Abstand dazwischen und zeigt beim Ueberfahren den Akzent.
+ * Alle Farben aus Token — die alten Near-Black-Literale (#12141c, #1e2030)
+ * standen im Hell-Thema als schwarze Balken. */
 .flexlayout__layout {
   --color-text: var(--color-bc-text);
   --color-background: var(--color-bc-dark);
@@ -295,10 +496,10 @@ select {
   --color-4: var(--color-bc-accent);
   --color-5: var(--color-bc-muted);
   --color-6: var(--color-bc-accent);
-  --color-drag1: color-mix(in oklab, var(--color-bc-accent) 30%, transparent);
-  --color-drag2: color-mix(in oklab, var(--color-bc-accent) 50%, transparent);
-  --color-drag1-background: color-mix(in oklab, var(--color-bc-accent) 12%, transparent);
-  --color-drag2-background: color-mix(in oklab, var(--color-bc-accent) 22%, transparent);
+  --color-drag1: var(--color-bc-accent-soft);
+  --color-drag2: var(--color-bc-border-strong);
+  --color-drag1-background: var(--color-bc-accent-soft);
+  --color-drag2-background: var(--color-bc-hover);
   --font-size: 12px;
   --font-family: 'Public Sans', system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
   background-color: var(--color-bc-dark) !important;
@@ -311,101 +512,116 @@ select {
 
 .flexlayout__tabset {
   background-color: var(--color-bc-panel);
-  border-radius: var(--radius-bc-card);
-  box-shadow: var(--shadow-bc-1) !important;
+  border: 1px solid var(--color-bc-border);
+  border-radius: var(--radius-bc-l);
+  box-shadow: var(--shadow-bc-1);
   overflow: hidden;
-}
-.flexlayout__tab:has(> *) {
-  border-bottom-left-radius: var(--radius-bc-card);
-  border-bottom-right-radius: var(--radius-bc-card);
 }
 
 .flexlayout__tabset_header,
-.flexlayout__tabset-selected .flexlayout__tabset_header,
-.flexlayout__tabset_tabbar_outer {
+.flexlayout__tabset-selected .flexlayout__tabset_header {
   background: var(--color-bc-panel) !important;
   border-bottom: 1px solid var(--color-bc-border) !important;
-}
-.flexlayout__tabset_header,
-.flexlayout__tabset-selected .flexlayout__tabset_header {
-  min-height: 36px;
-  padding: 0 6px;
+  min-height: 34px;
+  padding: 0 4px;
 }
 .flexlayout__tabset_header_content {
   padding: 0;
 }
+
+.flexlayout__tabset_tabbar_outer {
+  background: var(--color-bc-panel) !important;
+  border-bottom: 1px solid var(--color-bc-border) !important;
+}
 .flexlayout__tabset_tabbar_inner {
-  padding: 0 6px;
+  padding: 0 4px;
 }
 
+/* Reiter als Pills: gewaehlt = Akzent weich, keine Unterstreichung. */
 .flexlayout__tab_button {
   background: transparent !important;
   border: none !important;
-  border-radius: 999px !important;
-  padding: 5px 14px !important;
-  margin: 4px 2px !important;
+  border-radius: var(--radius-bc-full) !important;
+  padding: 4px 12px !important;
+  margin: 0 1px !important;
   font-size: 12px !important;
   font-weight: 500;
   color: var(--color-bc-muted) !important;
-  transition: color 120ms, background-color 120ms;
+  transition: color var(--bc-dauer-1) var(--ease-bc), background-color var(--bc-dauer-1) var(--ease-bc);
   box-shadow: none !important;
   outline: none !important;
 }
 .flexlayout__tab_button:hover {
-  color: var(--color-bc-text) !important;
+  color: var(--color-bc-text-bright) !important;
   background: var(--color-bc-hover) !important;
 }
 .flexlayout__tab_button--selected {
   color: var(--color-bc-text-bright) !important;
-  background: color-mix(in oklab, var(--color-bc-accent) 14%, transparent) !important;
-  font-weight: 600;
+  background: var(--color-bc-accent-soft) !important;
 }
 .flexlayout__tab_button_leading,
 .flexlayout__tab_button_trailing {
   display: none;
 }
 
-.flexlayout__tab_toolbar_button,
+/* Werkzeugknoepfe im Reiterstreifen. Die Groesse ist `--ziel` (B-77). */
+.flexlayout__tab_toolbar_button {
+  color: var(--color-bc-muted) !important;
+  border-radius: var(--radius-bc-m);
+  width: var(--ziel);
+  height: var(--ziel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--bc-dauer-1) var(--ease-bc), background-color var(--bc-dauer-1) var(--ease-bc);
+}
+.flexlayout__tab_toolbar_button:hover {
+  color: var(--color-bc-text-bright) !important;
+  background-color: var(--color-bc-hover) !important;
+}
+
 .panel-toolbar-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: var(--ziel);
   height: var(--ziel);
-  border: 0;
-  border-radius: var(--radius-bc-control);
-  background: transparent;
-  color: var(--color-bc-muted) !important;
-  cursor: pointer;
-  transition: color 120ms, background-color 120ms;
-}
-.panel-toolbar-button {
   margin-left: 4px;
-}
-.flexlayout__tab_toolbar_button:hover,
-.panel-toolbar-button:hover {
-  color: var(--color-bc-text) !important;
-  background-color: var(--color-bc-hover) !important;
-}
-.panel-toolbar-button-danger:hover {
-  color: var(--color-bc-red) !important;
-  background-color: color-mix(in oklab, var(--color-bc-red) 14%, transparent) !important;
+  border: 1px solid transparent;
+  border-radius: var(--radius-bc-m);
+  background: transparent;
+  color: var(--color-bc-muted);
+  cursor: pointer;
+  transition: color var(--bc-dauer-1) var(--ease-bc), background-color var(--bc-dauer-1) var(--ease-bc);
 }
 
+.panel-toolbar-button:hover {
+  color: var(--color-bc-text-bright);
+  background-color: var(--color-bc-hover);
+}
+
+.panel-toolbar-button-danger:hover {
+  color: var(--color-bc-red);
+  background-color: color-mix(in srgb, var(--color-bc-red) 12%, transparent);
+}
+
+/* Panel-Titel: normaler Titel in Satzschreibung, keine Versalien mehr. */
 .panel-title-label {
   display: inline-flex;
   align-items: center;
-  min-height: 36px;
+  min-height: 32px;
   padding: 0 10px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 650;
   color: var(--color-bc-text-bright);
 }
 
 .layout-mode-grid .flexlayout__tabset_header,
 .layout-mode-grid .flexlayout__tabset-selected .flexlayout__tabset_header,
 .layout-mode-grid .flexlayout__tabset_tabbar_outer {
-  min-height: 38px;
+  background: var(--color-bc-panel) !important;
+  border-bottom: 1px solid var(--color-bc-border) !important;
+  min-height: 34px;
 }
 
 .layout-mode-grid .flexlayout__tab_button,
@@ -427,60 +643,58 @@ select {
   display: none !important;
 }
 .layout-mode-focus .flexlayout__tab {
-  border-radius: var(--radius-bc-card);
+  border-radius: var(--radius-bc-l);
 }
 
-/* Der Splitter ist der Abstand zwischen den Karten; erst beim Greifen
- * zeigt er den Akzent. */
+/* Der Splitter ist der Abstand zwischen den Karten. */
 .flexlayout__splitter {
   background-color: var(--color-bc-dark) !important;
-  box-shadow: none !important;
   opacity: 1;
+  transition: background-color var(--bc-dauer-1) var(--ease-bc);
 }
 .flexlayout__splitter:hover,
 .flexlayout__splitter_drag {
-  background-color: color-mix(in oklab, var(--color-bc-accent) 40%, transparent) !important;
-  border-radius: 999px;
+  background-color: var(--color-bc-accent-soft) !important;
 }
 
 .flexlayout__border_bar {
   background-color: var(--color-bc-dark) !important;
   border-color: var(--color-bc-border) !important;
-  box-shadow: none !important;
 }
 
 .flexlayout__outline_rect {
   border: 2px solid var(--color-bc-accent) !important;
-  border-radius: var(--radius-bc-card);
+  border-radius: var(--radius-bc-l);
 }
 .flexlayout__outline_rect_inner {
   border: none !important;
 }
+
 .flexlayout__edge_rect {
-  background-color: color-mix(in oklab, var(--color-bc-accent) 15%, transparent) !important;
-  border: 1px solid color-mix(in oklab, var(--color-bc-accent) 40%, transparent) !important;
-  border-radius: var(--radius-bc-control);
+  background-color: var(--color-bc-accent-soft) !important;
+  border: 1px solid var(--color-bc-border-strong) !important;
+  border-radius: var(--radius-bc-m);
 }
 
 .flexlayout__popup_menu {
-  background: var(--color-bc-panel) !important;
+  background: var(--color-bc-elevated) !important;
   border: 1px solid var(--color-bc-border) !important;
-  border-radius: var(--radius-bc-card);
+  border-radius: var(--radius-bc-m);
   box-shadow: var(--shadow-bc-2) !important;
-  padding: 6px !important;
+  padding: 4px !important;
 }
 .flexlayout__popup_menu_item {
   color: var(--color-bc-text) !important;
-  padding: 8px 12px !important;
-  border-radius: var(--radius-bc-control);
-  font-size: 13px !important;
+  padding: 6px 12px !important;
+  border-radius: var(--radius-bc-s);
+  font-size: 12px !important;
 }
 .flexlayout__popup_menu_item:hover {
   background: var(--color-bc-hover) !important;
 }
 
 .flexlayout__floating_window_content {
-  background: var(--color-bc-panel) !important;
+  background: var(--color-bc-dark) !important;
 }
 
 .flexlayout__tab_toolbar_button-max svg,
@@ -489,78 +703,27 @@ select {
   height: 14px;
 }
 
-/* ── Bedienelemente: weiche Formen an einer Stelle ─────────────────────────
- * Statt Rundungen in hunderte Klassenlisten zu schreiben, bekommen die
- * Elemente sie nach Rolle. Wer eckig bleiben muss (Kamerabild, Logo,
- * Tally-Punkt), setzt `rounded-none`. */
-@layer base {
-button,
-select,
-textarea,
-summary,
-[role='button'],
-input:not([type='checkbox']):not([type='radio']):not([type='range']) {
-  border-radius: var(--radius-bc-control);
-  transition: background-color 120ms, border-color 120ms, color 120ms, scale 120ms;
-}
-button:not(:disabled):active,
-[role='button']:active {
-  scale: 0.97;
-}
-input[type='checkbox'],
-input[type='radio'] {
-  accent-color: var(--color-bc-accent);
-}
-[role='dialog'],
-[role='alertdialog'],
-dialog {
-  border-radius: var(--radius-bc-modal);
-  box-shadow: var(--shadow-bc-3);
-}
-[role='menu'],
-[role='listbox'],
-[popover] {
-  border-radius: var(--radius-bc-card);
-  box-shadow: var(--shadow-bc-2);
-}
-[role='menuitem'],
-[role='option'] {
-  border-radius: var(--radius-bc-control);
-}
-.lz-logo-dunkel,
-.lz-logo-hell,
-canvas {
-  border-radius: 0;
-}
-}
-
 /* ── ADR-007 Abschnitt 6: der Rahmen ────────────────────────────────────────
  *
- * „Kopfzeile 40 px … Kopflinie oben." Die Suite hat dafuer `.av-topbar` und
- * `.av-panel-head` in `@avplan/ui`; der MultiCam-Planner laeuft auch allein
- * und kann das Paket nicht laden, deshalb stehen die Klassen hier mit
- * denselben Zahlen.
- *
- * Die Kopfzeile war `h-14` (56 px) — eine Zahl, die niemand entschieden hat,
- * sondern die aus einer Tailwind-Stufe stammte. 40 px ist die Zahl der Suite.
- *
- * Die Statusleiste kam am 2026-09-12 dazu. Hier stand bis dahin „wo keine
- * ist, wird auch keine erfunden, nur um eine Regel abzuhaken" — und das war
- * richtig, solange offen war, WAS darin steht. Der ADR beantwortet genau das:
- * „Meldungen links · Zaehler rechts". Zaehler sind ableitbar, nicht erfunden;
- * die drei Zahlen unten stehen ohnehin im Zustand. */
+ * Kopfzeile 40 px, Reiter-Zeile darunter, Statusleiste 24 px — die STRUKTUR
+ * ist die der Suite und wird von `kopfzeile:check` gemessen. Seit dem
+ * 2026-10-13 aendert sich nur die Optik: Glas-Kopf statt Panel-Balken, Pill-
+ * Reiter, keine Kopflinie mehr unter Panel-Koepfen. */
 
+/* Glas-Kopfzeile: Grund 72 %, Unschaerfe 16 px, Saettigung 1.4. */
 .bc-topbar {
   display: flex;
   align-items: center;
   gap: 12px;
   height: 40px;
   flex: none;
+  /* Ueber dem Arbeitsbereich, sonst malen Plan und Canvas ueber die Klappen —
+   * und ueber der Karte „Erste Schritte" (z 40), die sonst offene Menues
+   * verdeckte (gemessen 2026-10-13 bei 390 px). Dialoge liegen bei 200+. */
+  position: relative;
+  z-index: 50;
   padding: 0 12px;
   border-bottom: 1px solid var(--color-bc-border);
-  /* Ueber dem Arbeitsbereich, sonst malen Plan und Canvas ueber die Klappen. */
-  position: relative;
-  z-index: 40;
 }
 
 /* Das Glas sitzt auf einer eigenen Ebene: `backdrop-filter` am Header selbst
@@ -571,13 +734,13 @@ canvas {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: color-mix(in oklab, var(--color-bc-panel) 82%, transparent);
+  background: color-mix(in srgb, var(--color-bc-dark) 72%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
   backdrop-filter: blur(16px) saturate(1.4);
 }
 
-/* Die Statusleiste: 24 px, dieselbe Zahl wie `.cp-statusbar` und `.statusbar`
- * in den beiden anderen grossen Apps. `env(safe-area-inset-bottom)` wie dort:
- * auf dem Telefon laeuft die Seite sonst unter den Home-Balken. */
+/* Die Statusleiste: 24 px; `env(safe-area-inset-bottom)` gegen den
+ * Home-Balken am Telefon. */
 .bc-statusbar {
   display: flex;
   align-items: center;
@@ -587,35 +750,41 @@ canvas {
   flex: none;
   padding-left: 12px;
   padding-right: 12px;
-  background: var(--color-bc-panel);
+  background: var(--color-bc-dark);
   border-top: 1px solid var(--color-bc-border);
   font-size: 12px;
   color: var(--color-bc-muted);
 }
 
-/* Die Modul-Reiter - eine EIGENE Zeile unter der Kopfzeile, seit 2026-09-11.
- * Vorher standen sie mitten in der 40-px-Kopfzeile zwischen App-Name und
- * Werkzeug-Knoepfen; damit sah Modul-Navigation aus wie eine Menueleiste, und
- * auf schmalen Fenstern schoben die Reiter den Einstellungen-Knopf aus dem
- * Bild. Dieselbe Aufteilung wie im inventory- und facility-planner (dort
- * `.reiter-leiste`); in der Suite-Shell ist es die Rail links. */
+/* Die Modul-Reiter: eigene Zeile unter der Kopfzeile (seit 2026-09-11),
+ * als Pills. */
 .bc-tabbar {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   flex: none;
   padding: 4px 12px;
   background: var(--color-bc-dark);
-  border-bottom: 1px solid var(--color-bc-border);
   overflow-x: auto;
+  scrollbar-width: none;
+}
+.bc-tabbar::-webkit-scrollbar {
+  display: none;
+}
+.bc-tabbar > button {
+  border-radius: var(--radius-bc-full);
 }
 
+/* Panel- und Dialogkopf: ein normaler Titel. Die Kopflinie im Akzent ist
+ * mit dem Design-Vertrag 2026-10 entfallen; der Kopf trennt sich durch
+ * Abstand. */
 .bc-panel-head {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--color-bc-border);
+  padding: 16px 20px 8px;
+  font-weight: 650;
+  color: var(--color-bc-text-bright);
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
@@ -727,17 +896,17 @@ summary,
 
 /* Unter 640 px schiebt das Signet die Menues aus dem Bild (mobil:check in cable-planner). */
 @media (max-width: 639px) {
-  .lz-logo-dunkel, .lz-logo-hell { display: none !important; }
+  .bc-topbar .lz-signet { display: none !important; }
 }
 
-/* Erfolgsmoment der Checkliste: der Haken springt ein (lzm-web 4). */
+/* Erfolgsmoment der Checkliste „Erste Schritte": der Haken springt ein. */
 @keyframes first-steps-pop {
   0% { scale: 0.6; opacity: 0; }
   60% { scale: 1.08; opacity: 1; }
   100% { scale: 1; }
 }
 .first-steps-check.is-done {
-  animation: first-steps-pop 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: first-steps-pop 420ms var(--ease-bc) both;
 }
 @media (prefers-reduced-motion: reduce) {
   .first-steps-check.is-done { animation: none; }

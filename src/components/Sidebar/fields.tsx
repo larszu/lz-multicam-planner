@@ -72,7 +72,7 @@ export function Group({
         style={{ padding: '7px 8px', minHeight: '32px' }}
         className="flex w-full items-center gap-2 text-left hover:bg-bc-hover"
       >
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-bc-text">{title}</span>
+        <span className="text-[13px] font-semibold text-bc-text-bright">{title}</span>
         {summary && <span className="truncate text-[10px] text-bc-dim">{summary}</span>}
         <FiChevronDown
           size={14}
@@ -201,7 +201,7 @@ export function ValueSlider({
           ref={inputRef}
           type="number"
           inputMode="decimal"
-          className="w-[4.5rem] shrink-0 border border-bc-border bg-bc-dark text-right text-[11px] tabular-nums text-bc-text-bright disabled:text-bc-dim"
+          className="w-[4.5rem] shrink-0 border border-bc-border bg-bc-panel-raised text-right text-[11px] tabular-nums text-bc-text-bright disabled:text-bc-dim"
           style={{ padding: '2px 5px' }}
           value={draft ?? Number(value.toFixed(decimals))}
           step={step}

@@ -95,7 +95,7 @@ export default function AiPlanAnalysis() {
   }, [apiKey, backgroundPlan, model, provider, setBackgroundPlan, addWall, addStage, tasks, t]);
 
   return (
-    <div className="p-2 bg-bc-dark border border-bc-border space-y-1.5">
+    <div className="rounded-bc-m p-2 border border-bc-border bg-bc-panel-raised space-y-1.5">
       <div className="flex items-center gap-1 text-bc-text font-medium">
         <FiCpu size={11} /> {t('sidebar.ai.title', 'AI Plan Analysis')}
       </div>

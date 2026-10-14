@@ -135,7 +135,7 @@ export default function LensSlider({
   const pos = Math.round(valueToPos(value, min, max) * POS_STEPS);
   const fmtTick = formatTick ?? format;
   const stepBtn =
-    'px-1 py-0.5 rounded border border-bc-border text-bc-dim hover:text-bc-text-bright hover:border-bc-accent/60 disabled:opacity-30 transition-colors';
+    'px-1 py-0.5 rounded-bc-s border border-bc-border text-bc-dim hover:text-bc-text-bright hover:border-bc-accent/60 disabled:opacity-30 transition-colors';
 
   return (
     <div className="px-2" title={title}>

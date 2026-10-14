@@ -7,6 +7,16 @@
 // das die obere Menueleiste gleich aufgebaut ist. Passe an den Cable planner
 // stand an, wenn noetig und vereinheitliche Komponenten."
 //
+// ─── WARUM ES DAS GIBT — Stand 2026-10-13 ─────────────────────────────────
+//
+// Mit dem Design-Vertrag 2026-10 (ADR-007 der lz-planner-suite, geaendert
+// 2026-10-13) aendert sich die OPTIK der Kopfzeile (Glas, Pills), nicht ihre
+// Struktur — alle Zusicherungen unten bleiben. Neu: der Thema-Umschalter
+// Auto · Hell · Dunkel steht SICHTBAR in der rechten Gruppe, vor den
+// Einstellungen. Die Kopflinie (Akzentlinie unter Panel-Koepfen) ist
+// entfallen; dieser Lauf hat sie nie geprueft, `brand:check` prueft jetzt,
+// dass sie nicht zurueckkommt.
+//
 // ─── WOGEGEN DIESER LAUF STEHT ────────────────────────────────────────────
 //
 // Nicht gegen das Bauen — das ist einmal passiert und steht im Diff. Gegen
@@ -71,6 +81,9 @@ const ende = kopf.indexOf('</header>');
 assert.ok(rechts > 0, 'keine rechte Gruppe in der Kopfzeile');
 assert.ok(knopf > rechts, 'kein Einstellungen-Knopf in der rechten Gruppe');
 assert.ok(knopf < ende, 'der Einstellungen-Knopf steht nicht mehr in der Kopfzeile');
+// Der Thema-Umschalter steht in der rechten Gruppe, VOR den Einstellungen.
+const umschalter = kopf.indexOf('<ThemaUmschalter />');
+assert.ok(umschalter > rechts && umschalter < knopf, 'der Thema-Umschalter steht nicht rechts vor den Einstellungen');
 // Ab dem `title`-Attribut bis zum Ende der Kopfzeile darf KEIN weiterer
 // `<button` mehr aufgehen. Was danach kommt, sind die drei versteckten
 // Datei-Felder — die sind keine Bedienpunkte, sie haben kein Bild.
@@ -217,4 +230,4 @@ assert.ok(
   'die Statusleiste steht nicht unter dem Arbeitsbereich',
 );
 
-console.log('kopfzeile:check ok — 40 px, File/Edit/Tools/View/Help, Einstellungen rechts aussen, eine Klappen-Mechanik, Statusleiste 24 px');
+console.log('kopfzeile:check ok — 40 px, File/Edit/Tools/View/Help, Thema-Umschalter + Einstellungen rechts aussen, eine Klappen-Mechanik, Statusleiste 24 px');

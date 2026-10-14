@@ -69,9 +69,9 @@ export default function SettingsDialog({ onClose, initialSection = 'general' }: 
 
   /* Drei Zustaende, weil „System" keine Umschreibung fuer „dunkel" ist. */
   const THEMEN: { id: Thema; label: string; hint: string }[] = [
-    { id: 'system', label: t('settings.theme.system', 'System'), hint: t('settings.theme.system.hint', 'Follows the operating system.') },
-    { id: 'dunkel', label: t('settings.theme.dark', 'Dark'), hint: t('settings.theme.dark.hint', 'Always dark.') },
+    { id: 'system', label: t('settings.theme.system', 'Auto'), hint: t('settings.theme.system.hint', 'Follows the operating system.') },
     { id: 'hell', label: t('settings.theme.light', 'Light'), hint: t('settings.theme.light.hint', 'Always light.') },
+    { id: 'dunkel', label: t('settings.theme.dark', 'Dark'), hint: t('settings.theme.dark.hint', 'Always dark.') },
   ];
 
   useEffect(() => {
@@ -97,13 +97,13 @@ export default function SettingsDialog({ onClose, initialSection = 'general' }: 
         role="dialog"
         aria-modal="true"
         aria-label={t('settings.title', 'Settings')}
-        className="flex h-[80vh] min-h-0 w-full max-w-[760px] flex-col overflow-hidden border border-bc-border bg-bc-panel sm:flex-row"
+        className="bc-dialog flex h-[80vh] min-h-0 w-full max-w-[760px] flex-col sm:flex-row"
       >
         <aside
-          className="flex shrink-0 flex-row gap-1 overflow-x-auto border-b border-bc-border sm:w-48 sm:flex-col sm:border-b-0 sm:border-r"
-          style={{ padding: '12px' }}
+          className="flex shrink-0 flex-row gap-1 overflow-x-auto bg-bc-panel-raised sm:w-52 sm:flex-col"
+          style={{ padding: '16px 12px' }}
         >
-          <h3 className="hidden text-xs font-bold uppercase tracking-wider text-bc-muted sm:block" style={{ padding: '0 8px 8px' }}>
+          <h3 className="hidden text-base font-bold text-bc-text-bright sm:block" style={{ padding: '4px 12px 12px' }}>
             {t('settings.title', 'Settings')}
           </h3>
           {SECTIONS.map(({ id, label, icon: Icon }) => (
@@ -112,8 +112,8 @@ export default function SettingsDialog({ onClose, initialSection = 'general' }: 
               type="button"
               onClick={() => setSection(id)}
               style={{ padding: '8px 12px' }}
-              className={`flex w-full items-center gap-2 text-left text-xs transition-colors ${
-                section === id ? 'bg-bc-accent text-bc-accent-text' : 'text-bc-text hover:bg-bc-panel-raised'
+              className={`flex w-full items-center gap-2 rounded-bc-full text-left text-[13px] font-medium transition-colors ${
+                section === id ? 'bg-bc-accent-soft text-bc-text-bright' : 'text-bc-text hover:bg-bc-hover'
               }`}
             >
               <Icon size={14} />
@@ -124,11 +124,11 @@ export default function SettingsDialog({ onClose, initialSection = 'general' }: 
 
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="bc-panel-head justify-between">
-          <span className="text-sm font-bold text-bc-text-bright">{aktiv.label}</span>
+          <span className="text-lg font-bold text-bc-text-bright">{aktiv.label}</span>
           <button
             type="button"
             onClick={onClose}
-            className="text-bc-muted transition-colors hover:text-bc-text-bright"
+            className="grid place-items-center rounded-bc-full text-bc-muted transition-colors hover:bg-bc-hover hover:text-bc-text-bright"
             aria-label={t('settings.close', 'Close settings')}
           >
             <FiX size={16} />
@@ -136,11 +136,11 @@ export default function SettingsDialog({ onClose, initialSection = 'general' }: 
         </div>
 
         {/* Der Rumpf scrollt, der Kopf bleibt — ADR-007 Abschnitt 6. */}
-        <div className="min-h-0 flex-1 overflow-y-auto" style={{ padding: '16px' }}>
+        <div className="min-h-0 flex-1 overflow-y-auto" style={{ padding: '8px 20px 20px' }}>
           {section === 'library' && <DeviceLibrarySection />}
           {section === 'general' && (<>
           <section>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-bc-muted">
+            <h3 className="text-sm font-semibold text-bc-text-bright">
               {t('settings.language', 'Language')}
             </h3>
             <p className="mt-1 text-xs text-bc-muted">
@@ -149,18 +149,15 @@ export default function SettingsDialog({ onClose, initialSection = 'general' }: 
                 'English is the source language; German is a translation. A missing entry falls back to English.',
               )}
             </p>
-            <div className="mt-2 flex gap-1">
+            <div className="bc-seg mt-3" role="group" aria-label={t('settings.language', 'Language')}>
               {LANGUAGES.map((l) => (
                 <button
                   key={l.id}
                   type="button"
                   onClick={() => setLanguage(l.id)}
-                  style={{ padding: '6px 12px' }}
-                  className={`border text-xs transition-colors ${
-                    language === l.id
-                      ? 'border-bc-accent bg-bc-accent text-bc-accent-text'
-                      : 'border-bc-border text-bc-text hover:bg-bc-panel-raised'
-                  }`}
+                  aria-pressed={language === l.id}
+                  style={{ padding: '0 16px' }}
+                  className="text-[13px] font-medium"
                 >
                   {l.label}
                 </button>
@@ -169,16 +166,16 @@ export default function SettingsDialog({ onClose, initialSection = 'general' }: 
           </section>
 
           <section style={{ marginTop: '24px' }}>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-bc-muted">
+            <h3 className="text-sm font-semibold text-bc-text-bright">
               {t('settings.theme', 'Theme')}
             </h3>
             <p className="mt-1 text-xs text-bc-muted">
               {t(
                 'settings.theme.desc',
-                'The camera preview and the 3D view stay as they are: they show a simulated room, and a lighter one would be a different lighting, not a different skin.',
+                'The camera preview stays as it is: it shows a simulated room, and a lighter one would be a different lighting, not a different skin. The planning view in 3D follows the theme; the show look does not.',
               )}
             </p>
-            <div className="mt-2 flex gap-1">
+            <div className="bc-seg mt-3" role="group" aria-label={t('settings.theme', 'Theme')}>
               {THEMEN.map((w) => (
                 <button
                   key={w.id}
@@ -188,12 +185,9 @@ export default function SettingsDialog({ onClose, initialSection = 'general' }: 
                     setThema(w.id);
                     setzeThema(w.id);
                   }}
-                  style={{ padding: '6px 12px' }}
-                  className={`border text-xs transition-colors ${
-                    thema === w.id
-                      ? 'border-bc-accent bg-bc-accent text-bc-accent-text'
-                      : 'border-bc-border text-bc-text hover:bg-bc-panel-raised'
-                  }`}
+                  aria-pressed={thema === w.id}
+                  style={{ padding: '0 16px' }}
+                  className="text-[13px] font-medium"
                 >
                   {w.label}
                 </button>
@@ -202,7 +196,7 @@ export default function SettingsDialog({ onClose, initialSection = 'general' }: 
           </section>
 
           <section style={{ marginTop: '24px' }}>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-bc-muted">
+            <h3 className="text-sm font-semibold text-bc-text-bright">
               {t('settings.about', 'About')}
             </h3>
             <img src={hauptlogoDunkel} alt="Lars Zumpe Medienproduktion" className="lz-logo-dunkel mt-3 h-auto" style={{ width: '160px' }} />

@@ -24,7 +24,7 @@ export default function EditGroupsBar() {
     <div
       role="group"
       aria-label={t('venue.groups', 'Editable in the plan')}
-      className="absolute left-2 top-2 z-10 flex max-w-[calc(100%-80px)] flex-wrap items-center gap-1 rounded-bc-control border border-bc-border bg-bc-panel/85 p-1 shadow-bc-1 backdrop-blur"
+      className="absolute left-2 top-2 z-10 flex max-w-[calc(100%-80px)] flex-wrap items-center gap-1 rounded-bc-m border border-bc-border bg-bc-panel/85 p-1 shadow-bc-1 backdrop-blur"
     >
       {gruppen.map((g) => {
         const an = editGroups.includes(g.id);
@@ -35,7 +35,7 @@ export default function EditGroupsBar() {
             aria-pressed={an}
             onClick={() => toggle(g.id)}
             title={`${g.title} — ${an ? t('venue.groups.on', 'editable, click to lock') : t('venue.groups.off', 'locked, click to edit')}`}
-            className={`flex min-h-8 items-center gap-1 rounded-bc-chip px-2 text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11 ${
+            className={`flex min-h-8 items-center gap-1 rounded-bc-s px-2 text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11 ${
               an
                 ? 'bg-bc-accent/15 text-bc-accent hover:bg-bc-accent/25'
                 : 'text-bc-muted hover:bg-bc-panel-raised hover:text-bc-text'

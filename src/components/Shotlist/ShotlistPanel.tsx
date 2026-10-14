@@ -232,7 +232,7 @@ export default function ShotlistPanel() {
   }, [flash, list, stempel, venue.name]);
 
   const btn =
-    'px-2 py-1 rounded text-[11px] border border-bc-border text-bc-text hover:text-bc-text-bright hover:border-bc-accent/60 disabled:opacity-40 disabled:hover:text-bc-text disabled:hover:border-bc-border transition-colors';
+    'px-2 py-1 rounded-bc-m text-[11px] border border-bc-border text-bc-text hover:text-bc-text-bright hover:border-bc-accent/60 disabled:opacity-40 disabled:hover:text-bc-text disabled:hover:border-bc-border transition-colors';
 
   return (
     <div data-shotlist-panel className="w-full h-full flex flex-col bg-bc-panel text-bc-text-bright overflow-hidden">
@@ -247,7 +247,7 @@ export default function ShotlistPanel() {
           aria-label={t('shotlist.pick', 'Shotlist')}
           value={activeShotlistId ?? ''}
           onChange={(e) => setActiveShotlist(e.target.value || null)}
-          className="bg-bc-dark border border-bc-border px-1.5 py-1 text-xs text-bc-text-bright max-w-[45%] flex-1 min-w-0"
+          className="border border-bc-border bg-bc-panel-raised px-1.5 py-1 text-xs text-bc-text-bright max-w-[45%] flex-1 min-w-0"
         >
           {shotlists.length === 0 && <option value="">{t('shotlist.none', '— no shotlist —')}</option>}
           {shotlists.map((l) => (

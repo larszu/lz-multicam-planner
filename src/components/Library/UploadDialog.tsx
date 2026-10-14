@@ -50,15 +50,15 @@ export default function UploadDialog({ item, onClose }: { item: LibraryItem; onC
         role="dialog"
         aria-modal="true"
         aria-label={t('library.upload.title', 'Upload to device library')}
-        className="flex w-full max-w-[480px] flex-col border border-bc-border bg-bc-panel"
+        className="bc-dialog flex w-full max-w-[480px] flex-col"
       >
         <div className="bc-panel-head justify-between">
-          <span className="text-sm font-bold text-bc-text-bright">{t('library.upload.title', 'Upload to device library')}</span>
-          <button type="button" onClick={onClose} className="text-bc-muted hover:text-bc-text-bright" aria-label={t('library.close', 'Close')}>
+          <span className="text-lg font-bold text-bc-text-bright">{t('library.upload.title', 'Upload to device library')}</span>
+          <button type="button" onClick={onClose} className="grid place-items-center rounded-bc-full text-bc-muted hover:bg-bc-hover hover:text-bc-text-bright" aria-label={t('library.close', 'Close')}>
             <FiX size={16} />
           </button>
         </div>
-        <div className="text-xs" style={{ padding: '16px' }}>
+        <div className="text-xs" style={{ padding: '8px 20px 20px' }}>
           <p className="text-bc-text">
             {format(
               item.kind === 'camera'
@@ -106,7 +106,7 @@ export default function UploadDialog({ item, onClose }: { item: LibraryItem; onC
                   value={sourceUrl}
                   onChange={(e) => setSourceUrl(e.target.value)}
                   placeholder="https://"
-                  className="mt-1 block w-full border border-bc-border bg-bc-dark text-bc-text-bright"
+                  className="mt-1 block w-full border border-bc-border bg-bc-panel-raised text-bc-text-bright"
                   style={{ padding: '6px 8px' }}
                 />
               </label>
@@ -115,7 +115,7 @@ export default function UploadDialog({ item, onClose }: { item: LibraryItem; onC
               )}
               <button
                 type="submit"
-                className="mt-3 border border-bc-accent bg-bc-accent text-bc-accent-text disabled:opacity-50"
+                className="bc-btn-primary mt-3"
                 style={{ padding: '6px 12px' }}
                 disabled={busy || !istLink(sourceUrl)}
               >

@@ -23,6 +23,8 @@ import { useTranslation } from '../../i18n';
 import { easeOut, povFraming, shortestAngleDelta, topFraming, type Framing } from '../../utils/view3dScene';
 import { useSchmal } from '../../lib/useSchmal';
 import { useView3DPrefs } from './view3dPrefs';
+import { PLANUNG_JE_THEMA, PLANUNGS_BODEN } from './planungsLook';
+import { useIstHell } from '../../lib/useIstHell';
 import { Arena, Atmosphere, CoverageWedge, CrowdAndSeating, FieldMesh, LedWalls, ScenePipeline, ShowRig, StageBodyReal, WallSurfaceMaterial } from './ShowScene';
 import { erzeugeMensch, publikumsVariante, stufenWerte, type Pose, type Stufe, type StufenWerte, type Tiefenschaerfe } from '../../avplan/scene3d';
 import { autoVideoWalls, hatSpielfeld, istSpielfeld } from '../../utils/showRig';
@@ -800,14 +802,8 @@ function CameraRig({
     updateCamera(cam.id, { tilt: nextTilt });
   }, [cam.id, updateCamera]);
 
-  const buttonStyle = (active = false) => ({
-    background: active ? '#3b82f6' : '#111827',
-    border: `1px solid ${active ? '#60a5fa' : '#334155'}`,
-    color: active ? '#ffffff' : '#94a3b8',
-    padding: '3px 6px',
-    fontSize: 10,
-    cursor: 'pointer',
-  } as const);
+  // Pill-Segment aus `.bc-seg`; die gedrueckte Stellung zeigt aria-pressed.
+  const buttonStyle = (): React.CSSProperties => ({ padding: '0 8px', fontSize: 11, fontWeight: 600 });
 
   const showGizmo = isSelected && isUnlocked && rigMounted;
 
@@ -851,15 +847,8 @@ function CameraRig({
             // darueber, und in der Draufsicht fielen beide sonst auf denselben Punkt.
             <Html position={[0, 0, 0]} center style={{ pointerEvents: 'auto' }}>
               <div
-                style={{
-                  display: 'flex',
-                  gap: 4,
-                  alignItems: 'center',
-                  background: 'rgba(15, 23, 42, 0.92)',
-                  border: '1px solid #334155',
-                  padding: '6px 8px',
-                  transform: 'translateY(44px)',
-                }}
+                className="bc-seg bc-seg-kompakt shadow-bc-2"
+                style={{ transform: 'translateY(44px)' }}
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 {/* Schloss statt Wortmarke: zu ist der Normalfall und braucht
@@ -869,7 +858,7 @@ function CameraRig({
                 <button
                   type="button"
                   onClick={() => onToggleLock(cam.id)}
-                  style={{ ...buttonStyle(isUnlocked), display: 'flex', alignItems: 'center', padding: '4px 6px' }}
+                  style={buttonStyle()}
                   aria-pressed={isUnlocked}
                   aria-label={isUnlocked
                     ? t('venue.lockPosition', 'Lock position')
@@ -882,16 +871,16 @@ function CameraRig({
                 </button>
                 {isUnlocked && (
                   <>
-                    <button type="button" onClick={() => onEditModeChange('move')} style={buttonStyle(editMode === 'move')} title={t('venue.edit.move', 'Position on the floor')}>
+                    <button type="button" onClick={() => onEditModeChange('move')} style={buttonStyle()} aria-pressed={editMode === 'move'} title={t('venue.edit.move', 'Position on the floor')}>
                       XY
                     </button>
-                    <button type="button" onClick={() => onEditModeChange('height')} style={buttonStyle(editMode === 'height')} title={t('venue.edit.height', 'Height')}>
+                    <button type="button" onClick={() => onEditModeChange('height')} style={buttonStyle()} aria-pressed={editMode === 'height'} title={t('venue.edit.height', 'Height')}>
                       Z
                     </button>
-                    <button type="button" onClick={() => onEditModeChange('pan')} style={buttonStyle(editMode === 'pan')} title={t('venue.edit.pan', 'Pan')}>
+                    <button type="button" onClick={() => onEditModeChange('pan')} style={buttonStyle()} aria-pressed={editMode === 'pan'} title={t('venue.edit.pan', 'Pan')}>
                       Pan
                     </button>
-                    <button type="button" onClick={() => onEditModeChange('tilt')} style={buttonStyle(editMode === 'tilt')} title={t('venue.edit.tilt', 'Tilt')}>
+                    <button type="button" onClick={() => onEditModeChange('tilt')} style={buttonStyle()} aria-pressed={editMode === 'tilt'} title={t('venue.edit.tilt', 'Tilt')}>
                       Tilt
                     </button>
                   </>
@@ -1321,12 +1310,13 @@ export default function Venue3D() {
     [venue.videoWalls, venue.stages, prefs.videoBoard, boardLook],
   );
   const farDist = Math.max(500, diag * 6);
+  const thema = useIstHell() ? 'hell' : 'dunkel';
   const personBlick = (x: number, y: number) => (Math.atan2(boardLook.y - y, boardLook.x - x) * 180) / Math.PI;
 
   return (
     <div className="flex w-full h-full" style={{ minHeight: 500 }}>
       <div className="relative flex-1 min-w-0 h-full overflow-hidden">
-        <div className="absolute top-2 left-2 z-10 flex" role="group" aria-label={t('venue.view.group', 'View')}>
+        <div className="bc-seg absolute top-3 left-3 z-10 shadow-bc-2" role="group" aria-label={t('venue.view.group', 'View')}>
           {([
             { id: 'top', label: t('venue.view.top', 'Top'), go: goTop },
             { id: 'perspective', label: t('venue.view.perspective', 'Perspective'), go: goPerspective },
@@ -1338,7 +1328,7 @@ export default function Venue3D() {
               onClick={b.go}
               disabled={b.disabled}
               aria-pressed={preset === b.id}
-              className={`px-2.5 py-1 text-xs font-semibold border -ml-px first:ml-0 disabled:opacity-40 disabled:cursor-not-allowed ${preset === b.id ? 'bg-bc-accent text-bc-accent-text border-bc-accent' : 'bg-bc-panel text-bc-text border-bc-border hover:bg-bc-panel-raised'}`}
+              className="px-3 text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {b.label}
             </button>
@@ -1360,7 +1350,7 @@ export default function Venue3D() {
         )}
 
         {!schmal && !povCam && (
-          <div className="absolute bottom-2 left-2 z-10 pointer-events-none px-3 py-2 text-[11px] leading-relaxed text-bc-on-media bg-bc-media/70">
+          <div className="absolute bottom-3 left-3 z-10 pointer-events-none rounded-bc-m px-3 py-2 text-[11px] leading-relaxed text-bc-on-media bg-bc-media/60 backdrop-blur-sm">
             <b>{t('venue.selectCamera', 'Select camera')}</b> {t('venue.unlockToEdit', '→ unlock to edit')}<br/>
             <b>XY</b> {t('venue.floorMove', 'floor move')} &nbsp;|&nbsp;
             <b>Z</b> {t('venue.height', 'height')} &nbsp;|&nbsp;
@@ -1379,7 +1369,7 @@ export default function Venue3D() {
           <Suspense fallback={null}>
           <ErsterFrame onBereit={setBereit} />
           {!simple && <ScenePipeline quality={prefs.quality === 'simple' ? 'low' : prefs.quality} show={show} dof={dof} onWerte={onWerte} />}
-          <Atmosphere look={show ? (draussen ? 'nacht' : 'arena') : 'planung'} diagM={diag} domeRadius={farDist * 0.8} />
+          <Atmosphere look={show ? (draussen ? 'nacht' : 'arena') : 'planung'} hintergrund={show ? undefined : PLANUNG_JE_THEMA[thema]} diagM={diag} domeRadius={farDist * 0.8} />
           <PerspectiveCamera makeDefault position={[camX, camY, camZ]} fov={VIEW3D_FOV_DEG} near={0.1} far={farDist} />
           <FPSControls mouseLookEnabled={unlockedCameraId === null} defaultPitch={startPitch} onManualMove={handleManualMove} />
 
@@ -1399,7 +1389,7 @@ export default function Venue3D() {
             </>
           )}
 
-          <Arena venue={venue} show={show} />
+          <Arena venue={venue} show={show} planungsBoden={PLANUNGS_BODEN[thema]} />
 
           {backgroundPlan && prefs.floorPlan && <FloorPlanOverlay plan={backgroundPlan} />}
 

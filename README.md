@@ -4,7 +4,13 @@ A fast, focused broadcast camera & lens planning tool for multicam setups. Calcu
 
 [![Lizenz: proprietär](https://img.shields.io/badge/Lizenz-proprietär-critical.svg)](LICENSE)
 
-![LZ Multicam Planner – 2D-Grundriss mit Bühne, Kamera- und Objektpanel](docs/screenshot.png)
+![LZ Multicam Planner – 2D-Grundriss mit Bühne, drei Kameras und Kamera-Aufbau (hell)](docs/screenshot.png)
+
+<details><summary>Dunkel</summary>
+
+![LZ Multicam Planner – dieselbe Ansicht im Dunkelmodus](docs/screenshot-dunkel.png)
+
+</details>
 
 ---
 
@@ -28,7 +34,7 @@ Measured 2026-09-09: **published** — the `deploy` job ran and succeeded.
 LZ Multicam Planner is designed for quick, intuitive camera planning with essential features for real-world broadcast productions. Its streamlined workflow and simple interface make it perfect for fast setups and clear projects—without the complexity and feature overload of traditional CAD or architecture applications.
 
 - **Start right away:** the app opens on your last project. A small *First steps* card (draw a camera, place a person, adjust the focal length, check the preview) ticks itself off as you work; hide it anytime, *Help → First steps* brings it back.
-- **Modern, calm interface:** neutral surfaces, brand blue only as accent, soft rounded panels, light and dark (anthracite) theme — switch *System · Light · Dark* in Settings.
+- **Modern, calm interface:** neutral surfaces, brand blue only as accent, soft rounded panels, light and dark (anthracite) theme — switch *Auto · Light · Dark* right in the header (also in Settings). Details under [Design / interface](#-design--interface).
 
 ---
 
@@ -267,8 +273,33 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 - Native window controls, external links open in system browser
 - App data stays in the `MultiCam Planner` folder (the product name before the
   rename to LZ Multicam Planner); `electron/main.cjs` pins it before first use
-- Header shows the Lars Zumpe Medienproduktion signet, Settings → About the main logo
+- Header shows the Lars Zumpe Medienproduktion signet (inline, `--color-bc-logo`:
+  Navy on light, Off-White on dark, dot always Tally red), Settings → About the main logo
   (`src/assets/brand/`, original contour files, Navy/Off-White by theme)
+
+---
+
+## 🎨 Design / interface
+
+Follows the design contract 2026-10 (ADR-007 of the suite, changed 2026-10-13),
+same values as the Cable Planner:
+
+- **Light and dark, always.** Visible switch **Auto · Light · Dark** in the
+  header (also in Settings → General). Auto follows the system; the choice is
+  stored. Dark is anthracite, not navy.
+- **Neutral surfaces, blue only as accent** (main button, selection, links).
+  Tally red only for focus ring, live/tally and the logo dot.
+- **Soft shapes via tokens:** radius s/m/l/xl/full (6/10/20/24/999 px),
+  shadows 1/2/3 — panels are cards, dialogs radius xl, primary buttons are
+  pills, segment controls for exclusive choices. Glass header (blur 16 px).
+- **2D plan and 3D planning view follow the theme**; camera, lens and coverage
+  colours stay unchanged. The camera preview and the 3D show look are a
+  simulated room and stay as they are.
+- All values live in `src/index.css` (`--color-bc-*`, `--radius-bc-*`,
+  `--shadow-bc-*`). Checked by `brand:check` (values in both modes, signal
+  once, logo colours, switch present), `form:check` (radius/shadow only via
+  tokens), `kontrast:check` (WCAG AA in both modes) and `kopfzeile:check`
+  (header structure).
 
 ---
 

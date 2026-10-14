@@ -44,16 +44,17 @@ export const chrome: Record<string, string> = {
   'settings.language': 'Sprache',
   'settings.language.desc':
     'Englisch ist die Quellsprache, Deutsch eine Übersetzung. Ein fehlender Eintrag fällt auf Englisch zurück.',
-  'settings.theme': 'Thema',
+  'settings.theme': 'Darstellung',
   'settings.theme.desc':
-    'Die Kamera-Vorschau und die 3D-Ansicht bleiben, wie sie sind: sie zeigen einen simulierten Raum, und ein hellerer wäre eine andere Beleuchtung, kein anderes Aussehen.',
-  'settings.theme.system': 'System',
+    'Die Kamera-Vorschau bleibt, wie sie ist: sie zeigt einen simulierten Raum, und ein hellerer wäre eine andere Beleuchtung, kein anderes Aussehen. Die Planungsansicht in 3D folgt dem Thema, der Show-Look nicht.',
+  'settings.theme.system': 'Auto',
   'settings.theme.system.hint': 'Folgt dem Betriebssystem.',
   'settings.theme.dark': 'Dunkel',
   'settings.theme.dark.hint': 'Immer dunkel.',
   'settings.theme.light': 'Hell',
   'settings.theme.light.hint': 'Immer hell.',
   'settings.about': 'Über',
+  'header.theme.group': 'Darstellung',
   'settings.about.suite':
     'Teil der LZ Planner Suite — Kamerapositionen, Objektive, Deckung und Schichtübergabe.',
 
