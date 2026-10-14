@@ -31,6 +31,7 @@ import { libraryCameras, libraryLenses, setProjectLibraryEntries } from '../libr
 import { translate } from '../i18n';
 import type { VenueSeatingBlock, VenueVideoWall } from '../avplan/floorplan';
 import { defaultWallHeight, migrateWallHeights } from '../utils/wallHeight';
+import { adoptLegacyShotlists, normaliseShotlists } from './legacyShotlists';
 import { neueSitzflaeche, neueVideowand, platzFuerPerson, venueAusDatei } from '../utils/raum';
 
 // Injected by Vite from package.json. In a release build that came through
@@ -68,6 +69,7 @@ export function buildProjectFile(s: {
   personForeign: Record<string, ForeignPersonFields>;
   customCameras?: Camera[];
   customLenses?: Lens[];
+  shotlists?: Shotlist[];
 }): ProjectFile {
   return {
     formatVersion: 1,
@@ -80,6 +82,9 @@ export function buildProjectFile(s: {
     persons: s.persons,
     walls: s.walls ?? [],
     backgroundPlan: s.backgroundPlan,
+    // #200 — immer geschrieben, auch leer: eine Datei MIT dem Feld ist nach
+    // #200 gespeichert und bekommt keine alten localStorage-Listen mehr.
+    shotlists: s.shotlists ?? [],
     // ADR-005 — Fremd-Domaenen gehoeren in die Datei. Nur schreiben, wenn
     // welche da sind: ein leeres Feld in jeder Datei waere Ballast.
     ...(s.avForeign.lighting !== undefined || s.avForeign.cabling !== undefined
@@ -264,8 +269,6 @@ interface AppState {
   activeShotlistId: string | null;
   /** Zuletzt angefahrener Shot — treibt die Markierung im Panel. */
   currentShotId: string | null;
-  /** true, wenn die letzte Persistierung an der localStorage-Quota scheiterte. */
-  shotlistStorageFull: boolean;
   /**
    * Der letzte Schreibvorgang der HANDGEPFLEGTEN Bibliothek ist an der Quota
    * gescheitert: eigene Kameras, eigene Optiken, eigene Vorlagen.
@@ -356,7 +359,7 @@ function uid(prefix = 'cam'): string {
 
 /** Was Rueckgaengig/Wiederherstellen (#175) zuruecksetzt: die Planungsdaten,
  *  nicht Auswahl, Ansicht oder Bibliothek. */
-export const HISTORY_KEYS = ['venue', 'cameras', 'persons', 'walls', 'backgroundPlan', 'avForeign', 'stageForeign', 'floorPlanForeign', 'wallForeign', 'personForeign'] as const;
+export const HISTORY_KEYS = ['venue', 'cameras', 'persons', 'walls', 'shotlists', 'backgroundPlan', 'avForeign', 'stageForeign', 'floorPlanForeign', 'wallForeign', 'personForeign'] as const;
 export type HistorySnapshot = Pick<AppState, (typeof HISTORY_KEYS)[number]>;
 
 export function takeHistorySnapshot(s: AppState): HistorySnapshot {
@@ -370,11 +373,14 @@ export function restoreHistorySnapshot(snap: HistorySnapshot): void {
   nextId = Math.max(nextId, maxIdSuffix([...snap.cameras.map((c) => c.id), ...snap.walls.map((w) => w.id)]) + 1);
   personId = Math.max(personId, maxIdSuffix(snap.persons.map((p) => p.id)) + 1);
   stageId = Math.max(stageId, maxIdSuffix((snap.venue.stages ?? []).map((st) => st.id)) + 1);
-  const { selectedCameraId } = useStore.getState();
+  const { selectedCameraId, activeShotlistId, currentShotId } = useStore.getState();
+  const aktiveListe = snap.shotlists.find((l) => l.id === activeShotlistId);
   useStore.setState({
     ...snap,
 
     ...(selectedCameraId && !snap.cameras.some((c) => c.id === selectedCameraId) ? { selectedCameraId: null } : {}),
+    ...(!aktiveListe ? { activeShotlistId: snap.shotlists[0]?.id ?? null, currentShotId: null } : {}),
+    ...(aktiveListe && currentShotId && !aktiveListe.shots.some((sh) => sh.id === currentShotId) ? { currentShotId: null } : {}),
   });
 }
 
@@ -412,7 +418,8 @@ function saveCustomCamerasStorage(cameras: Camera[]): boolean {
 }
 
 // ── Shotlisten (#62 Punkt 5) ──
-const SHOTLISTS_KEY = 'multicam-shotlists';
+// Seit #200 Teil des Projekts; die alten localStorage-Listen uebernimmt
+// `legacyShotlists.ts` beim Oeffnen.
 
 /**
  * Id fuer persistierte Entitaeten. `Date.now()` allein reicht nicht: beim
@@ -428,21 +435,6 @@ function persistentId(prefix: string): string {
   const rand = Math.random().toString(36).slice(2, 8);
   return `${prefix}-${Date.now().toString(36)}-${persistentIdCounter}-${rand}`;
 }
-
-function loadShotlists(): Shotlist[] {
-  const parsed = loadJSON<Shotlist[]>(SHOTLISTS_KEY, []);
-  if (!Array.isArray(parsed)) return [];
-  // Defensiv: nur strukturell brauchbare Eintraege durchlassen, damit ein
-  // halb geschriebener/handgepfuschter Storage das Panel nicht crasht.
-  return parsed.filter(
-    (l): l is Shotlist =>
-      !!l && typeof l.id === 'string' && typeof l.name === 'string' && Array.isArray(l.shots),
-  );
-}
-
-/** Einmalig beim Modul-Laden gelesen — der Store-Initializer nutzt denselben
- *  Stand fuer `shotlists` und `activeShotlistId`. */
-const INITIAL_SHOTLISTS: Shotlist[] = loadShotlists();
 
 const RIG_TAKES_KEY = 'multicam-rig-takes';
 
@@ -915,10 +907,9 @@ export const useStore = create<AppState>((set, get) => ({
   setActiveTab: (tab) => set({ activeTab: tab }),
 
   // ── Shotlist / Storyboard (#62 Punkt 5) ──
-  shotlists: INITIAL_SHOTLISTS,
-  activeShotlistId: INITIAL_SHOTLISTS[0]?.id ?? null,
+  shotlists: [],
+  activeShotlistId: null,
   currentShotId: null,
-  shotlistStorageFull: false,
   libraryStorageFull: false,
 
   addShotlist: (name) => {
@@ -926,7 +917,7 @@ export const useStore = create<AppState>((set, get) => ({
     const list: Shotlist = { id, name: name?.trim() || 'Shotlist', shots: [] };
     set((s) => {
       const shotlists = [...s.shotlists, list];
-      return { shotlists, activeShotlistId: id, shotlistStorageFull: !saveJSONSafe(SHOTLISTS_KEY, shotlists) };
+      return { shotlists, activeShotlistId: id, projectVersion: s.projectVersion + 1 };
     });
     return id;
   },
@@ -938,14 +929,14 @@ export const useStore = create<AppState>((set, get) => ({
         shotlists,
         activeShotlistId: s.activeShotlistId === id ? (shotlists[0]?.id ?? null) : s.activeShotlistId,
         currentShotId: s.activeShotlistId === id ? null : s.currentShotId,
-        shotlistStorageFull: !saveJSONSafe(SHOTLISTS_KEY, shotlists),
+        projectVersion: s.projectVersion + 1,
       };
     }),
 
   renameShotlist: (id, name) =>
     set((s) => {
       const shotlists = s.shotlists.map((l) => (l.id === id ? { ...l, name } : l));
-      return { shotlists, shotlistStorageFull: !saveJSONSafe(SHOTLISTS_KEY, shotlists) };
+      return { shotlists, projectVersion: s.projectVersion + 1 };
     }),
 
   setActiveShotlist: (id) => set({ activeShotlistId: id, currentShotId: null }),
@@ -956,7 +947,7 @@ export const useStore = create<AppState>((set, get) => ({
       const shotlists = s.shotlists.map((l) =>
         l.id === shotlistId ? { ...l, shots: [...l.shots, { ...shot, id }] } : l,
       );
-      return { shotlists, currentShotId: id, shotlistStorageFull: !saveJSONSafe(SHOTLISTS_KEY, shotlists) };
+      return { shotlists, currentShotId: id, projectVersion: s.projectVersion + 1 };
     });
     return id;
   },
@@ -968,7 +959,7 @@ export const useStore = create<AppState>((set, get) => ({
           ? { ...l, shots: l.shots.map((sh) => (sh.id === shotId ? { ...sh, ...updates } : sh)) }
           : l,
       );
-      return { shotlists, shotlistStorageFull: !saveJSONSafe(SHOTLISTS_KEY, shotlists) };
+      return { shotlists, projectVersion: s.projectVersion + 1 };
     }),
 
   removeShot: (shotlistId, shotId) =>
@@ -979,7 +970,7 @@ export const useStore = create<AppState>((set, get) => ({
       return {
         shotlists,
         currentShotId: s.currentShotId === shotId ? null : s.currentShotId,
-        shotlistStorageFull: !saveJSONSafe(SHOTLISTS_KEY, shotlists),
+        projectVersion: s.projectVersion + 1,
       };
     }),
 
@@ -995,7 +986,7 @@ export const useStore = create<AppState>((set, get) => ({
         shots.splice(to, 0, moved);
         return { ...l, shots };
       });
-      return { shotlists, shotlistStorageFull: !saveJSONSafe(SHOTLISTS_KEY, shotlists) };
+      return { shotlists, projectVersion: s.projectVersion + 1 };
     }),
 
   rigTakes: INITIAL_RIG_TAKES,
@@ -1195,10 +1186,9 @@ export const useStore = create<AppState>((set, get) => ({
   // alten stehen. Ein leeres ProjectFile durch denselben Trichter hat dieses
   // Problem nicht.
   //
-  // WAS ES NICHT ANFASST: Shotlists, Templates und Sprache. Die haengen an
-  // eigenen localStorage-Schluesseln und ueberleben auch das OEFFNEN eines
-  // Projekts — ein „Neu", das mehr wegraeumt als ein „Oeffnen", waere ein
-  // zweiter Begriff von Projekt.
+  // WAS ES NICHT ANFASST: Templates und Sprache. Die haengen an eigenen
+  // localStorage-Schluesseln und ueberleben auch das OEFFNEN eines Projekts.
+  // Shotlisten gehoeren seit #200 zum Projekt und gehen mit ihm.
   newProject: () => {
     get().applyProjectFile({
       formatVersion: 1,
@@ -1210,6 +1200,7 @@ export const useStore = create<AppState>((set, get) => ({
       cameras: [],
       persons: [],
       walls: [],
+      shotlists: [],
       backgroundPlan: null,
     });
   },
@@ -1285,6 +1276,12 @@ export const useStore = create<AppState>((set, get) => ({
     const wallsFixed = dedupeIds(loadedWalls, () => uid('wall'));
     const stagesFixed = dedupeIds(loadedStages, stageUid);
     const cameras = camerasFixed.items;
+    // #200 — Shotlisten reisen mit dem Projekt. Eine Datei von vor #200 hat
+    // das Feld nicht; sie bekommt die alten globalen Listen, die zu ihren
+    // Kameras passen.
+    const shotlists = Array.isArray(project.shotlists)
+      ? normaliseShotlists(project.shotlists)
+      : adoptLegacyShotlists(new Set(cameras.map((c) => c.id)));
 
     // cable-planner#917 — die mitgebrachten eigenen Kameras/Optiken. Nur
     // geschrieben, wenn etwas hinzukam: sonst setzte jedes Oeffnen die
@@ -1318,6 +1315,9 @@ export const useStore = create<AppState>((set, get) => ({
       backgroundPlan: bgPlan,
       selectedCameraId: cameras[0]?.id ?? null,
       walls: wallsFixed.items,
+      shotlists,
+      activeShotlistId: shotlists[0]?.id ?? null,
+      currentShotId: null,
       projectVersion: project.projectVersion,
       lastSavedVersion: project.projectVersion,
       projectEpoch: get().projectEpoch + 1,

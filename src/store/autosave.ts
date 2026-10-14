@@ -40,7 +40,7 @@ interface Sicherung {
 /** Was in die Projektdatei geht. Aendert sich eines davon (per Referenz —
  *  der Store ersetzt, er veraendert nicht), ist neu zu sichern. */
 const projektTeile = (s: Zustand): unknown[] => [
-  s.projectId, s.projectVersion, s.lastSavedVersion, s.venue, s.cameras, s.persons, s.walls,
+  s.projectId, s.projectVersion, s.lastSavedVersion, s.venue, s.cameras, s.persons, s.walls, s.shotlists,
   s.backgroundPlan, s.avForeign, s.stageForeign, s.floorPlanForeign, s.wallForeign, s.personForeign,
   s.customCameras, s.customLenses,
 ];

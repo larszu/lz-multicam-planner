@@ -122,39 +122,111 @@ describe('Shotlist-Store', () => {
     expect(useStore.getState().activeShotlistId).toBe(first);
   });
 
-  it('persistiert Shotlisten und lädt sie neu ein', async () => {
-    const useStore = await freshStore();
-    const list = useStore.getState().addShotlist('Persistiert');
+  it('steht im Projekt, nicht im localStorage (#200)', async () => {
+    const mod = await import('../store/useStore');
+    const useStore = mod.useStore;
+    const list = useStore.getState().addShotlist('Im Projekt');
     useStore.getState().addShot(list, sampleShot('A'));
+    expect(store['multicam-shotlists']).toBeUndefined();
 
-    // Neues Modul = neuer Store-Init aus demselben localStorage.
-    vi.resetModules();
-    const reloaded = (await import('../store/useStore')).useStore;
-    expect(reloaded.getState().shotlists).toHaveLength(1);
-    expect(reloaded.getState().shotlists[0].shots.map((s) => s.name)).toEqual(['A']);
+    const datei = JSON.parse(JSON.stringify(mod.buildProjectFile(useStore.getState())));
+    expect(datei.shotlists.map((l: { name: string }) => l.name)).toEqual(['Im Projekt']);
+
+    useStore.getState().newProject();
+    expect(useStore.getState().shotlists).toEqual([]);
+    useStore.getState().applyProjectFile(datei);
+    expect(useStore.getState().shotlists[0].shots.map((s) => s.name)).toEqual(['A']);
+    expect(useStore.getState().activeShotlistId).toBe(list);
   });
 
-  it('meldet eine volle Quota, statt Shots still zu verlieren', async () => {
+  it('jede Änderung macht das Projekt ungespeichert', async () => {
     const useStore = await freshStore();
-    const list = useStore.getState().addShotlist();
-    expect(useStore.getState().shotlistStorageFull).toBe(false);
+    useStore.setState({ lastSavedVersion: useStore.getState().projectVersion });
+    useStore.getState().addShotlist('X');
+    expect(useStore.getState().hasUnsavedChanges()).toBe(true);
+  });
 
-    quotaFull = true;
-    useStore.getState().addShot(list, sampleShot('Zu gross'));
-
-    // Im Speicher ist der Shot da, aber der Nutzer wird gewarnt.
+  it('Rückgängig nimmt einen Shot zurück (#177)', async () => {
+    const useStore = await freshStore();
+    const { history } = await import('../store/history');
+    const stop = history.start();
+    const list = useStore.getState().addShotlist('U');
+    await new Promise((r) => setTimeout(r, 350));
+    useStore.getState().addShot(list, sampleShot('A'));
     expect(useStore.getState().shotlists[0].shots).toHaveLength(1);
-    expect(useStore.getState().shotlistStorageFull).toBe(true);
+    history.undo();
+    expect(useStore.getState().shotlists[0].shots).toHaveLength(0);
+    history.redo();
+    expect(useStore.getState().shotlists[0].shots).toHaveLength(1);
+    history.undo();
+    history.undo();
+    expect(useStore.getState().shotlists).toHaveLength(0);
+    expect(useStore.getState().activeShotlistId).toBeNull();
+    stop();
   });
 
-  it('überspringt kaputte Einträge beim Laden', async () => {
-    store['multicam-shotlists'] = JSON.stringify([
-      { id: 'ok', name: 'Gut', shots: [] },
-      { id: 'kaputt' }, // kein shots-Array
-      null,
-    ]);
+  it('überspringt kaputte Einträge in der Datei', async () => {
+    const mod = await import('../store/useStore');
+    const datei = mod.buildProjectFile(mod.useStore.getState());
+    mod.useStore.getState().applyProjectFile({
+      ...datei,
+      shotlists: [{ id: 'ok', name: 'Gut', shots: [] }, { id: 'kaputt' }, null] as never,
+    });
+    expect(mod.useStore.getState().shotlists.map((l) => l.id)).toEqual(['ok']);
+  });
+});
+
+describe('Übernahme der alten localStorage-Listen (#200)', () => {
+  const alteDatei = (cameraIds: string[]) => ({
+    formatVersion: 1 as const, appVersion: '4.8.0', projectVersion: 3, savedAt: '',
+    venue: { name: 'Halle', widthM: 20, heightM: 10, stages: [] },
+    cameras: cameraIds.map((id) => ({ id })) as never,
+    persons: [], walls: [], backgroundPlan: null,
+  });
+  const pool = () => [
+    { id: 'l1', name: 'Zu cam-7', shots: [{ ...sampleShot('A'), id: 's1', cameraId: 'cam-7' }] },
+    { id: 'l2', name: 'Zu cam-9', shots: [{ ...sampleShot('B'), id: 's2', cameraId: 'cam-9' }] },
+    { id: 'l3', name: 'Leer', shots: [] },
+  ];
+
+  it('altes Projekt übernimmt die passenden Listen, der Rest bleibt im Pool', async () => {
+    store['multicam-shotlists'] = JSON.stringify(pool());
     const useStore = await freshStore();
-    expect(useStore.getState().shotlists.map((l) => l.id)).toEqual(['ok']);
+    expect(useStore.getState().shotlists).toEqual([]);
+    useStore.getState().applyProjectFile(alteDatei(['cam-7']));
+    expect(useStore.getState().shotlists.map((l) => l.id)).toEqual(['l1', 'l3']);
+    expect(JSON.parse(store['multicam-shotlists']).map((l: { id: string }) => l.id)).toEqual(['l2']);
+    expect(JSON.parse(store['multicam-shotlists-before-200'])).toHaveLength(3);
+    // Nicht als Änderung gezählt: geöffnet ist geöffnet.
+    expect(useStore.getState().hasUnsavedChanges()).toBe(false);
+
+    useStore.getState().applyProjectFile(alteDatei(['cam-9']));
+    expect(useStore.getState().shotlists.map((l) => l.id)).toEqual(['l2']);
+    expect(store['multicam-shotlists']).toBeUndefined();
+  });
+
+  it('Datei nach #200 bekommt nichts aus dem Pool', async () => {
+    store['multicam-shotlists'] = JSON.stringify(pool());
+    const useStore = await freshStore();
+    useStore.getState().applyProjectFile({ ...alteDatei(['cam-7']), shotlists: [] });
+    expect(useStore.getState().shotlists).toEqual([]);
+    expect(JSON.parse(store['multicam-shotlists'])).toHaveLength(3);
+  });
+
+  it('Neues Projekt bekommt nichts aus dem Pool', async () => {
+    store['multicam-shotlists'] = JSON.stringify(pool());
+    const useStore = await freshStore();
+    useStore.getState().newProject();
+    expect(useStore.getState().shotlists).toEqual([]);
+  });
+
+  it('ohne Sicherungskopie bleibt der Pool unangetastet', async () => {
+    store['multicam-shotlists'] = JSON.stringify(pool());
+    const useStore = await freshStore();
+    quotaFull = true;
+    useStore.getState().applyProjectFile(alteDatei(['cam-7']));
+    expect(useStore.getState().shotlists.map((l) => l.id)).toEqual(['l1', 'l3']);
+    expect(JSON.parse(store['multicam-shotlists'])).toHaveLength(3);
   });
 });
 

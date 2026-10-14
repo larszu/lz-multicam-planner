@@ -836,7 +836,7 @@ export interface Shot {
    * bewusst „wie ein Dolly" traege anlaufen lassen.
    */
   motionStyle?: CameraMountType;
-  /** Framegrab als data-URL. Klein gehalten (JPEG), damit localStorage reicht. */
+  /** Framegrab als data-URL. Klein gehalten (JPEG): er steht in der Projektdatei und der Autosicherung. */
   thumbnail?: string;
   /** Regie-/Kamera-Notiz. */
   note?: string;
@@ -907,6 +907,8 @@ export interface ProjectFile {
   persons: ReferencePerson[];
   backgroundPlan: BackgroundPlan | null;
   walls?: Wall[];
+  /** Shotlisten des Projekts (#200). Fehlt in Dateien von vor #200. */
+  shotlists?: Shotlist[];
   /**
    * ADR-005 — Fremde .avplan-Domaenen (lighting/cabling), die MultiCam nicht
    * bearbeitet. Sie gehoeren in die Projektdatei, nicht nur in den Store:

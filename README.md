@@ -79,7 +79,7 @@ before the first rehearsal.
 - **AI floor-plan analysis:** reads walls, stages and scale from an uploaded plan, with Claude, ChatGPT, Gemini, Mistral or Grok and your own API key.
 - **Daylight and real camera bodies in 3D:** sun, sky and weather from date, time and place; each camera drawn as its body, lens and rig.
 - **Audience and room:** seated and standing areas, video walls, ceiling height, floor and wall materials. Walls take a standard height for the whole room; any wall can have its own, an empty field uses the standard.
-- **Shotlist and rig:** capture shots, set transitions, play the sequence, export a storyboard; record and replay camera moves within the rig's real limits.
+- **Shotlist and rig:** capture shots, set transitions, play the sequence, export a storyboard — shotlists are saved in the project file; record and replay camera moves within the rig's real limits.
 - **Templates:** football stadium, stadium event, small and large concert, church, conference — or save your own.
 - **Hands over to the Cable Planner:** cameras, lenses and positions travel in the `.avplan` exchange file.
 

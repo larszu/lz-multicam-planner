@@ -47,7 +47,6 @@ export default function ShotlistPanel() {
     shotlists,
     activeShotlistId,
     currentShotId,
-    shotlistStorageFull,
     addShotlist,
     removeShotlist,
     renameShotlist,
@@ -336,14 +335,9 @@ export default function ShotlistPanel() {
         <span className="ml-auto text-[10px] text-bc-dim">Q / E</span>
       </div>
 
-      {(hint || shotlistStorageFull) && (
+      {hint && (
         <div className="px-2 py-1 text-[10px] border-b border-bc-border shrink-0">
-          {hint && <div className="text-bc-yellow-text">{hint}</div>}
-          {shotlistStorageFull && (
-            <div className="text-bc-red-text">
-              {t('shotlist.storageFull', 'Storage full — the last change was not saved permanently. Delete older shots or export the storyboard.')}
-            </div>
-          )}
+          <div className="text-bc-yellow-text">{hint}</div>
         </div>
       )}
 

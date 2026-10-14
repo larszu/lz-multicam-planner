@@ -228,7 +228,7 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 - Draws every camera itself — Preview and Multiview work side by side, with or without the Preview panel open
 
 ### Shotlist & Rig
-- **Shotlist:** *Capture shot* freezes the selected camera — position, pan, tilt, focal length, aperture, focus — as a numbered shot with a thumbnail. Several shotlists per project; name each shot, add a note, set the transition (*Off · Fast · Slow · Manual*) and the movement style of the rig. A transition that is physically too fast for the rig is flagged. Step through with Q / E, play the sequence, export the storyboard as PNG or print it / save it as PDF
+- **Shotlist:** *Capture shot* freezes the selected camera — position, pan, tilt, focal length, aperture, focus — as a numbered shot with a thumbnail. Several shotlists per project; name each shot, add a note, set the transition (*Off · Fast · Slow · Manual*) and the movement style of the rig. A transition that is physically too fast for the rig is flagged. Step through with Q / E, play the sequence, export the storyboard as PNG or print it / save it as PDF. Shotlists are part of the project: they are saved in the `.mcplan` (and the `.avplan` cameras slot), come back with the autosave and follow undo / redo. Opening a project saved before shotlists lived in the file takes over the shotlists this browser kept on its own whose shots point at that project's cameras; each list moves into the first such project, and a copy of the old lists stays in local storage
 - **Rig control** sits under the Preview, so the move and its picture are visible together: pan / tilt with the arrow keys or by dragging, track (J / L) on rigs that travel, height, focal length; speed steps within the rig's real limits (m/s, °/s). *Record take* stores a movement per camera that can be replayed, also in a loop
 
 ### FOV & DoF Calculator
@@ -247,8 +247,8 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 - Save/load projects as JSON with version tracking and unsaved changes detection
 - **Undo / redo:** `Ctrl/⌘+Z` steps back, `Ctrl/⌘+Shift+Z` (or `Ctrl+Y`) steps
   forward; also under *Edit*, greyed out when there is nothing to undo. Every
-  change to the plan counts — cameras, stage, room, walls, persons, floor plan
-  — and one drag, one slider move or one edited field is one step. Inside a
+  change to the plan counts — cameras, stage, room, walls, persons, floor plan,
+  shotlists — and one drag, one slider move or one edited field is one step. Inside a
   text or number field the field's own undo applies. Opening a file or starting
   a new project starts the history afresh (up to 100 steps).
 - **Autosave:** the open project is kept in the browser's local storage one

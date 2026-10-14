@@ -13,8 +13,6 @@ export const shotlist: Record<string, string> = {
   'shotlist.prev': 'Vorheriger Shot (Q)',
   'shotlist.next': 'Nächster Shot (E)',
   'shotlist.stop': 'Sequenz stoppen',
-  'shotlist.storageFull':
-    'Speicher voll — die letzte Änderung wurde nicht dauerhaft gesichert. Ältere Shots löschen oder Storyboard exportieren.',
   'shotlist.empty': 'Noch keine Shots.',
   // Der leere Zustand war ein Satz mit einem farbig hervorgehobenen
   // Knopfnamen mittendrin: „Kamera im Preview einrichten und ‚Shot aufnehmen'

@@ -20,7 +20,7 @@ import { libraryCameras, libraryLenses } from '../library/registry';
 
 type Stand = Pick<
   ReturnType<typeof useStore.getState>,
-  | 'projectId' | 'projectVersion' | 'venue' | 'cameras' | 'persons' | 'walls' | 'backgroundPlan'
+  | 'projectId' | 'projectVersion' | 'venue' | 'cameras' | 'persons' | 'walls' | 'shotlists' | 'backgroundPlan'
   | 'customCameras' | 'customLenses' | 'avForeign'
   | 'stageForeign' | 'floorPlanForeign' | 'wallForeign' | 'personForeign'
 >;
@@ -47,7 +47,7 @@ export function buildAvPlanExport(s: Stand, now: string): AvPlan {
     formatVersion: 1, appVersion: APP_VERSION, projectVersion: s.projectVersion,
     projectId: s.projectId,
     savedAt: now, venue: s.venue, cameras: s.cameras, persons: s.persons,
-    walls: s.walls ?? [], backgroundPlan: s.backgroundPlan,
+    walls: s.walls ?? [], shotlists: s.shotlists ?? [], backgroundPlan: s.backgroundPlan,
     ...pickProjectLibrary(s.cameras, s.customCameras, s.customLenses, { cameras: libraryCameras(), lenses: libraryLenses() }),
     cameraList: cameraListOf(s, now),
   };
