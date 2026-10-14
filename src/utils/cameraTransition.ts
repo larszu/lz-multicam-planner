@@ -62,10 +62,26 @@ export function interpolateCamera(
     const b = to[key];
     const a = from[key];
     if (typeof b === 'number' && typeof a === 'number') {
-      (patch[key] as number) = a + (b - a) * eased;
+      (patch[key] as number) = interpolateField(key, a, b, eased);
     }
   }
   return patch;
+}
+
+// Brennweite und Schaerfe GEOMETRISCH (#159): der Bildwinkel haengt an 1/f.
+// Linear liefen 20 → 200 mm zur Haelfte schon auf 110 mm — das Bild war eng,
+// bevor der Schwenk ankam, und rutschte danach nach. Geometrisch liegt die
+// Mitte bei 63 mm, Zoom und Schwenk kommen gemeinsam an.
+const GEOMETRISCH = new Set<keyof VenueCamera>(['focalLength', 'focusDistance']);
+
+function interpolateField(key: keyof VenueCamera, a: number, b: number, eased: number): number {
+  if (GEOMETRISCH.has(key) && a > 0 && b > 0) return a * Math.pow(b / a, eased);
+  if (key === 'pan') {
+    // Kuerzester Weg: 350° → 10° faehrt 20° nach rechts, nicht 340° zurueck.
+    const delta = ((((b - a) % 360) + 540) % 360) - 180;
+    return a + delta * eased;
+  }
+  return a + (b - a) * eased;
 }
 
 export interface CameraTransitionOptions {

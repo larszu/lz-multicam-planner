@@ -108,7 +108,8 @@ describe('interpolateCamera', () => {
     const from = cam({ pan: 0, focalLength: 20 });
     const patch = interpolateCamera(from, { pan: 100, focalLength: 60 }, 0.5);
     expect(patch.pan).toBe(50);
-    expect(patch.focalLength).toBe(40);
+    // Brennweite geometrisch (#159): Mitte von 20 und 60 mm ist √(20·60).
+    expect(patch.focalLength).toBeCloseTo(Math.sqrt(20 * 60), 5);
   });
 
   it('lässt nicht-numerische Felder während der Fahrt unangetastet', () => {
@@ -228,5 +229,21 @@ describe('Storyboard-Aufbereitung', () => {
     expect(html).toContain('>01<');
     expect(html).toContain('>02<');
     expect(html).toContain('CU');
+  });
+});
+
+describe('camera move keeps zoom and pan together (#159)', () => {
+  it('zooms geometrically so the field of view changes evenly', async () => {
+    const { interpolateCamera } = await import('../utils/cameraTransition');
+    const from = { focalLength: 20, pan: 0 } as unknown as import('../types').VenueCamera;
+    const mid = interpolateCamera(from, { focalLength: 200, pan: 40 }, 0.5);
+    expect(mid.focalLength).toBeCloseTo(Math.sqrt(20 * 200), 5);
+    expect(mid.pan).toBeCloseTo(20, 5);
+  });
+
+  it('pans the short way round', async () => {
+    const { interpolateCamera } = await import('../utils/cameraTransition');
+    const from = { pan: 350 } as unknown as import('../types').VenueCamera;
+    expect(interpolateCamera(from, { pan: 10 }, 0.5).pan).toBeCloseTo(360, 5);
   });
 });
