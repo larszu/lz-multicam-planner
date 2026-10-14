@@ -48,6 +48,8 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
   XCD, integrated …
 - Adapter system: automatic adapter detection with T-stop light loss, sensor crop info, Speed Booster support (e.g., EF→MFT)
 - Custom lens support: create and save your own lenses
+- **Built-in lenses (PTZ, camcorders, action cams):** a camera with a built-in lens only ever gets its *own* lens — never another model's. Where the catalogue has no data for it yet, a marked placeholder (typical 20x) stands in so preview and field of view work right away; *Enter values from the data sheet* saves the real range for that camera
+- **AI auto-fill** for custom cameras (Gemini): key and model are set under the key button and shared with the AI floor-plan analysis; the model is selectable because providers retire old ones
 - **Custom cameras and lenses travel with the project:** the ones the placed
   cameras use are written into the `.mcplan` (and the `.avplan` cameras slot)
   and added to the local library when the project is opened on another
