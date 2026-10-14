@@ -235,9 +235,20 @@ export default function App() {
 
   const handleSelectTab = useCallback((tabId: string) => {
     setFocusTabId(tabId);
+    // Schon im Fokus und der Reiter steht im Modell: nur umschalten. Das
+    // Neuaufbauen des Layouts montierte jedes Panel neu (samt WebGL-Kontext
+    // und Szene) und kostete 100–170 ms je Klick.
+    if (layoutMode === 'focus') {
+      try {
+        if (model.getNodeById(tabId)) {
+          model.doAction(Actions.selectTab(tabId));
+          return;
+        }
+      } catch { /* nicht im Modell — dann neu aufbauen */ }
+    }
     setLayoutMode('focus');
     applyLayoutJson(createFocusLayoutJson(t, tabId));
-  }, [applyLayoutJson, t]);
+  }, [applyLayoutJson, layoutMode, model, t]);
 
   const handleSetLayoutMode = useCallback((nextMode: 'focus' | 'grid') => {
     if (nextMode === 'focus') {

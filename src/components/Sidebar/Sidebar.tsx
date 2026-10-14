@@ -24,7 +24,7 @@ import {
   cardFindings,
 } from '../../utils/cameraCardExtras';
 import { FiPlus, FiTrash2, FiCopy, FiChevronDown, FiChevronUp, FiEye, FiEyeOff, FiUpload, FiUser, FiMap, FiMaximize2, FiLock, FiUnlock, FiStar, FiEdit2, FiRotateCcw, FiHome, FiImage, FiColumns, FiUsers, FiVideo, FiTarget } from 'react-icons/fi';
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import type { StageObjectType, Camera, CameraMountType, VenueCamera, WallFit, WallPattern } from '../../types';
 
 import { rigsForType, trackSectionPlan } from '../../data/rigs';
@@ -160,17 +160,16 @@ function groupByMount(lenses: typeof LENSES) {
   return groups;
 }
 
+const sortierer = new Intl.Collator();
+
 function sortFavoritesFirst<T extends { id: string; manufacturer?: string; model?: string }>(items: T[], favoriteIds: string[]) {
   const favorites = new Set(favoriteIds);
-  return [...items].sort((left, right) => {
-    const leftFavorite = favorites.has(left.id) ? 1 : 0;
-    const rightFavorite = favorites.has(right.id) ? 1 : 0;
-    if (leftFavorite !== rightFavorite) return rightFavorite - leftFavorite;
-
-    const leftLabel = `${left.manufacturer ?? ''} ${left.model ?? ''}`.trim();
-    const rightLabel = `${right.manufacturer ?? ''} ${right.model ?? ''}`.trim();
-    return leftLabel.localeCompare(rightLabel);
-  });
+  // Schluessel einmal je Eintrag statt zweimal je Vergleich; Collator statt
+  // localeCompare (das baut bei jedem Aufruf seine Sortierregeln neu).
+  return items
+    .map((item) => ({ item, fav: favorites.has(item.id) ? 0 : 1, label: `${item.manufacturer ?? ''} ${item.model ?? ''}`.trim() }))
+    .sort((a, b) => a.fav - b.fav || sortierer.compare(a.label, b.label))
+    .map((e) => e.item);
 }
 
 /**
@@ -245,9 +244,14 @@ function CameraCard({
   // Geraetebibliothek: schreibgeschuetzte dritte Quelle neben eingebaut und eigen.
   // Abonniert fuer das Neuzeichnen; gelesen aus dem Register, das auch die
   // Eintraege traegt, die das offene Projekt in seiner Datei mitbringt.
-  useDeviceLibrary((s) => s.cache.entries);
-  const bibCameras = [...libraryCameras()];
-  const bibLenses = [...libraryLenses()];
+  const bibStand = useDeviceLibrary((s) => s.cache.entries);
+  // Listen nur neu bauen, wenn sich ihre Quellen aendern — nicht bei jedem
+  // Schwenk/Zoom der Kamera. Vorher sortierte jede Karte bei jeder Aenderung
+  // den ganzen Katalog (377 Kameras + Objektive) neu.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const bibCameras = useMemo(() => [...libraryCameras()], [bibStand]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const bibLenses = useMemo(() => [...libraryLenses()], [bibStand]);
   const [proposal, setProposal] = useState<LibraryItem | null>(null);
   const camDef = getCameraById(cam.cameraId, customCameras);
   const lensDef = getLensById(cam.lensId) ?? customLenses.find((l) => l.id === cam.lensId);
@@ -345,16 +349,22 @@ function CameraCard({
   const dropdownLenses = lensMismatch && lensDef
     ? [...compatDeduped, lensDef]
     : compatDeduped;
-  const grouped = groupByMount(sortFavoritesFirst(dropdownLenses, favoriteLensIds));
+  const dropdownKey = dropdownLenses.map((l) => l.id).join('|');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const grouped = useMemo(() => groupByMount(sortFavoritesFirst(dropdownLenses, favoriteLensIds)), [dropdownKey, favoriteLensIds]);
   // Dedupe: when a built-in is shadowed (custom entry with the same id), only the
   // custom version appears in the dropdown — the built-in is hidden behind it.
-  const customCameraIds = new Set(customCameras.map((c) => c.id));
   // Bibliothekseintraege zaehlen wie eingebaute: bearbeiten legt eine eigene
   // Kopie an („modified"), der Bibliothekseintrag selbst bleibt unberuehrt.
-  const builtInCameraIds = new Set([...CAMERAS, ...bibCameras].map((c) => c.id));
-  const visibleBibCameras = sortFavoritesFirst(bibCameras.filter((c) => !customCameraIds.has(c.id)), favoriteCameraIds);
-  const visibleCameras = [...CAMERAS.filter((c) => !customCameraIds.has(c.id)), ...customCameras];
-  const sortedCameras = sortFavoritesFirst(visibleCameras, favoriteCameraIds);
+  const { customCameraIds, builtInCameraIds, visibleBibCameras, sortedCameras } = useMemo(() => {
+    const eigene = new Set(customCameras.map((c) => c.id));
+    return {
+      customCameraIds: eigene,
+      builtInCameraIds: new Set([...CAMERAS, ...bibCameras].map((c) => c.id)),
+      visibleBibCameras: sortFavoritesFirst(bibCameras.filter((c) => !eigene.has(c.id)), favoriteCameraIds),
+      sortedCameras: sortFavoritesFirst([...CAMERAS.filter((c) => !eigene.has(c.id)), ...customCameras], favoriteCameraIds),
+    };
+  }, [customCameras, bibCameras, favoriteCameraIds]);
   const isCustomEntry = (id: string) => customCameraIds.has(id);
   const isBuiltIn = (id: string) => builtInCameraIds.has(id);
   const isBuiltInShadow = (id: string) => isCustomEntry(id) && isBuiltIn(id);
