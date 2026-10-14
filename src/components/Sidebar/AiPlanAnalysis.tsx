@@ -1,14 +1,13 @@
 import { useCallback, useState } from 'react';
 import { FiCpu, FiKey, FiLoader } from 'react-icons/fi';
 import { useStore } from '../../store/useStore';
-import { AI_PROVIDERS, AI_PROVIDER_ORDER, splitDataUrl, parseJsonResponse } from '../../utils/aiProviders';
+import { AI_PROVIDERS, AI_PROVIDER_ORDER, splitDataUrl, parseJsonResponse, loadAiModel, saveAiModel } from '../../utils/aiProviders';
 import type { AiProviderId } from '../../utils/aiProviders';
 import { buildPlanPrompt, wallsFromResult, stagesFromResult } from '../../utils/planAnalysis';
 import type { AnalysisResult, PlanTasks } from '../../utils/planAnalysis';
 import { useTranslation, format } from '../../i18n';
 
 const PROVIDER_STORAGE = 'multicam-ai-provider';
-const modelStorageKey = (id: AiProviderId) => `multicam-ai-model-${id}`;
 
 // AI floor-plan analysis (issues #39 / #40): pick a provider, paste a key, and
 // have the model extract walls / stages / scale from the uploaded plan image.
@@ -23,7 +22,7 @@ export default function AiPlanAnalysis() {
   const provider = AI_PROVIDERS[providerId];
   const [apiKey, setApiKey] = useState(() => localStorage.getItem(AI_PROVIDERS[initialProviderId].keyStorageKey) ?? '');
   const [model, setModel] = useState(
-    () => localStorage.getItem(modelStorageKey(initialProviderId)) ?? AI_PROVIDERS[initialProviderId].defaultModel,
+    () => loadAiModel(initialProviderId),
   );
   const [tasks, setTasks] = useState<PlanTasks>({ walls: true, stages: true, scale: true });
   const [busy, setBusy] = useState(false);
@@ -35,7 +34,7 @@ export default function AiPlanAnalysis() {
     setProviderId(id);
     localStorage.setItem(PROVIDER_STORAGE, id);
     setApiKey(localStorage.getItem(AI_PROVIDERS[id].keyStorageKey) ?? '');
-    setModel(localStorage.getItem(modelStorageKey(id)) ?? AI_PROVIDERS[id].defaultModel);
+    setModel(loadAiModel(id));
     setError(null);
     setSummary(null);
   }, []);
@@ -48,7 +47,7 @@ export default function AiPlanAnalysis() {
 
   const persistModel = useCallback((value: string) => {
     setModel(value);
-    localStorage.setItem(modelStorageKey(providerId), value);
+    saveAiModel(providerId, value);
   }, [providerId]);
 
   const analyze = useCallback(async () => {

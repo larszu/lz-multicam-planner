@@ -70,6 +70,8 @@ export const sidebar: Record<string, string> = {
   'sidebar.form.setKey': 'Gemini-API-Schlüssel für KI-Autofill festlegen',
   'sidebar.form.keyHintPre': 'Kostenlosen Gemini-API-Schlüssel einfügen von',
   'sidebar.form.keyHintPost': 'Nur lokal gespeichert.',
+  'sidebar.form.aiModel': 'Modell',
+  'sidebar.form.aiErrModel': 'Das Modell ist nicht mehr verfügbar. Unter dem Schlüssel-Knopf ein anderes wählen.',
   'sidebar.form.save': 'Speichern',
   'sidebar.form.clear': 'Löschen',
   'sidebar.form.cancel': 'Abbrechen',

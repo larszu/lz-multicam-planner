@@ -104,11 +104,34 @@ async function callOpenAiCompatible(
   return text;
 }
 
+// Google schaltet Modelle ab (2.0/2.5-flash-lite meldeten 2026 „no longer
+// available to new users"). Deshalb ist das Modell an jeder Stelle waehlbar
+// und wird EINMAL je Anbieter gespeichert — Grundriss-Analyse und KI-Autofill
+// teilen sich Schluessel und Modell.
+export const GEMINI_DEFAULT_MODEL = 'gemini-3.5-flash-lite';
+
+export const aiModelStorageKey = (id: AiProviderId) => `multicam-ai-model-${id}`;
+
+export function loadAiModel(id: AiProviderId): string {
+  try {
+    return localStorage.getItem(aiModelStorageKey(id)) || AI_PROVIDERS[id].defaultModel;
+  } catch {
+    return AI_PROVIDERS[id].defaultModel;
+  }
+}
+
+export function saveAiModel(id: AiProviderId, model: string) {
+  try {
+    if (model.trim()) localStorage.setItem(aiModelStorageKey(id), model.trim());
+    else localStorage.removeItem(aiModelStorageKey(id));
+  } catch { /* gesperrter Speicher: gilt bis zum Neuladen */ }
+}
+
 export const AI_PROVIDERS: Record<AiProviderId, AiProvider> = {
   gemini: {
     id: 'gemini',
     label: 'Google Gemini',
-    defaultModel: 'gemini-2.0-flash',
+    defaultModel: GEMINI_DEFAULT_MODEL,
     keyStorageKey: 'multicam-ai-key-gemini',
     keyHint: 'Free key from aistudio.google.com',
     free: true,
