@@ -438,7 +438,7 @@ function CameraCard({
               onClick={() => (confirmDelete ? removeCamera(cam.id) : setConfirmDelete(true))}
               onBlur={() => setConfirmDelete(false)}
               style={{ padding: '6px' }}
-              className={` hover:bg-bc-hover ${confirmDelete ? 'text-bc-red' : 'text-bc-muted hover:text-bc-red'}`}
+              className={` hover:bg-bc-hover ${confirmDelete ? 'text-bc-red-text' : 'text-bc-muted hover:text-bc-red-text'}`}
               title={confirmDelete ? t('sidebar.cam.removeAgain', 'Really delete? Click again.') : t('sidebar.cam.remove', 'Delete camera')}
               aria-label={confirmDelete
                 ? format(t('sidebar.cam.removeAgain.aria', 'Really delete {name}'), { name: cam.label })
@@ -537,7 +537,7 @@ function CameraCard({
                         useStore.getState().removeCustomCamera(camDef.id);
                       }}
                       style={{ padding: '5px' }}
-                      className="text-bc-dim hover:text-bc-yellow"
+                      className="text-bc-dim hover:text-bc-yellow-text"
                       aria-label={t('sidebar.cam.resetAria', 'Reset to built-in data')}
                       title={t('sidebar.cam.resetTitle', 'Reset to the original built-in spec (discards your edits)')}
                     >
@@ -564,7 +564,7 @@ function CameraCard({
                         useStore.getState().removeCustomCamera(camDef.id);
                       }}
                       style={{ padding: '5px' }}
-                      className="text-bc-dim hover:text-bc-red"
+                      className="text-bc-dim hover:text-bc-red-text"
                       aria-label={t('sidebar.cam.deleteAria', 'Delete custom camera')}
                       title={t('sidebar.cam.deleteTitle', 'Delete this custom camera')}
                     >
@@ -575,7 +575,7 @@ function CameraCard({
                     type="button"
                     onClick={() => toggleFavoriteCameraId(camDef.id)}
                     style={{ padding: '5px' }}
-                    className={` ${favoriteCameraIds.includes(camDef.id) ? 'text-bc-yellow' : 'text-bc-dim hover:text-bc-yellow'}`}
+                    className={` ${favoriteCameraIds.includes(camDef.id) ? 'text-bc-yellow-text' : 'text-bc-dim hover:text-bc-yellow-text'}`}
                     aria-label={favoriteCameraIds.includes(camDef.id) ? t('sidebar.cam.unfavCamera', 'Remove camera favorite') : t('sidebar.cam.favCamera', 'Favorite camera')}
                     title={favoriteCameraIds.includes(camDef.id) ? t('sidebar.cam.unfavCamera', 'Remove camera favorite') : t('sidebar.cam.favCamera', 'Favorite camera')}
                   >
@@ -638,7 +638,7 @@ function CameraCard({
               Shotlisten, aus demselben Grund: ein stiller Verlust von
               handgetippten Sensormassen ist der teuerste, den diese App hat. */}
           {libraryStorageFull && (
-            <div className="text-[10px] text-bc-red mt-1">
+            <div className="text-[10px] text-bc-red-text mt-1">
               {t('sidebar.libraryStorageFull', 'Storage full — the last change to the library was not saved permanently. Delete custom cameras/lenses you no longer need, or export the project.')}
             </div>
           )}
@@ -746,7 +746,7 @@ function CameraCard({
                 if (!ma) return null;
                 return (
                   <div className="mt-1 p-2 bg-bc-dark border border-bc-yellow/40 text-[10px] leading-snug">
-                    <div className="flex items-center gap-1 text-bc-yellow font-semibold">
+                    <div className="flex items-center gap-1 text-bc-yellow-text font-semibold">
                       ⚡ {ma.name}
                     </div>
                     <div className="text-bc-muted mt-0.5">
@@ -804,7 +804,7 @@ function CameraCard({
                 <button
                   type="button"
                   onClick={() => toggleFavoriteLensId(lensDef.id)}
-                  className={`p-1 ${favoriteLensIds.includes(lensDef.id) ? 'text-bc-yellow' : 'text-bc-dim hover:text-bc-yellow'}`}
+                  className={`p-1 ${favoriteLensIds.includes(lensDef.id) ? 'text-bc-yellow-text' : 'text-bc-dim hover:text-bc-yellow-text'}`}
                   title={favoriteLensIds.includes(lensDef.id) ? t('sidebar.cam.unfavLens', 'Remove lens favorite') : t('sidebar.cam.favLens', 'Favorite lens')}
                 >
                   <FiStar size={12} fill={favoriteLensIds.includes(lensDef.id) ? 'currentColor' : 'none'} />
@@ -906,7 +906,7 @@ function CameraCard({
                   });
                 }
               }}
-              className="text-[10px] text-bc-red hover:text-red-400 mt-0.5"
+              className="text-[10px] text-bc-red-text hover:text-red-400 mt-0.5"
             >{format(t('sidebar.cam.removeCustomLens', 'Delete custom lens "{name}"'), { name: `${lensDef.manufacturer} ${lensDef.model}` })}</button>
           )}
           {/* Inline custom lens creation form */}
@@ -967,7 +967,7 @@ function CameraCard({
                   setNewLens({ manufacturer: '', model: '', focalMin: '10', focalMax: '100', aperture: '2.8', mount: 'B4', type: 'zoom' });
                   setShowNewLens(false);
                 }}
-                className="flex items-center gap-1 px-2 py-1 bg-bc-green/20 text-bc-green text-xs hover:bg-bc-green/30 w-full justify-center"
+                className="flex items-center gap-1 px-2 py-1 bg-bc-green/20 text-bc-green-text text-xs hover:bg-bc-green/30 w-full justify-center"
               >
                 <FiPlus size={12} /> {t('sidebar.cam.createSelect', 'Create & select')}
               </button>
@@ -2338,7 +2338,7 @@ export default function Sidebar() {
                     </label>
                     <button
                       onClick={() => startCalibration('x')}
-                      className={`px-2 py-1 text-xs font-medium whitespace-nowrap ${calibAxis === 'x' ? 'bg-bc-red text-bc-text-bright' : 'bg-bc-green/20 text-bc-green hover:bg-bc-green/30'}`}
+                      className={`px-2 py-1 text-xs font-medium whitespace-nowrap ${calibAxis === 'x' ? 'bg-bc-red text-bc-text-bright' : 'bg-bc-green/20 text-bc-green-text hover:bg-bc-green/30'}`}
                     >
                       {calibAxis === 'x' ? 'Cancel' : (scaleLocked ? t('sidebar.calibrate', 'Calibrate') : t('sidebar.calX', 'Cal X'))}
                     </button>
@@ -2354,7 +2354,7 @@ export default function Sidebar() {
                       </label>
                       <button
                         onClick={() => startCalibration('y')}
-                        className={`px-2 py-1 text-xs font-medium whitespace-nowrap ${calibAxis === 'y' ? 'bg-bc-red text-bc-text-bright' : 'bg-bc-green/20 text-bc-green hover:bg-bc-green/30'}`}
+                        className={`px-2 py-1 text-xs font-medium whitespace-nowrap ${calibAxis === 'y' ? 'bg-bc-red text-bc-text-bright' : 'bg-bc-green/20 text-bc-green-text hover:bg-bc-green/30'}`}
                       >
                         {calibAxis === 'y' ? 'Cancel' : t('sidebar.calY', 'Cal Y')}
                       </button>
@@ -2381,7 +2381,7 @@ export default function Sidebar() {
                 </div>
                 <button
                   onClick={() => setBackgroundPlan(null)}
-                  className="w-full py-1 bg-bc-red/20 text-bc-red text-xs hover:bg-bc-red/30"
+                  className="w-full py-1 bg-bc-red/20 text-bc-red-text text-xs hover:bg-bc-red/30"
                 >
                   {t('sidebar.removeBackground', 'Remove background')}
                 </button>
@@ -2412,7 +2412,7 @@ export default function Sidebar() {
                     value={s.label}
                     onChange={(e) => updateStage(s.id, { label: e.target.value })}
                   />
-                  <button onClick={() => removeStage(s.id)} style={{ padding: '4px' }} className="hover:text-bc-red" title={t('sidebar.removeStage', 'Remove stage')} aria-label={t('sidebar.removeStage.aria', 'Remove stage')}>
+                  <button onClick={() => removeStage(s.id)} style={{ padding: '4px' }} className="hover:text-bc-red-text" title={t('sidebar.removeStage', 'Remove stage')} aria-label={t('sidebar.removeStage.aria', 'Remove stage')}>
                     <FiTrash2 size={12} />
                   </button>
                 </div>
@@ -2522,7 +2522,7 @@ export default function Sidebar() {
           <div className="space-y-2 text-xs" style={{ padding: '0 14px 12px' }}>
             <button
               onClick={() => setWallDrawMode((active) => !active)}
-              className={`flex items-center gap-1 px-2 py-1 text-xs w-full justify-center ${wallDrawMode ? 'bg-bc-yellow/20 text-bc-yellow hover:bg-bc-yellow/30' : 'bg-bc-dark text-bc-text hover:text-bc-text-bright border border-bc-border'}`}
+              className={`flex items-center gap-1 px-2 py-1 text-xs w-full justify-center ${wallDrawMode ? 'bg-bc-yellow/20 text-bc-yellow-text hover:bg-bc-yellow/30' : 'bg-bc-dark text-bc-text hover:text-bc-text-bright border border-bc-border'}`}
             >
               {wallDrawMode ? t('sidebar.stopDrawing', 'Stop drawing') : t('sidebar.drawWalls', 'Draw walls')}
             </button>
@@ -2550,7 +2550,7 @@ export default function Sidebar() {
                     onChange={(e) => updateWall(w.id, { label: e.target.value })}
                   />
                   <span className="text-bc-dim text-[10px]">{w.height}m h</span>
-                  <button onClick={() => removeWall(w.id)} className="ml-auto p-0.5 hover:text-bc-red"><FiTrash2 size={11} /></button>
+                  <button onClick={() => removeWall(w.id)} className="ml-auto p-0.5 hover:text-bc-red-text"><FiTrash2 size={11} /></button>
                 </div>
                 {/* Surface pattern for blur-checking in the preview (issue #45) */}
                 <div className="flex items-center gap-1">
@@ -2686,7 +2686,7 @@ export default function Sidebar() {
                     title={t('sidebar.customAccentColour', 'Custom accent colour')}
                   />
                   <span className="text-bc-dim">({p.x.toFixed(1)}, {p.y.toFixed(1)})</span>
-                  <button onClick={() => removePerson(p.id)} className="ml-auto p-0.5 hover:text-bc-red"><FiTrash2 size={11} /></button>
+                  <button onClick={() => removePerson(p.id)} className="ml-auto p-0.5 hover:text-bc-red-text"><FiTrash2 size={11} /></button>
                 </div>
               );
             })}
@@ -2800,7 +2800,7 @@ export default function Sidebar() {
           onClick={() => {
             if (window.confirm(t('sidebar.clearConfirm', 'Are you sure you want to clear everything? This cannot be undone.'))) clearAll();
           }}
-          className="w-full rounded-bc-full py-1.5 text-bc-red text-xs font-semibold hover:bg-bc-red/10"
+          className="w-full rounded-bc-full py-1.5 text-bc-red-text text-xs font-semibold hover:bg-bc-red/10"
         >
           {t('sidebar.clearAll', 'Clear all')}
         </button>

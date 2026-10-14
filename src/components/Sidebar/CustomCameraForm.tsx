@@ -305,9 +305,9 @@ export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, tit
             />
           </label>
           <div className="flex gap-1">
-            <button onClick={saveKey} className="flex-1 py-0.5 bg-bc-green/20 text-bc-green text-[10px] hover:bg-bc-green/30">{t('sidebar.form.save', 'Save')}</button>
+            <button onClick={saveKey} className="flex-1 py-0.5 bg-bc-green/20 text-bc-green-text text-[10px] hover:bg-bc-green/30">{t('sidebar.form.save', 'Save')}</button>
             {apiKey && (
-              <button onClick={clearKey} className="flex-1 py-0.5 bg-bc-red/20 text-bc-red text-[10px] hover:bg-bc-red/30">{t('sidebar.form.clear', 'Clear')}</button>
+              <button onClick={clearKey} className="flex-1 py-0.5 bg-bc-red/20 text-bc-red-text text-[10px] hover:bg-bc-red/30">{t('sidebar.form.clear', 'Clear')}</button>
             )}
             <button onClick={() => setShowKeyInput(false)} className="flex-1 py-0.5 border border-bc-border bg-bc-panel-raised text-bc-muted text-[10px] hover:text-bc-text">{t('sidebar.form.cancel', 'Cancel')}</button>
           </div>
@@ -315,7 +315,7 @@ export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, tit
       )}
 
       {aiError && (
-        <div className="text-[10px] text-bc-red bg-bc-red/10 border border-bc-red/30 px-1.5 py-1">
+        <div className="text-[10px] text-bc-red-text bg-bc-red/10 border border-bc-red/30 px-1.5 py-1">
           {aiError}
         </div>
       )}
@@ -576,7 +576,7 @@ export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, tit
               <button
                 type="button"
                 onClick={() => removeMode(i)}
-                className="col-span-1 p-0.5 text-bc-dim hover:text-bc-red"
+                className="col-span-1 p-0.5 text-bc-dim hover:text-bc-red-text"
                 title={t('sidebar.form.removeMode', 'Remove mode')}
               >
                 <FiTrash2 size={11} />
@@ -594,7 +594,7 @@ export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, tit
       <button
         onClick={handleSubmit}
         disabled={!manufacturer.trim() || !model.trim()}
-        className="flex items-center gap-1 px-2 py-1 bg-bc-green/20 text-bc-green text-xs hover:bg-bc-green/30 w-full justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+        className="flex items-center gap-1 px-2 py-1 bg-bc-green/20 text-bc-green-text text-xs hover:bg-bc-green/30 w-full justify-center disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <FiPlus size={12} /> {resolvedSubmitLabel}
       </button>

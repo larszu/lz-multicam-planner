@@ -37,7 +37,7 @@ export default class ErrorBoundary extends Component<Props, State> {
       const lang = useStore.getState().language;
       const t = (key: string, en: string) => translate(lang, key, en);
       return (
-        <div className="bg-bc-dark text-bc-red" style={{ padding: 32, minHeight: '100vh' }}>
+        <div className="bg-bc-dark text-bc-red-text" style={{ padding: 32, minHeight: '100vh' }}>
           <h1 style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 12 }}>{t('error.title', 'Something went wrong')}</h1>
           <p className="text-bc-text" style={{ marginBottom: 16 }}>
             {t('error.hint', 'The application encountered an unexpected error. Try refreshing the page.')}

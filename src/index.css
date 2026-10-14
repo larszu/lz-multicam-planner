@@ -54,6 +54,14 @@
   --color-bc-green: #2F7D5C;
   --color-bc-red: #B04A3F;
   --color-bc-yellow: #C8892B;
+  /* Status als SCHRIFT (seit 2026-10-14). Die Statusfarben oben sind fuer
+   * Flaechen, Punkte, Rahmen; als Text lag Rot auf Anthrazit bei 2.9:1.
+   * Dunkel: mit Off-White aufgehellt, hell: mit Text-stark abgedunkelt bzw.
+   * unveraendert — jeweils so wenig wie fuer 4.5:1 auf ALLEN Flaechen noetig
+   * (`kontrast:check` rechnet die Mischung aus). */
+  --color-bc-red-text: color-mix(in srgb, var(--color-bc-red) 50%, var(--color-bc-text-bright));
+  --color-bc-yellow-text: color-mix(in srgb, var(--color-bc-yellow) 80%, var(--color-bc-text-bright));
+  --color-bc-green-text: color-mix(in srgb, var(--color-bc-green) 55%, var(--color-bc-text-bright));
   /* Das Aufnahmelicht: Tally, REC, Live, Fokusring, Claim-Punkt. Nie
    * Flaeche, nie Text, nie Rahmen. */
   --color-bc-signal: #D6402E;
@@ -109,6 +117,9 @@
   --color-bc-dim: #6A6E77;
   --color-bc-faint: #6A6E77;
   --color-bc-logo: #1D324F;
+  --color-bc-red-text: var(--color-bc-red);
+  --color-bc-yellow-text: color-mix(in srgb, var(--color-bc-yellow) 65%, var(--color-bc-text-bright));
+  --color-bc-green-text: color-mix(in srgb, var(--color-bc-green) 90%, var(--color-bc-text-bright));
   --color-bc-hover: rgba(22, 24, 29, 0.05);
   --color-bc-hover-soft: rgba(22, 24, 29, 0.02);
   --color-bc-scrim: rgba(22, 24, 29, 0.40);
@@ -138,6 +149,9 @@
     --color-bc-dim: #6A6E77;
     --color-bc-faint: #6A6E77;
     --color-bc-logo: #1D324F;
+    --color-bc-red-text: var(--color-bc-red);
+    --color-bc-yellow-text: color-mix(in srgb, var(--color-bc-yellow) 65%, var(--color-bc-text-bright));
+    --color-bc-green-text: color-mix(in srgb, var(--color-bc-green) 90%, var(--color-bc-text-bright));
     --color-bc-hover: rgba(22, 24, 29, 0.05);
     --color-bc-hover-soft: rgba(22, 24, 29, 0.02);
     --color-bc-scrim: rgba(22, 24, 29, 0.40);
@@ -601,7 +615,7 @@ select {
 }
 
 .panel-toolbar-button-danger:hover {
-  color: var(--color-bc-red);
+  color: var(--color-bc-red-text);
   background-color: color-mix(in srgb, var(--color-bc-red) 12%, transparent);
 }
 

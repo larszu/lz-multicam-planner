@@ -292,6 +292,9 @@ same values as the Cable Planner:
   stored. Dark is anthracite, not navy.
 - **Neutral surfaces, blue only as accent** (main button, selection, links).
   Tally red only for focus ring, live/tally and the logo dot.
+- **Status colours as text** use their own variants (`text-bc-red-text`,
+  `-yellow-text`, `-green-text`): lightened on dark, darkened where needed on
+  light, so every message reaches 4.5:1 on every surface.
 - **Soft shapes via tokens:** radius s/m/l/xl/full (6/10/20/24/999 px),
   shadows 1/2/3 — panels are cards, dialogs radius xl, primary buttons are
   pills, segment controls for exclusive choices. Glass header (blur 16 px).
@@ -301,7 +304,7 @@ same values as the Cable Planner:
 - All values live in `src/index.css` (`--color-bc-*`, `--radius-bc-*`,
   `--shadow-bc-*`). Checked by `brand:check` (values in both modes, signal
   once, logo colours, switch present), `form:check` (radius/shadow only via
-  tokens), `kontrast:check` (WCAG AA in both modes) and `kopfzeile:check`
+  tokens), `kontrast:check` (WCAG AA in both modes, including status text) and `kopfzeile:check`
   (header structure).
 
 ---

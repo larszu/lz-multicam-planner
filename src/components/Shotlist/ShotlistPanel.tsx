@@ -338,9 +338,9 @@ export default function ShotlistPanel() {
 
       {(hint || shotlistStorageFull) && (
         <div className="px-2 py-1 text-[10px] border-b border-bc-border shrink-0">
-          {hint && <div className="text-bc-yellow">{hint}</div>}
+          {hint && <div className="text-bc-yellow-text">{hint}</div>}
           {shotlistStorageFull && (
-            <div className="text-bc-red">
+            <div className="text-bc-red-text">
               {t('shotlist.storageFull', 'Storage full — the last change was not saved permanently. Delete older shots or export the storyboard.')}
             </div>
           )}
@@ -411,7 +411,7 @@ export default function ShotlistPanel() {
                   ) : (
                     <span className="text-[11px] text-bc-faint">{t('shotlist.noThumb', 'no image')}</span>
                   )}
-                  <span className="absolute top-0.5 left-0.5 bg-bc-scrim text-bc-yellow font-bold text-[11px] px-1">
+                  <span className="absolute top-0.5 left-0.5 bg-bc-scrim text-bc-yellow-text font-bold text-[11px] px-1">
                     {String(i + 1).padStart(2, '0')}
                   </span>
                 </div>
@@ -481,14 +481,14 @@ export default function ShotlistPanel() {
                     </select>
                     {tooFast && (
                       <span
-                        className="text-[11px] text-bc-yellow"
+                        className="text-[11px] text-bc-yellow-text"
                         title={format(t('shotlist.tooFast', 'On a {rig} this move needs at least {need} s - the {set} s set here are physically out of reach.'), { rig: motionProfileLabel(t, effStyle), need: needS, set: secs })}
                       >
                         min {needS}s
                       </span>
                     )}
                     {camGone && (
-                      <span className="text-[11px] text-bc-red" title={t('shotlist.cameraGone', 'The camera of this shot has been deleted')}>
+                      <span className="text-[11px] text-bc-red-text" title={t('shotlist.cameraGone', 'The camera of this shot has been deleted')}>
                         {t('shotlist.cameraMissing', 'Camera missing')}
                       </span>
                     )}
@@ -497,7 +497,7 @@ export default function ShotlistPanel() {
                         e.stopPropagation();
                         if (list) removeShot(list.id, shot.id);
                       }}
-                      className="ml-auto p-0.5 text-bc-dim hover:text-bc-red"
+                      className="ml-auto p-0.5 text-bc-dim hover:text-bc-red-text"
                       title={t('shotlist.deleteShot', 'Delete shot')}
                     >
                       <FiTrash2 size={12} />

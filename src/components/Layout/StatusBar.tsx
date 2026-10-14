@@ -79,7 +79,7 @@ export default function StatusBar() {
           Stand gerade NICHT — wer jetzt schliesst, verliert, was seit dem
           letzten Speichern als Datei geaendert wurde. */}
       {autosaveStorageFull && (
-        <span className="truncate text-bc-red" role="status">
+        <span className="truncate text-bc-red-text" role="status">
           {t('status.autosaveFull', 'Autosave failed — storage is full. Save the project to a file.')}
         </span>
       )}

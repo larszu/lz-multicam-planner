@@ -266,7 +266,7 @@ function fmt(v: number, decimals: number): string {
 export function Note({ tone, children }: { tone: 'info' | 'warn'; children: React.ReactNode }) {
   const style =
     tone === 'warn'
-      ? 'border-bc-red/60 bg-bc-red/10 text-bc-red'
+      ? 'border-bc-red/60 bg-bc-red/10 text-bc-red-text'
       : 'border-bc-border bg-bc-dark text-bc-muted';
   return (
     <p style={{ padding: '3px 6px' }} className={` border text-[10px] leading-snug ${style}`}>

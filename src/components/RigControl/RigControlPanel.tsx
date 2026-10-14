@@ -422,7 +422,7 @@ export default function RigControlPanel() {
           </span>
           <button
             onClick={() => setArmed((a) => !a)}
-            className={`ml-auto px-2 py-1 border ${armed ? 'border-bc-yellow text-bc-yellow' : 'border-bc-border text-bc-muted'}`}
+            className={`ml-auto px-2 py-1 border ${armed ? 'border-bc-yellow text-bc-yellow-text' : 'border-bc-border text-bc-muted'}`}
             title={t('rig.keys.title', 'Arm keyboard control. Off when the keys are needed elsewhere.')}
           >
             {armed ? t('rig.keysArmed', 'Keys armed') : t('rig.keysOff', 'Keys off')}
@@ -437,7 +437,7 @@ export default function RigControlPanel() {
               key={s.key}
               onClick={() => setSpeed(i)}
               title={format(t('rig.speedStep', '{hint} (key {key})'), { hint: speedStepHint(t, s.key), key: s.key })}
-              className={`px-2 py-0.5 border ${i === speedIndex ? 'border-bc-yellow text-bc-yellow' : 'border-bc-border text-bc-muted'}`}
+              className={`px-2 py-0.5 border ${i === speedIndex ? 'border-bc-yellow text-bc-yellow-text' : 'border-bc-border text-bc-muted'}`}
             >
               {speedStepLabel(t, s.key)}
             </button>
@@ -494,13 +494,13 @@ export default function RigControlPanel() {
               <FiSquare size={11} /> Stop {formatTakeTime(recSeconds)}
             </button>
           ) : (
-            <button onClick={startRecording} className="flex items-center gap-1 px-2 py-1 border border-bc-border text-bc-red hover:border-bc-red">
+            <button onClick={startRecording} className="flex items-center gap-1 px-2 py-1 border border-bc-border text-bc-red-text hover:border-bc-red">
               <FiCircle size={11} /> {t('rig.recordTake', 'Record take')}
             </button>
           )}
           <button
             onClick={() => { loopRef.current = !loopRef.current; setLoop(loopRef.current); }}
-            className={`flex items-center gap-1 px-2 py-1 border ${loop ? 'border-bc-yellow text-bc-yellow' : 'border-bc-border text-bc-muted'}`}
+            className={`flex items-center gap-1 px-2 py-1 border ${loop ? 'border-bc-yellow text-bc-yellow-text' : 'border-bc-border text-bc-muted'}`}
             title={t('rig.loop', 'Replay the recorded take in a loop')}
           >
             <FiRepeat size={11} /> Loop
@@ -514,7 +514,7 @@ export default function RigControlPanel() {
         </div>
 
         {takeStorageFull && (
-          <div className="border border-bc-red/60 bg-bc-red/10 px-2 py-1 text-[11px] text-bc-red">
+          <div className="border border-bc-red/60 bg-bc-red/10 px-2 py-1 text-[11px] text-bc-red-text">
             {t('rig.storageFull', 'Storage is full — the last take could not be saved. Delete older takes.')}
           </div>
         )}
@@ -541,7 +541,7 @@ export default function RigControlPanel() {
               <span className="text-bc-faint text-[10px]">{format(t('rig.samples', '{n} pts'), { n: fahrt.samples.length })}</span>
               <button
                 onClick={() => { if (playingId === fahrt.id) stopPlayback(); removeRigTake(fahrt.id); }}
-                className="text-bc-dim hover:text-bc-red p-0.5"
+                className="text-bc-dim hover:text-bc-red-text p-0.5"
                 title={t('rig.delete', 'Delete take')}
               >
                 <FiTrash2 size={12} />

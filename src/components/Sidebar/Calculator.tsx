@@ -221,7 +221,7 @@ export default function Calculator() {
         </div>
 
         <div className="rounded-bc-m border border-bc-border bg-bc-panel-raised p-4">
-          <h3 className="text-sm font-bold text-bc-green mb-2">{t('sidebar.calc.depthOfField', 'Depth of Field')}</h3>
+          <h3 className="text-sm font-bold text-bc-green-text mb-2">{t('sidebar.calc.depthOfField', 'Depth of Field')}</h3>
           <div className="space-y-1 text-sm text-bc-text">
             <div>{t('sidebar.calc.near', 'Near:')} <strong>{dof.nearLimit < 0.01 ? '0' : dof.nearLimit.toFixed(2)}m</strong></div>
             <div>{t('sidebar.calc.far', 'Far:')} <strong>{dof.farLimit === Infinity ? '∞' : dof.farLimit.toFixed(2) + 'm'}</strong></div>
@@ -232,7 +232,7 @@ export default function Calculator() {
         </div>
 
         <div className="rounded-bc-m border border-bc-border bg-bc-panel-raised p-4 col-span-2">
-          <h3 className="text-sm font-bold text-bc-yellow mb-2">{t('sidebar.calc.personInFrame', 'Person in Frame (1.80m)')}</h3>
+          <h3 className="text-sm font-bold text-bc-yellow-text mb-2">{t('sidebar.calc.personInFrame', 'Person in Frame (1.80m)')}</h3>
           <div className="text-sm text-bc-text">
             {t('sidebar.calc.heightIn1080p', 'Height in 1080p:')} <strong>{personPx.toFixed(0)}px</strong> ({((personPx / 1080) * 100).toFixed(1)}% {t('sidebar.calc.ofFrame', 'of frame')})
           </div>

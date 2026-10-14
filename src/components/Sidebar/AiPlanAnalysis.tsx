@@ -161,8 +161,8 @@ export default function AiPlanAnalysis() {
       </button>
 
       {!backgroundPlan && <p className="text-bc-faint text-[11px]">{t('sidebar.ai.uploadHint', 'Upload a plan above to enable analysis.')}</p>}
-      {error && <p className="text-bc-red text-[10px] break-words">{error}</p>}
-      {summary && <p className="text-bc-green text-[10px]">{summary}</p>}
+      {error && <p className="text-bc-red-text text-[10px] break-words">{error}</p>}
+      {summary && <p className="text-bc-green-text text-[10px]">{summary}</p>}
     </div>
   );
 }

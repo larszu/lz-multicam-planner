@@ -187,7 +187,7 @@ export default function TemplateSelector() {
                         <div className="text-xs text-bc-dim">
                           {format(t('header.templates.cameras', '{count} cameras · {w}×{h}m'), { count: tpl.cameras.length, w: tpl.venue.widthM, h: tpl.venue.heightM })}
                           {isPureBuiltIn(tpl.id) && <span className="ml-1 text-bc-faint">{t('header.templates.builtIn', '(built-in)')}</span>}
-                          {isBuiltInShadow(tpl.id) && <span className="ml-1 text-bc-yellow">{t('header.templates.modified', '(modified)')}</span>}
+                          {isBuiltInShadow(tpl.id) && <span className="ml-1 text-bc-yellow-text">{t('header.templates.modified', '(modified)')}</span>}
                           {isCustomEntry(tpl.id) && !isBuiltInShadow(tpl.id) && <span className="ml-1 text-bc-accent">{t('header.templates.customTag', '(custom)')}</span>}
                         </div>
                       </button>

@@ -74,6 +74,12 @@ assert.equal(token('--color-bc-red'), '#B04A3F');
 assert.equal(token('--color-bc-yellow'), '#C8892B');
 assert.equal(token('--color-bc-signal'), '#D6402E', 'Tally-Rot ist das Signal');
 assert.notEqual(token('--color-bc-red'), token('--color-bc-signal'), 'zwei Toene, zwei Zwecke');
+// Status als Schrift nur ueber die -text-Varianten (2026-10-14: Rot lag als
+// Text auf Anthrazit bei 2.9:1). Die Werte misst `kontrast:check`.
+for (const f of ['red', 'yellow', 'green']) {
+  assert.ok(token(`--color-bc-${f}-text`, 0), `--color-bc-${f}-text fehlt`);
+  assert.ok(token(`--color-bc-${f}-text`, 1), `--color-bc-${f}-text fehlt im Hell-Thema`);
+}
 
 // ── 3. Rot kommt genau einmal vor: in der Definition des Signals ─────────
 const rotZeilen = css

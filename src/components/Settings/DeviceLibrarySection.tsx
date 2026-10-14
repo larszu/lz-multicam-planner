@@ -86,12 +86,12 @@ export default function DeviceLibrarySection() {
           </button>
         </form>
         {serverInvalid && (
-          <p className="mt-1 text-xs text-bc-red">
+          <p className="mt-1 text-xs text-bc-red-text">
             {t('library.server.invalid', 'Not a usable address. It must start with https:// (http:// only for localhost).')}
           </p>
         )}
         {lib.server !== DEFAULT_DEVICE_LIBRARY_URL && (
-          <p className="mt-1 text-xs text-bc-yellow">
+          <p className="mt-1 text-xs text-bc-yellow-text">
             {format(
               t(
                 'library.server.custom',

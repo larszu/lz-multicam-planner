@@ -8,7 +8,7 @@ export default function LibraryErrorLine({ code, detail }: { code: LibraryFehler
   const { t } = useTranslation();
   const server = useDeviceLibrary((s) => s.server);
   return (
-    <p className="mt-2 text-xs text-bc-red" role="alert">
+    <p className="mt-2 text-xs text-bc-red-text" role="alert">
       {libraryErrorText(t, code)}
       {detail ? ` (${detail})` : ''}
       {code === 'guidelines-outdated' && (

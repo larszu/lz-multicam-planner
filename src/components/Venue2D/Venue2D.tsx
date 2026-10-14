@@ -1053,7 +1053,7 @@ export default function Venue2D() {
             <div className="border-t border-bc-border" style={{ margin: '4px 6px' }} />
           </>
         )}
-        <button type="button" onClick={() => handleMenuAction('delete')} style={ctxItemStyle} className="text-bc-red hover:bg-bc-hover">
+        <button type="button" onClick={() => handleMenuAction('delete')} style={ctxItemStyle} className="text-bc-red-text hover:bg-bc-hover">
           <FiTrash2 size={13} /> {format(t('venue.delete', 'Delete {kind}'), { kind: menu.kind })}
         </button>
       </div>

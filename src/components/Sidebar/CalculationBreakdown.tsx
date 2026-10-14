@@ -81,54 +81,54 @@ export function CalculationBreakdown({
 
       <Row
         label="FOV_h"
-        expr={<>2·atan(W / (2·f_eff)) = 2·atan({fmt(W)} / (2·{fmt(fe)})) = <span className="text-bc-green">{fmt(fov.horizontalDeg)}°</span></>}
+        expr={<>2·atan(W / (2·f_eff)) = 2·atan({fmt(W)} / (2·{fmt(fe)})) = <span className="text-bc-green-text">{fmt(fov.horizontalDeg)}°</span></>}
       />
       <Row
         label="FOV_v"
-        expr={<>2·atan(H / (2·f_eff)) = 2·atan({fmt(H)} / (2·{fmt(fe)})) = <span className="text-bc-green">{fmt(fov.verticalDeg)}°</span></>}
+        expr={<>2·atan(H / (2·f_eff)) = 2·atan({fmt(H)} / (2·{fmt(fe)})) = <span className="text-bc-green-text">{fmt(fov.verticalDeg)}°</span></>}
       />
       <Row
         label="FOV_d"
-        expr={<>2·atan(D / (2·f_eff)) = 2·atan({fmt(D)} / (2·{fmt(fe)})) = <span className="text-bc-green">{fmt(fov.diagonalDeg)}°</span></>}
+        expr={<>2·atan(D / (2·f_eff)) = 2·atan({fmt(D)} / (2·{fmt(fe)})) = <span className="text-bc-green-text">{fmt(fov.diagonalDeg)}°</span></>}
       />
       <Row
         label="Img W"
-        expr={<>2·d·tan(FOV_h/2) = 2·{fmt(s)}·tan({fmt(fov.horizontalDeg / 2)}°) = <span className="text-bc-green">{fmt(fov.imageWidthAtDistance)} m</span></>}
+        expr={<>2·d·tan(FOV_h/2) = 2·{fmt(s)}·tan({fmt(fov.horizontalDeg / 2)}°) = <span className="text-bc-green-text">{fmt(fov.imageWidthAtDistance)} m</span></>}
       />
       <Row
         label="Img H"
-        expr={<>2·d·tan(FOV_v/2) = 2·{fmt(s)}·tan({fmt(fov.verticalDeg / 2)}°) = <span className="text-bc-green">{fmt(fov.imageHeightAtDistance)} m</span></>}
+        expr={<>2·d·tan(FOV_v/2) = 2·{fmt(s)}·tan({fmt(fov.verticalDeg / 2)}°) = <span className="text-bc-green-text">{fmt(fov.imageHeightAtDistance)} m</span></>}
       />
       <Row
         label="35mm eq"
-        expr={<>f_eff · crop = {fmt(fe)} · {fmt(sensor.cropFactor, 3)} = <span className="text-bc-green">{fmt(fov.equivalentFocalLength)} mm</span></>}
+        expr={<>f_eff · crop = {fmt(fe)} · {fmt(sensor.cropFactor, 3)} = <span className="text-bc-green-text">{fmt(fov.equivalentFocalLength)} mm</span></>}
       />
 
       <div className="border-t border-bc-border my-1" />
 
       <Row
         label="CoC"
-        expr={<>D / {COC_DIVISOR} = {fmt(D)} / {COC_DIVISOR} = <span className="text-bc-yellow">{(c * 1000).toFixed(1)} µm</span></>}
+        expr={<>D / {COC_DIVISOR} = {fmt(D)} / {COC_DIVISOR} = <span className="text-bc-yellow-text">{(c * 1000).toFixed(1)} µm</span></>}
         color="text-bc-text"
       />
       <Row
         label="Hyperf."
-        expr={<>f_eff² / (N·c)/1000 + f_eff/1000 = {fmt(fe)}² / ({fmt(N)}·{fmt(c, 4)})/1000 + {fmt(fe)}/1000 = <span className="text-bc-yellow">{fmt(dof.hyperfocal)} m</span></>}
+        expr={<>f_eff² / (N·c)/1000 + f_eff/1000 = {fmt(fe)}² / ({fmt(N)}·{fmt(c, 4)})/1000 + {fmt(fe)}/1000 = <span className="text-bc-yellow-text">{fmt(dof.hyperfocal)} m</span></>}
         color="text-bc-text"
       />
       <Row
         label="DoF near"
-        expr={<>(H·s) / (H + s − f_eff/1000) = ({fmt(dof.hyperfocal)}·{fmt(s)}) / ({fmt(dof.hyperfocal)} + {fmt(s)} − {fmt(fe / 1000, 3)}) = <span className="text-bc-yellow">{fmt(dof.nearLimit)} m</span></>}
+        expr={<>(H·s) / (H + s − f_eff/1000) = ({fmt(dof.hyperfocal)}·{fmt(s)}) / ({fmt(dof.hyperfocal)} + {fmt(s)} − {fmt(fe / 1000, 3)}) = <span className="text-bc-yellow-text">{fmt(dof.nearLimit)} m</span></>}
         color="text-bc-text"
       />
       <Row
         label="DoF far"
-        expr={<>(H·s) / (H − s + f_eff/1000) = ({fmt(dof.hyperfocal)}·{fmt(s)}) / ({fmt(dof.hyperfocal)} − {fmt(s)} + {fmt(fe / 1000, 3)}) = <span className="text-bc-yellow">{fmt(dof.farLimit)} m</span></>}
+        expr={<>(H·s) / (H − s + f_eff/1000) = ({fmt(dof.hyperfocal)}·{fmt(s)}) / ({fmt(dof.hyperfocal)} − {fmt(s)} + {fmt(fe / 1000, 3)}) = <span className="text-bc-yellow-text">{fmt(dof.farLimit)} m</span></>}
         color="text-bc-text"
       />
       <Row
         label="DoF total"
-        expr={<>far − near = {fmt(dof.farLimit)} − {fmt(dof.nearLimit)} = <span className="text-bc-yellow">{fmt(dof.totalDof)} m</span></>}
+        expr={<>far − near = {fmt(dof.farLimit)} − {fmt(dof.nearLimit)} = <span className="text-bc-yellow-text">{fmt(dof.totalDof)} m</span></>}
         color="text-bc-text"
       />
 
@@ -136,7 +136,7 @@ export function CalculationBreakdown({
 
       <Row
         label={t('sidebar.calc.person', 'Person')}
-        expr={<>{PERSON_HEIGHT_M.toFixed(2)} / img_h · {OUTPUT_HEIGHT_PX} = {PERSON_HEIGHT_M.toFixed(2)} / {fmt(imgH)} · {OUTPUT_HEIGHT_PX} = <span className="text-bc-red">{fmt(personPx, 0)} px</span> ({fmt((personPx / OUTPUT_HEIGHT_PX) * 100, 1)}%)</>}
+        expr={<>{PERSON_HEIGHT_M.toFixed(2)} / img_h · {OUTPUT_HEIGHT_PX} = {PERSON_HEIGHT_M.toFixed(2)} / {fmt(imgH)} · {OUTPUT_HEIGHT_PX} = <span className="text-bc-red-text">{fmt(personPx, 0)} px</span> ({fmt((personPx / OUTPUT_HEIGHT_PX) * 100, 1)}%)</>}
         color="text-bc-text"
       />
     </div>

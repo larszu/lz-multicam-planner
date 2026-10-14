@@ -49,9 +49,39 @@ const WURZEL = join(dirname(fileURLToPath(import.meta.url)), '..')
 const css = readFileSync(join(WURZEL, 'src/index.css'), 'utf8')
 
 /** Der Wert eines Tokens im n-ten Block (0 = dunkel, 1 = hell). */
+/**
+ * Der Wert eines Tokens im n-ten Block (0 = dunkel/@theme, 1 = hell,
+ * 2 = hell per Medienabfrage „Auto"), als #rrggbb.
+ *
+ * Steht ein Token nur im @theme (Statusfarben), gilt es in allen Bloecken.
+ * `var(--color-…)` und `color-mix(in srgb, A N%, B)` werden aufgeloest —
+ * die Status-Textfarben sind so gebaut, und ein Lauf, der sie nicht
+ * ausrechnen kann, misst sie nicht (Stand 2026-10-14).
+ */
+const rohwert = (name, block) => {
+  const treffer = [...css.matchAll(new RegExp(`--color-${name}:\\s*([^;]+);`, 'g'))]
+  return (treffer[block] ?? treffer[0])?.[1].trim()
+}
+const hexZuRgb = (h) => [0, 2, 4].map((i) => parseInt(h.slice(1).slice(i, i + 2), 16))
+const rgbZuHex = (c) => '#' + c.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')
+function aufloesen(wert, block, tiefe = 0) {
+  if (!wert || tiefe > 6) return undefined
+  if (/^#[0-9A-Fa-f]{6}$/.test(wert)) return wert
+  const v = /^var\(--color-([\w-]+)\)$/.exec(wert)
+  if (v) return aufloesen(rohwert(v[1], block), block, tiefe + 1)
+  const m = /^color-mix\(in srgb,\s*(.+?)\s+(\d+(?:\.\d+)?)%,\s*(.+)\)$/.exec(wert)
+  if (m) {
+    const a = aufloesen(m[1], block, tiefe + 1)
+    const b = aufloesen(m[3], block, tiefe + 1)
+    if (!a || !b) return undefined
+    const p = Number(m[2]) / 100
+    const [ra, rb] = [hexZuRgb(a), hexZuRgb(b)]
+    return rgbZuHex(ra.map((x, i) => x * p + rb[i] * (1 - p)))
+  }
+  return undefined
+}
 function token(name, block) {
-  const treffer = [...css.matchAll(new RegExp(`--color-${name}:\\s*(#[0-9A-Fa-f]{6})`, 'g'))]
-  return treffer[block]?.[1]
+  return aufloesen(rohwert(name, block), block)
 }
 
 const kanal = (c) => {
@@ -91,10 +121,16 @@ const PAARE = [
   ['bc-faint', ALLE],
   ['bc-accent', ['bc-dark', 'bc-panel', 'bc-elevated']],
   ['bc-accent-text', ['bc-accent']],
+  // Status als TEXT (seit 2026-10-14): die Statusfarben selbst sind fuer
+  // Flaechen, Punkte und Rahmen; Schrift nimmt die -text-Variante.
+  // Gemessen vorher: #B04A3F auf Anthrazit 2.9:1.
+  ['bc-red-text', ALLE],
+  ['bc-yellow-text', ALLE],
+  ['bc-green-text', ALLE],
 ]
 
 const befunde = []
-for (const [block, thema] of [[0, 'dunkel'], [1, 'hell']]) {
+for (const [block, thema] of [[0, 'dunkel'], [1, 'hell'], [2, 'hell (Auto)']]) {
   for (const [vorn, gruende] of PAARE) {
     const f = token(vorn, block)
     if (!f) {
@@ -141,6 +177,9 @@ const alle = (d, out = []) => {
 const MINDEST = 10
 for (const f of alle(join(WURZEL, 'src'))) {
   const q = readFileSync(f, 'utf8')
+  for (const m of q.matchAll(/(?<![\w-])text-bc-(red|yellow|green)(?![\w/-])/g)) {
+    befunde.push(`${relative(WURZEL, f)}: ${m[0]} als Schrift — dafuer gibt es ${m[0]}-text (Kontrast)`)
+  }
   for (const m of q.matchAll(/text-\[(\d+(?:\.\d+)?)px\]/g)) {
     const px = Number(m[1])
     if (px < MINDEST) befunde.push(`${relative(WURZEL, f)}: text-[${m[1]}px] — unter ${MINDEST} px`)

@@ -263,7 +263,7 @@ export default function Header({
           {/* Minimal unsaved-changes indicator (no project-version counter). */}
           {unsaved && (
             <span
-              className="shrink-0 rounded-bc-full bg-bc-yellow/15 px-2 py-0.5 text-xs font-medium text-bc-yellow sm:ml-2"
+              className="shrink-0 rounded-bc-full bg-bc-yellow/15 px-2 py-0.5 text-xs font-medium text-bc-yellow-text sm:ml-2"
               title={t('header.unsaved.title', 'There are unsaved changes — use Save to write a .mcplan file')}
             >
               <span aria-hidden="true" className="sm:hidden">●</span>
@@ -473,7 +473,7 @@ export default function Header({
                         type="button"
                         onClick={(e) => { e.stopPropagation(); onDeleteLayoutPreset(preset.id); }}
                         style={{ padding: '6px 10px' }}
-                        className="text-xs text-bc-muted opacity-0 transition-opacity hover:text-bc-red group-hover:opacity-100"
+                        className="text-xs text-bc-muted opacity-0 transition-opacity hover:text-bc-red-text group-hover:opacity-100"
                         title={format(t('header.presets.deleteTitle', 'Delete preset "{label}"'), { label: preset.label })}
                       >
                         <FiX size={12} />
@@ -516,7 +516,7 @@ export default function Header({
                       <button
                         type="button"
                         onClick={() => { setShowSaveInput(false); setSavePresetName(''); }}
-                        className="text-bc-muted transition-colors hover:text-bc-red"
+                        className="text-bc-muted transition-colors hover:text-bc-red-text"
                         title={t('header.presets.cancel', 'Cancel')}
                       >
                         <FiX size={14} />

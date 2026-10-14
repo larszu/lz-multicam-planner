@@ -137,7 +137,7 @@ export default function RoomPanel() {
                 onChange={(e) => updateSeatingBlock(b.id, { label: e.target.value })}
               />
               {art(roh)}
-              <button onClick={() => removeSeatingBlock(b.id)} style={{ padding: '4px' }} className="hover:text-bc-red" title={t('room.remove', 'Remove')} aria-label={t('room.remove', 'Remove')}>
+              <button onClick={() => removeSeatingBlock(b.id)} style={{ padding: '4px' }} className="hover:text-bc-red-text" title={t('room.remove', 'Remove')} aria-label={t('room.remove', 'Remove')}>
                 <FiTrash2 size={12} />
               </button>
             </div>
@@ -183,7 +183,7 @@ export default function RoomPanel() {
                 aria-label={t('room.name', 'Name')}
                 onChange={(e) => updateVideoWall(w.id, { label: e.target.value })}
               />
-              <button onClick={() => removeVideoWall(w.id)} style={{ padding: '4px' }} className="hover:text-bc-red" title={t('room.remove', 'Remove')} aria-label={t('room.remove', 'Remove')}>
+              <button onClick={() => removeVideoWall(w.id)} style={{ padding: '4px' }} className="hover:text-bc-red-text" title={t('room.remove', 'Remove')} aria-label={t('room.remove', 'Remove')}>
                 <FiTrash2 size={12} />
               </button>
             </div>

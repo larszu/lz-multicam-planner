@@ -18,7 +18,7 @@ export default function UploadStatus({ item, onUpload }: { item: LibraryItem; on
 
   return (
     <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-bc-muted">
-      <span className={record?.state === 'blocked' || record?.state === 'error' ? 'text-bc-red' : undefined}>
+      <span className={record?.state === 'blocked' || record?.state === 'error' ? 'text-bc-red-text' : undefined}>
         {uploadStateText(t, record, changed)}
         {befunde.length > 0 ? ` (${befunde.map((k) => findingText(t, k)).join(', ')})` : ''}
         {record?.state === 'error' && record.error ? ` (${record.error})` : ''}

@@ -111,7 +111,7 @@ export default function UploadDialog({ item, onClose }: { item: LibraryItem; onC
                 />
               </label>
               {sourceUrl.trim() !== '' && !istLink(sourceUrl) && (
-                <p className="mt-1 text-bc-red">{t('library.propose.sourceInvalid', 'Enter a full link (https://…) to the manufacturer’s datasheet.')}</p>
+                <p className="mt-1 text-bc-red-text">{t('library.propose.sourceInvalid', 'Enter a full link (https://…) to the manufacturer’s datasheet.')}</p>
               )}
               <button
                 type="submit"
@@ -126,7 +126,7 @@ export default function UploadDialog({ item, onClose }: { item: LibraryItem; onC
 
           {sent && record && (
             <div style={{ marginTop: '12px' }}>
-              <p className={record.state === 'blocked' || record.state === 'error' ? 'text-bc-red' : 'text-bc-green'}>
+              <p className={record.state === 'blocked' || record.state === 'error' ? 'text-bc-red-text' : 'text-bc-green-text'}>
                 {uploadStateText(t, record, false)}
                 {record.state === 'blocked' && record.findings?.length
                   ? ` (${record.findings.map((k) => findingText(t, k)).join(', ')})`

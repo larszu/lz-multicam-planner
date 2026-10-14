@@ -269,7 +269,7 @@ export function InventoryDialog({ open, onClose }: Props) {
               {/* Die eine Zahl, die nicht rueckgaengig zu machen ist, wird
                   ausgeschrieben statt nur in einer Spalte zu stehen. */}
               {summe.entfernt > 0 && (
-                <div className="mt-2 text-bc-red">
+                <div className="mt-2 text-bc-red-text">
                   {format(
                     t('inventory.preview.removes', '{count} existing records will be dropped. This cannot be undone.'),
                     { count: summe.entfernt },
@@ -340,7 +340,7 @@ export function InventoryDialog({ open, onClose }: Props) {
                       <td className="px-2 py-1.5">
                         <div className="flex justify-end gap-1">
                           <button type="button" onClick={() => setForm({ ...it })} className="px-2 py-0.5 text-xs text-bc-muted hover:bg-bc-border hover:text-bc-text-bright">{t('inventory.edit', 'Edit')}</button>
-                          <button type="button" onClick={() => removeItem(it.id)} className="p-1 text-bc-muted hover:bg-bc-hover hover:text-bc-red" aria-label={t('inventory.delete', 'Delete')}><FiTrash2 size={13} /></button>
+                          <button type="button" onClick={() => removeItem(it.id)} className="p-1 text-bc-muted hover:bg-bc-hover hover:text-bc-red-text" aria-label={t('inventory.delete', 'Delete')}><FiTrash2 size={13} /></button>
                         </div>
                       </td>
                     </tr>

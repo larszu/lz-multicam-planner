@@ -527,7 +527,7 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
           <button
             onClick={() => setFocusPickMode((v) => !v)}
             title={focusPickMode ? t('preview.focusPickLeave', 'Click anywhere to leave focus-pick mode') : t('preview.focusPickEnter', 'Pick a person in the preview to set focus distance')}
-            className={`px-2 py-0.5 text-[10px] font-medium border transition-colors ${focusPickMode ? 'border-bc-yellow text-bc-yellow bg-bc-yellow/10' : 'border-bc-border text-bc-dim hover:text-bc-text'}`}
+            className={`px-2 py-0.5 text-[10px] font-medium border transition-colors ${focusPickMode ? 'border-bc-yellow text-bc-yellow-text bg-bc-yellow/10' : 'border-bc-border text-bc-dim hover:text-bc-text'}`}
           >
             ◎ {t('preview.focusPick', 'Focus pick')} {focusPickMode ? '· ' + t('preview.on', 'ON') : ''}
           </button>
@@ -535,7 +535,7 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
             <button
               onClick={() => useStore.getState().updateCamera(cam.id, { lockedPersonId: undefined })}
               title={t('preview.releaseLock', 'Release focus lock')}
-              className="px-2 py-0.5 text-[10px] font-medium border border-bc-yellow text-bc-yellow bg-bc-yellow/10 flex items-center gap-1"
+              className="px-2 py-0.5 text-[10px] font-medium border border-bc-yellow text-bc-yellow-text bg-bc-yellow/10 flex items-center gap-1"
             >
               <FiLock size={10} /> {t('preview.unlock', 'Unlock')} {persons.find((p) => p.id === cam.lockedPersonId)?.label ?? t('preview.subject', 'subject')}
             </button>
@@ -605,7 +605,7 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
                   return next;
                 })}
                 title={t('preview.manualTitle', "Temporarily scrub focal length beyond the lens's real range")}
-                className={`px-1.5 py-0.5 text-[11px] font-medium border transition-colors ${manualZoom ? 'border-bc-yellow text-bc-yellow bg-bc-yellow/10' : 'border-bc-border text-bc-dim hover:text-bc-text'}`}
+                className={`px-1.5 py-0.5 text-[11px] font-medium border transition-colors ${manualZoom ? 'border-bc-yellow text-bc-yellow-text bg-bc-yellow/10' : 'border-bc-border text-bc-dim hover:text-bc-text'}`}
               >
                 {t('preview.manual', 'Manual')}
               </button>
@@ -654,7 +654,7 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
                   return next;
                 })}
                 title={t('preview.aperture.beyond', 'Run the aperture beyond the real lens limits')}
-                className={`px-1.5 py-0.5 text-[11px] font-medium border transition-colors ${manualAperture ? 'border-bc-yellow text-bc-yellow bg-bc-yellow/10' : 'border-bc-border text-bc-dim hover:text-bc-text'}`}
+                className={`px-1.5 py-0.5 text-[11px] font-medium border transition-colors ${manualAperture ? 'border-bc-yellow text-bc-yellow-text bg-bc-yellow/10' : 'border-bc-border text-bc-dim hover:text-bc-text'}`}
               >
                 {t('preview.manual', 'Manual')}
               </button>
@@ -687,7 +687,7 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
           {presetGroups.own.map((p) => (
             <span key={p.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] border border-bc-border text-bc-text hover:border-bc-accent">
               <button onClick={() => applyPreset(p)} title={`${p.focalLength.toFixed(0)}mm · f/${p.aperture.toFixed(1)} · ${p.focusDistance.toFixed(1)}m${p.pan !== undefined ? ` · Pos (Pan ${p.pan.toFixed(0)}° Tilt ${p.tilt?.toFixed(0)}° H ${p.z?.toFixed(1)}m)` : ''}`}>{p.name}{hasPose(p) && <span className="ml-0.5 text-bc-accent" title={t('preview.preset.hasPose', 'contains camera position')}>◈</span>}</button>
-              <button onClick={() => deletePreset(p.id)} className="text-bc-faint hover:text-bc-red" title={t('preview.deletePreset', 'Delete preset')} aria-label={`Preset ${p.name} löschen`}><FiX size={10} /></button>
+              <button onClick={() => deletePreset(p.id)} className="text-bc-faint hover:text-bc-red-text" title={t('preview.deletePreset', 'Delete preset')} aria-label={`Preset ${p.name} löschen`}><FiX size={10} /></button>
             </span>
           ))}
           {presetGroups.own.length === 0 && (
@@ -716,7 +716,7 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
           >
             <FiCamera size={10} /> {t('preview.captureShot', 'Capture shot')}
           </button>
-          {shotHint && <span className="text-[10px] text-bc-yellow">{shotHint}</span>}
+          {shotHint && <span className="text-[10px] text-bc-yellow-text">{shotHint}</span>}
         </div>
 
         {/* Presets ohne Zuordnung: aus der Zeit vor der Kamera-Bindung oder von
@@ -739,7 +739,7 @@ export default function CameraPreview({ undocked, onUndock }: PreviewProps) {
                 >
                   <FiPlus size={10} />
                 </button>
-                <button onClick={() => deletePreset(p.id)} className="text-bc-faint hover:text-bc-red" title={t('preview.deletePreset', 'Delete preset')} aria-label={`Preset ${p.name} löschen`}><FiX size={10} /></button>
+                <button onClick={() => deletePreset(p.id)} className="text-bc-faint hover:text-bc-red-text" title={t('preview.deletePreset', 'Delete preset')} aria-label={`Preset ${p.name} löschen`}><FiX size={10} /></button>
               </span>
             ))}
           </div>
