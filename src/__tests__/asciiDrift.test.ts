@@ -57,7 +57,7 @@ const HARMLOS = new Set(
     'fernsteuerweg', 'fernsteuerbar', 'sequenz', 'neu', 'neue', 'neuer',
     'neues', 'neuen', 'aktuell', 'aktuelle', 'aktuellem', 'dauerhaft',
     'genaue', 'bauen', 'frequenz', 'steuerung', 'teuerste', 'aktuellen', 'steuert', 'gesteuert',
-    'ferngesteuert', 'übersteuert', 'ansteuerung',
+    'ferngesteuert', 'übersteuert', 'ansteuerung', 'kamerasteuerung', 'schauen',
     'aktueller', 'aktuelles', 'blaue',
     // Englisch und Bezeichner, die als Text auftauchen
     'venueexchange', 'importvenueexchange', 'parsevenueexchange', 'venue',
