@@ -212,7 +212,7 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 - **CUT** (Space) and **AUTO** dissolve (Enter, duration adjustable); after a take the old program source moves to preview
 - Click a tile for preview, double-click to take it straight to program; keys 1–9 = preview, Shift+1–9 = program
 - Time-of-day timecode (25 fps) in the toolbar
-- Draws through the Preview panel's renderer — keep the Preview tab in the layout
+- Draws every camera itself — Preview and Multiview work side by side, with or without the Preview panel open
 
 ### 📐 FOV & DoF Calculator
 - 9 sensor sizes (Full Frame, Super 35, APS-C, MFT, 1", 2/3", 1/2", 1/3", 1/2.3")
@@ -257,7 +257,7 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
   does not need to know MultiCam's project format; it is rebuilt on every
   export and dropped on import.
 - Dockable panel system (FlexLayout): drag, split, tab, resize
-- Layout modes: Focus (single tab) and Grid (2×2)
+- Layout modes: Focus (single tab) and Grid (2D and 3D on the left; Preview, Multiview and Calculator stacked on the right). In Grid mode drag a module from the tab bar onto the layout to dock it somewhere else — also one that is already open
 - Customizable layout presets (save/load/delete)
 - Venue templates: football stadium, stadium event, small and large concert, church, conference, custom (save your own) — each with fitting audience areas and video walls
 - Export: Combined 1920px PNG containing 2D plan, 3D view, camera preview, and technical data sheet

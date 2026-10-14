@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useStore } from '../../store/useStore';
-import { getExportRegistry } from '../../store/exportRegistry';
+import { renderCamera, wallSurfaces } from '../Preview/cameraViewRenderer';
 import { getCameraById, getEffectiveSensor } from '../../data/cameras';
 import { getLensById } from '../../data/lenses';
 import { computeFov } from '../../utils/fov';
@@ -40,7 +40,6 @@ export default function Multiview() {
 
   const [autoSeconds, setAutoSeconds] = useState(() => loadJSON<number>(AUTO_SECONDS_KEY, 1));
   const [mixTo, setMixTo] = useState<string | null>(null);
-  const [rendererMissing, setRendererMissing] = useState(false);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const pvwRef = useRef<HTMLCanvasElement>(null);
@@ -79,8 +78,8 @@ export default function Multiview() {
   }, [setProgramCamera]);
 
   // Render-Schleife: zeichnet nur neu, wenn sich Szene, Busse, Groessen oder
-  // der Renderer selbst geaendert haben — der Renderer wird von der Preview
-  // nach jedem Store-Wechsel neu registriert, darum zaehlt seine Identitaet mit.
+  // geladene Wandbilder geaendert haben. Gezeichnet wird ueber
+  // `cameraViewRenderer` — ohne dass die Vorschau gemountet sein muss (#172).
   useEffect(() => {
     let raf = 0;
     let lastKey: unknown[] = [];
@@ -88,10 +87,7 @@ export default function Multiview() {
       raf = requestAnimationFrame(tick);
       if (tcRef.current) tcRef.current.textContent = timecodeOfDay(new Date());
 
-      const render = getExportRegistry().renderCameraOffscreen;
-      setRendererMissing(!render);
-      if (!render) return;
-
+      const render = renderCamera;
       const s = useStore.getState();
       const dpr = window.devicePixelRatio || 1;
       const pvw = pvwRef.current;
@@ -103,7 +99,7 @@ export default function Multiview() {
       const pgmW = widthOf(pgm);
 
       const mix = mixRef.current;
-      const key = [render, s.cameras, s.persons, s.venue, s.walls, s.selectedCameraId, s.programCameraId, dpr, pvwW, pgmW, ...tileW];
+      const key = [wallSurfaces.version, s.cameras, s.persons, s.venue, s.walls, s.customCameras, s.customLenses, s.language, s.selectedCameraId, s.programCameraId, dpr, pvwW, pgmW, ...tileW];
       if (!mix && key.length === lastKey.length && key.every((v, i) => v === lastKey[i])) return;
       lastKey = key;
 
@@ -210,12 +206,6 @@ export default function Multiview() {
           s
         </label>
       </div>
-
-      {rendererMissing && (
-        <div className="border-b border-bc-border bg-bc-sunken px-3 py-1 text-xs text-bc-yellow">
-          {t('multiview.needsPreview', 'The multiview draws through the Preview panel — add it back to the layout.')}
-        </div>
-      )}
 
       <div className="grid grid-cols-2 gap-1 p-1">
         <BusWindow tally="pvw" title={`${t('multiview.preview', 'PREVIEW')} · ${labelOf(previewId)}`} canvasRef={pvwRef} />

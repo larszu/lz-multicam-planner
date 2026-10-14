@@ -31,7 +31,8 @@ type TFn = (key: string, en: string) => string;
 const LAYOUT_STORAGE_KEY = 'multicam-layout';
 const LAYOUT_VERSION_KEY = 'multicam-layout-version';
 const LAYOUT_PRESETS_KEY = 'multicam-layout-presets';
-const CURRENT_LAYOUT_VERSION = 5;
+// 6: Raster mit Vorschau und Multiview in getrennten Bloecken (#172).
+const CURRENT_LAYOUT_VERSION = 6;
 
 type LayoutMode = 'focus' | 'grid' | 'custom';
 
@@ -133,17 +134,27 @@ function createGridLayoutJson(t: TFn): IJsonModel {
           children: [
             {
               type: 'tabset',
-              weight: 60,
+              weight: 40,
               id: 'ts-right-top',
               selected: 0,
               children: [
                 { type: 'tab', name: t('header.tab.preview', 'Preview'), component: 'preview', id: 'tab-preview' },
+              ],
+            },
+            // Eigener Block (#172): im selben Block wie die Vorschau war immer
+            // nur eines von beiden zu sehen.
+            {
+              type: 'tabset',
+              weight: 35,
+              id: 'ts-right-mid',
+              selected: 0,
+              children: [
                 { type: 'tab', name: t('header.tab.multiview', 'Multiview'), component: 'multiview', id: 'tab-multiview' },
               ],
             },
             {
               type: 'tabset',
-              weight: 40,
+              weight: 25,
               id: 'ts-right-bottom',
               selected: 0,
               children: [
@@ -316,14 +327,14 @@ export default function App() {
   const handleDragNewPanel = useCallback((tabId: string, event: DragEvent) => {
     const config = TAB_CONFIGS[tabId];
     if (!config || !layoutRef.current) return;
-    // Check if tab already exists in the model – if so, just select it
-    try {
-      const existing = model.getNodeById(tabId);
-      if (existing) {
-        model.doAction(Actions.selectTab(tabId));
-        return;
-      }
-    } catch { /* node not found, proceed with drag */ }
+    // Gibt es den Reiter schon, wird ER gezogen und neu angedockt (#172).
+    // Vorher wurde er nur ausgewaehlt — das Multiview verdeckte dann die
+    // Vorschau im selben Block, und neu andocken liess es sich nie.
+    const existing = model.getNodeById(tabId);
+    if (existing instanceof TabNode) {
+      layoutRef.current.moveTabWithDragAndDrop(event, existing);
+      return;
+    }
     layoutRef.current.addTabWithDragAndDrop(event, {
       component: config.component,
       name: config.name,

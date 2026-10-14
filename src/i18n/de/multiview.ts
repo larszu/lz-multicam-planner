@@ -6,7 +6,6 @@ export const multiview: Record<string, string> = {
   'multiview.cutHint': 'Preview hart auf Program schneiden (Leertaste)',
   'multiview.empty': 'Kameras im 2D-Plan platzieren — jede bekommt hier eine Kachel.',
   'multiview.keys': 'Kachel klicken: Preview, Doppelklick: direkt auf Program · Leertaste = Cut · Enter = Auto · 1–9 = Preview · Shift+1–9 = Program',
-  'multiview.needsPreview': 'Das Multiview zeichnet über das Vorschau-Panel — bitte wieder ins Layout holen.',
   'multiview.preview': 'PREVIEW',
   'multiview.program': 'PROGRAM',
   'multiview.tileHint': 'Klick: Preview · Doppelklick: direkt auf Program',
