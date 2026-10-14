@@ -2,9 +2,19 @@ import { useMemo } from 'react';
 import { useTranslation } from '../../i18n';
 import { ORTE, WETTER, type OrtArt, type WetterArt } from '../../avplan/scene3d';
 import { himmelTag, uhrzeit, zeitMarken, type HimmelPrefs } from '../../utils/tageslicht';
+import Regler from '../ui/Regler';
 
 const feld = 'w-full border border-bc-border bg-bc-panel-raised px-2 py-1 text-bc-text-bright';
 const TAG_MIN = 1440;
+
+/** „14:35", „14.35" oder „14" → Minuten; sonst `null`. */
+function leseUhrzeit(s: string): number | null {
+  const m = /^\s*(\d{1,2})(?:[:.,](\d{1,2}))?\s*$/.exec(s);
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2] ?? 0);
+  return h < 24 && min < 60 ? h * 60 + min : null;
+}
 
 /** Datum, Uhrzeit, Ort, Nordrichtung und Wetter fuer den Look „Tageslicht". */
 export default function TageslichtEinstellung({ sky, onSky }: { sky: HimmelPrefs; onSky: (patch: Partial<HimmelPrefs>) => void }) {
@@ -18,36 +28,36 @@ export default function TageslichtEinstellung({ sky, onSky }: { sky: HimmelPrefs
     bedeckt: t('venue.sky.weather.overcast', 'Overcast'),
     dunst: t('venue.sky.weather.haze', 'Haze'),
   };
-  const prozent = (m: number) => `${(Math.max(0, Math.min(TAG_MIN, m)) / TAG_MIN) * 100}%`;
 
   return (
     <div className="space-y-2 px-3 pb-2 text-[11px]">
-      <label className="block">
-        <span className="flex items-baseline justify-between text-bc-muted">
-          <span>{t('venue.sky.time', 'Time of day')}</span>
-          <span className="text-[13px] font-semibold text-bc-text-bright tabular-nums">{uhrzeit(sky.minuten)}</span>
-        </span>
-        {/* Goldene und blaue Stunde als Baender hinter dem Regler, Auf- und Untergang als Striche. */}
-        <span className="relative mt-1 block h-2" aria-hidden>
-          {marken.blau.map(([a, b], i) => (
-            <span key={`b${i}`} className="absolute inset-y-0 rounded-bc-full bg-bc-accent/50" style={{ left: prozent(a), width: `calc(${prozent(b)} - ${prozent(a)})` }} />
-          ))}
-          {marken.gold.map(([a, b], i) => (
-            <span key={`g${i}`} className="absolute inset-y-0 rounded-bc-full bg-bc-yellow/70" style={{ left: prozent(a), width: `calc(${prozent(b)} - ${prozent(a)})` }} />
-          ))}
-          {[marken.aufgang, marken.untergang].map((m, i) => m !== null && (
-            <span key={`s${i}`} className="absolute -inset-y-0.5 w-0.5 bg-bc-text-bright" style={{ left: prozent(m) }} />
-          ))}
-        </span>
-        <input
-          type="range"
+      <div>
+        {/* Goldene und blaue Stunde als Baender in der Bahn, Auf- und Untergang als Marken. */}
+        <Regler
+          label={t('venue.sky.time', 'Time of day')}
+          value={sky.minuten}
           min={0}
           max={TAG_MIN - 5}
-          step={5}
-          value={sky.minuten}
-          onChange={(e) => onSky({ minuten: Number(e.target.value) })}
-          aria-valuetext={uhrzeit(sky.minuten)}
-          className="w-full"
+          schritt={5}
+          standard={12 * 60}
+          // Keine Fuellung: die Bahn traegt die goldene und blaue Stunde.
+          fuellungAb={sky.minuten}
+          feldText={uhrzeit}
+          feldLesen={leseUhrzeit}
+          format={uhrzeit}
+          raster={[marken.aufgang, marken.untergang, 12 * 60].filter((m): m is number => m !== null)}
+          marken={[0, 6 * 60, 12 * 60, 18 * 60, TAG_MIN - 5].map((m) => ({ value: m, label: m === TAG_MIN - 5 ? '24:00' : uhrzeit(m) }))}
+          hinterlegung={(posVon) => (
+            <>
+              {marken.blau.map(([a, b], i) => (
+                <span key={`b${i}`} className="absolute inset-y-0 bg-bc-accent/50" style={{ left: `${posVon(a) * 100}%`, width: `${(posVon(b) - posVon(a)) * 100}%` }} />
+              ))}
+              {marken.gold.map(([a, b], i) => (
+                <span key={`g${i}`} className="absolute inset-y-0 bg-bc-yellow/70" style={{ left: `${posVon(a) * 100}%`, width: `${(posVon(b) - posVon(a)) * 100}%` }} />
+              ))}
+            </>
+          )}
+          onChange={(v) => onSky({ minuten: v })}
         />
         <span className="flex justify-between text-bc-muted tabular-nums">
           <span>{marken.aufgang !== null ? `${t('venue.sky.sunrise', 'Sunrise')} ${uhrzeit(marken.aufgang)}` : ''}</span>
@@ -57,7 +67,7 @@ export default function TageslichtEinstellung({ sky, onSky }: { sky: HimmelPrefs
           <span><span className="mr-1 inline-block h-2 w-2 rounded-bc-full bg-bc-yellow" aria-hidden />{t('venue.sky.golden', 'Golden hour')}</span>
           <span><span className="mr-1 inline-block h-2 w-2 rounded-bc-full bg-bc-accent" aria-hidden />{t('venue.sky.blue', 'Blue hour')}</span>
         </span>
-      </label>
+      </div>
 
       <div className="grid grid-cols-2 gap-2">
         <label>

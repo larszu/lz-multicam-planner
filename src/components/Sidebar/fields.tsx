@@ -24,6 +24,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FiChevronDown } from 'react-icons/fi';
 import { loadJSON, saveJSON } from '../../utils/storage';
+import Regler from '../ui/Regler';
 
 const GROUP_STATE_KEY = 'multicam-camera-groups';
 
@@ -124,15 +125,10 @@ export function Readout({ label, value, tone = 'normal' }: { label: string; valu
   );
 }
 
-export interface SliderMark {
-  value: number;
-  label: string;
-}
-
 /**
- * Der Standard-Regler der Karte: Wert immer rechts oben an derselben Kante,
- * direkt editierbar; darunter die Bahn mit Ankern, damit Min, Max und die Null
- * ablesbar sind (vorher stand nirgends, wo bei Pan die 0 liegt).
+ * Der Standard-Regler der Karte — der gemeinsame `Regler` mit den
+ * Voreinstellungen der Karte (Standardwert fuer Doppelklick, Min/Max/Null als
+ * Anker).
  */
 export function ValueSlider({
   label,
@@ -142,7 +138,7 @@ export function ValueSlider({
   step = 0.01,
   unit,
   decimals = 2,
-  marks,
+  standard,
   onChange,
   hint,
   disabled,
@@ -156,8 +152,8 @@ export function ValueSlider({
   step?: number;
   unit?: string;
   decimals?: number;
-  /** Anker unter der Bahn. Ohne Angabe: Min, Max und — falls im Bereich — die Null. */
-  marks?: SliderMark[];
+  /** Doppelklick/Doppeltipp setzt diesen Wert. */
+  standard?: number;
   onChange: (v: number) => void;
   hint?: string;
   disabled?: boolean;
@@ -165,95 +161,23 @@ export function ValueSlider({
   /** Zusatz rechts neben dem Wertfeld, z. B. ein Reset-Knopf. */
   right?: React.ReactNode;
 }) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Aendert sich der Wert von aussen (Plan-Drag, Rig-Pult), soll das Feld
-  // mitgehen — solange der Nutzer nicht selbst darin tippt.
-  useEffect(() => {
-    if (document.activeElement !== inputRef.current) setDraft(null);
-  }, [value]);
-
-  const commit = useCallback(
-    (raw: string) => {
-      const v = parseFloat(raw.replace(',', '.'));
-      if (Number.isFinite(v)) onChange(Math.max(min, Math.min(max, v)));
-      setDraft(null);
-    },
-    [max, min, onChange],
-  );
-
-  const anchors: SliderMark[] =
-    marks ??
-    [
-      { value: min, label: fmt(min, decimals) },
-      ...(min < 0 && max > 0 ? [{ value: 0, label: '0' }] : []),
-      { value: max, label: fmt(max, decimals) },
-    ];
-
   return (
-    <div className={disabled ? 'opacity-50' : undefined}>
-      <div className="flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate text-[11px] text-bc-muted" title={title}>
-          {label}
-        </span>
-        <input
-          ref={inputRef}
-          type="number"
-          inputMode="decimal"
-          className="w-[4.5rem] shrink-0 border border-bc-border bg-bc-panel-raised text-right text-[11px] tabular-nums text-bc-text-bright disabled:text-bc-dim"
-          style={{ padding: '2px 5px' }}
-          value={draft ?? Number(value.toFixed(decimals))}
-          step={step}
-          min={min}
-          max={max}
-          disabled={disabled}
-          title={title ?? label}
-          aria-label={label}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={(e) => commit(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              commit((e.target as HTMLInputElement).value);
-              (e.target as HTMLInputElement).blur();
-            }
-            if (e.key === 'Escape') setDraft(null);
-          }}
-        />
-        {unit && <span className="w-6 shrink-0 text-[10px] text-bc-dim">{unit}</span>}
-        {right}
-      </div>
-      <input
-        type="range"
-        className="mt-0.5 w-full accent-bc-accent"
-        min={min}
-        max={max}
-        step={step}
-        value={Math.max(min, Math.min(max, value))}
-        disabled={disabled}
-        aria-label={`${label} (Regler)`}
-        title={title ?? label}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-      />
-      <div className="relative h-3 select-none" aria-hidden>
-        {anchors.map((m) => {
-          const pct = max > min ? ((m.value - min) / (max - min)) * 100 : 0;
-          return (
-            <span
-              key={`${m.value}-${m.label}`}
-              className="absolute top-0 text-[11px] tabular-nums text-bc-faint"
-              style={{
-                left: `${pct}%`,
-                transform: pct <= 0 ? 'none' : pct >= 100 ? 'translateX(-100%)' : 'translateX(-50%)',
-              }}
-            >
-              {m.label}
-            </span>
-          );
-        })}
-      </div>
-      {hint && <p className="text-[10px] leading-tight text-bc-faint">{hint}</p>}
-    </div>
+    <Regler
+      label={label}
+      value={Math.max(min, Math.min(max, value))}
+      min={min}
+      max={max}
+      schritt={step}
+      dezimalen={decimals}
+      einheit={unit}
+      standard={standard}
+      formatMarke={(v) => fmt(v, decimals)}
+      onChange={onChange}
+      hinweis={hint}
+      disabled={disabled}
+      title={title}
+      rechts={right}
+    />
   );
 }
 

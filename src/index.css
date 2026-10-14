@@ -402,90 +402,130 @@ html, body, #root {
 ::-webkit-scrollbar-thumb { background: var(--color-bc-border-strong); border-radius: var(--radius-bc-full); border: 2px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-bc-muted); background-clip: padding-box; }
 
-/* ── Schieberegler ─────────────────────────────────────────────────────────
+/* ── Regler (components/ui/Regler.tsx) ─────────────────────────────────────
  *
- * Nutzer-Meldung 2026-09-09: „Passe auch die Ui von allen slidern an sodass
- * man sie gut bedienen kann."
+ * Nutzer-Meldungen 2026-09-09 („alle Slider gut bedienbar") und 2026-10-14
+ * („moderner und intuitiver, auch auf Touch").
  *
- * WAS VORHER DASTAND: eine 4 px hohe Bahn mit einem 14 x 14 px grossen Griff.
- * Vier Pixel sind die GANZE Trefferflaeche in der Hoehe — das Element ist so
- * hoch wie seine Bahn, und wer daneben tippt, trifft nichts. WCAG 2.2,
- * Erfolgskriterium 2.5.8 („Target Size (Minimum)", Stufe AA) nennt 24 px als
- * Mindestmass; Apples Richtlinie 44 pt. Vier ist keins von beidem.
- *
- * WAS SICH AENDERT, und warum in dieser Reihenfolge:
- *
- *  1. Das ELEMENT wird 24 px hoch — nicht die Bahn. Die Bahn bleibt schmal
- *     (6 px) und wird ueber `background` in die Mitte gezeichnet; die
- *     restlichen 18 px sind unsichtbare Trefferflaeche. Ein dicker Balken
- *     waere die naheliegende und falsche Loesung: er wuerde jede Zeile
- *     sprengen, in der ein Regler neben einer Beschriftung sitzt.
- *  2. Der Griff wird 18 px und rund (Radius full). Bis 2026-10-13 blieb er
- *     eckig, weil ADR-007 damals „keine Rundungen" verlangte; seit dem
- *     Design-Vertrag 2026-10 ist die Oberflaeche weich gerundet, und ein
- *     eckiger Griff waere jetzt der Fremdkoerper.
- *  3. `touch-action: manipulation` nimmt die 300-ms-Wartezeit auf
- *     Doppeltipp weg. Ohne sie fuehlt sich jeder Regler auf dem Tablet
- *     traege an, und zwar unabhaengig von seiner Groesse.
- *  4. Ein sichtbarer Fokusring. Der Regler ist mit Pfeiltasten bedienbar —
- *     das war er vorher auch, nur sah man nicht, wann er dran ist.
- *
- * Firefox braucht seine eigenen Pseudo-Elemente; ohne sie bleibt es dort
- * beim Standardaussehen, und die Messung stimmte nur in einem Browser.
+ * Die TREFFERFLAECHE ist das Element, nicht die Bahn: 32 px mit Maus, 44 px
+ * auf Touch (lzm-web: Klickflaechen ≥ 44 px auf Touch, ≥ 32 px Desktop;
+ * WCAG 2.2 SC 2.5.8 nennt 24 px als Untergrenze). Die sichtbare Bahn bleibt
+ * 6 px schmal und liegt mittig — ein dicker Balken wuerde jede Zeile sprengen.
+ * Gefuellt bis zum Wert, runder Griff, Fokusring im Signalrot.
+ * `slider:check` liest diese Zahlen.
  */
-input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  height: 24px;            /* Trefferflaeche, nicht Bahnhoehe */
-  background: transparent; /* die Bahn zeichnen die Pseudo-Elemente */
+.bc-regler {
+  position: relative;
+  height: 32px;
+  touch-action: pan-y;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  margin: 0 10px;
+}
+.bc-regler-bahn {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 6px;
+  translate: 0 -50%;
+  border-radius: var(--radius-bc-full);
+  background: var(--color-bc-panel-raised);
+  outline: 1px solid var(--color-bc-border);
+  overflow: hidden;
+}
+.bc-regler-wertspur {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--color-bc-accent);
+}
+.bc-regler-strich {
+  position: absolute;
+  top: calc(50% + 6px);
+  width: 1px;
+  height: 5px;
+  background: var(--color-bc-border-strong);
+  pointer-events: none;
+}
+.bc-regler-griff {
+  position: absolute;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  translate: -50% -50%;
+  border-radius: var(--radius-bc-full);
+  background: var(--color-bc-accent);
+  border: 3px solid var(--color-bc-panel);
+  box-shadow: var(--shadow-bc-2);
   outline: none;
-  cursor: pointer;
-  touch-action: manipulation;
+  transition: scale var(--bc-dauer-1) var(--ease-bc);
 }
-input[type="range"]::-webkit-slider-runnable-track {
-  height: 6px;
-  background: var(--color-bc-panel-raised);
+.bc-regler-griff:focus-visible {
+  outline: 2px solid var(--color-bc-signal);
+  outline-offset: 2px;
+}
+[data-ziehen] .bc-regler-griff { scale: 1.15; }
+@media (hover: hover) {
+  .bc-regler:hover .bc-regler-griff { scale: 1.1; }
+}
+.bc-regler-marken {
+  position: relative;
+  height: 14px;
+  margin: 0 10px;
+  font-size: 11px;
+  line-height: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-bc-dim);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.bc-regler-marken > span { position: absolute; top: 0; }
+.bc-regler-knopf {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-bc-muted);
+  cursor: ew-resize;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.bc-regler-wert {
+  height: 32px;
+  padding: 0 6px;
+  border-radius: var(--radius-bc-s);
   border: 1px solid var(--color-bc-border);
-  border-radius: var(--radius-bc-full);
+  background: var(--color-bc-sunken);
+  color: var(--color-bc-text-bright);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  outline: none;
 }
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  background: var(--color-bc-accent);
-  border: 2px solid var(--color-bc-panel);
+.bc-regler-wert:focus-visible,
+.bc-regler-wert:focus { border-color: var(--color-bc-accent); }
+.bc-regler-stufe {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
   border-radius: var(--radius-bc-full);
-  box-shadow: var(--shadow-bc-1);
-  /* Der Griff sitzt auf der Bahn, nicht daneben: (6 px Bahn - 18 px Griff)
-     / 2 = -6 px, plus 1 px Rahmen der Bahn. */
-  margin-top: -7px;
-  cursor: pointer;
-}
-input[type="range"]::-moz-range-track {
-  height: 6px;
+  color: var(--color-bc-muted);
   background: var(--color-bc-panel-raised);
-  border: 1px solid var(--color-bc-border);
-  border-radius: var(--radius-bc-full);
+  transition: background-color var(--bc-dauer-1) var(--ease-bc), scale var(--bc-dauer-1) var(--ease-bc);
 }
-input[type="range"]::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  background: var(--color-bc-accent);
-  border: 2px solid var(--color-bc-panel);
-  border-radius: var(--radius-bc-full);
-  box-shadow: var(--shadow-bc-1);
-  cursor: pointer;
-}
-input[type="range"]:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 2px var(--color-bc-signal);
-}
-input[type="range"]:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 2px var(--color-bc-signal);
-}
-input[type="range"]:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
+.bc-regler-stufe:hover:not(:disabled) { color: var(--color-bc-text-bright); background: var(--color-bc-hover); }
+.bc-regler-stufe:active:not(:disabled) { scale: 0.94; }
+.bc-regler-stufe:disabled { opacity: 0.45; cursor: not-allowed; }
+@media (pointer: coarse) {
+  .bc-regler { height: 44px; margin: 0 14px; }
+  .bc-regler-marken { margin: 0 14px; }
+  .bc-regler-griff { width: 28px; height: 28px; }
+  .bc-regler-wert { height: 44px; font-size: 14px; }
+  .bc-regler-stufe { width: 44px; height: 44px; }
+  .bc-regler-knopf { min-height: 44px; display: inline-flex; align-items: center; font-size: 13px; }
 }
 
 /* Select */

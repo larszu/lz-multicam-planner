@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { SensorSize } from '../../types';
 import { useStore } from '../../store/useStore';
 import { useTranslation, format } from '../../i18n';
+import Regler from '../ui/Regler';
+import { formatDistance, niceTicks, stepStop, stopsInRange } from '../../utils/lensScale';
 
 /**
  * FOV- und Schaerfentiefe-Rechner.
@@ -149,47 +151,48 @@ export default function Calculator() {
           </select>
         </label>
 
-        {/* Focal length */}
-        <label className="block text-xs">
-          <span className="text-bc-muted">{format(t('sidebar.calc.focalLength', 'Focal length: {v}mm'), { v: focalLength })}</span>
-          <input
-            type="range"
-            className="w-full mt-1 accent-bc-accent"
-            min={2}
-            max={1000}
-            step={0.5}
-            value={focalLength}
-            onChange={(e) => eigen(setFocalLength)(parseFloat(e.target.value))}
-          />
-        </label>
-
-        {/* Aperture */}
-        <label className="block text-xs">
-          <span className="text-bc-muted">{format(t('sidebar.calc.aperture', 'Aperture: f/{v}'), { v: aperture })}</span>
-          <input
-            type="range"
-            className="w-full mt-1 accent-bc-accent"
-            min={1}
-            max={22}
-            step={0.1}
-            value={aperture}
-            onChange={(e) => eigen(setAperture)(parseFloat(e.target.value))}
-          />
-        </label>
-
-        {/* Distance */}
-        <label className="block text-xs">
-          <span className="text-bc-muted">{format(t('sidebar.calc.distance', 'Distance: {v}m'), { v: distance })}</span>
-          <input
-            type="range"
-            className="w-full mt-1 accent-bc-accent"
-            min={0.5}
-            max={200}
-            step={0.5}
-            value={distance}
-            onChange={(e) => eigen(setDistance)(parseFloat(e.target.value))}
-          />
-        </label>
+        {/* Brennweite, Blende, Distanz: dieselben log-Bahnen und Rasten wie
+            die Objektiv-Regler der Vorschau — eine Bedienung. */}
+        <Regler
+          label={t('sidebar.calc.focalLengthLabel', 'Focal length')}
+          value={focalLength}
+          min={2}
+          max={1000}
+          skala="log"
+          einheit="mm"
+          dezimalen={1}
+          raster={niceTicks(2, 1000, 12)}
+          marken={niceTicks(2, 1000)}
+          formatMarke={(v) => String(Math.round(v))}
+          onChange={eigen(setFocalLength)}
+        />
+        <Regler
+          label={t('sidebar.calc.apertureLabel', 'Aperture')}
+          value={aperture}
+          min={1}
+          max={22}
+          skala="log"
+          praefix="f/"
+          dezimalen={1}
+          raster={stopsInRange(1, 22)}
+          marken={stopsInRange(1, 22)}
+          formatMarke={(v) => (v < 10 ? v.toFixed(1) : v.toFixed(0))}
+          onStep={(dir) => eigen(setAperture)(stepStop(aperture, dir, 1, 22))}
+          onChange={eigen(setAperture)}
+        />
+        <Regler
+          label={t('sidebar.calc.distanceLabel', 'Distance')}
+          value={distance}
+          min={0.5}
+          max={200}
+          skala="log"
+          einheit="m"
+          dezimalen={1}
+          raster={niceTicks(0.5, 200, 12)}
+          marken={niceTicks(0.5, 200)}
+          formatMarke={(v) => formatDistance(v)}
+          onChange={eigen(setDistance)}
+        />
 
         {/* Extender */}
         <label className="block text-xs">

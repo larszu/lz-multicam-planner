@@ -9,7 +9,7 @@ import Sidebar from './components/Sidebar/Sidebar';
 import Venue2D from './components/Venue2D/Venue2D';
 import LoadingIndicator from './components/Layout/LoadingIndicator';
 import { useBraucht3D } from './components/Render3D/kameraBild3d';
-import CameraPreview from './components/Preview/CameraPreview';
+import Kamerablick from './components/Preview/Kamerablick';
 import Multiview from './components/Multiview/Multiview';
 import Calculator from './components/Sidebar/Calculator';
 import ShotlistPanel from './components/Shotlist/ShotlistPanel';
@@ -444,7 +444,7 @@ export default function App() {
           </Suspense>
         );
       case 'preview':
-        return <CameraPreview undocked={false} onUndock={() => {}} />;
+        return <Kamerablick />;
       case 'multiview':
         return <Multiview />;
       case 'calculator':

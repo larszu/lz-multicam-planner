@@ -327,7 +327,7 @@ const DATA = {
     // ── Renderer: Canvas / Views ───────────────────────────
     { "id": "venue-2d",          "label": "Venue 2D",            "layer": "renderer", "group": "Canvas",  "purpose": "Konva 2D-Plan: FOV-Kegel (Wedge), Pan/Zoom, Drag von Kameras/Stages/Personen, Wand-Zeichnen, Track-Linien, Grundriss-Overlay, Kalibrierung.", "file": "src/components/Venue2D/Venue2D.tsx" },
     { "id": "venue-3d",          "label": "Venue 3D",            "layer": "renderer", "group": "Canvas",  "purpose": "@react-three/fiber 3D-Venue: FPS-Steuerung (WASD/Maus), TransformControls-Gizmos (Move/Height/Pan/Tilt), FOV-Pyramiden, Wand- & Personen-Meshes, Grundriss-Textur.", "file": "src/components/Venue3D/Venue3D.tsx" },
-    { "id": "preview",           "label": "Camera Preview",      "layer": "renderer", "group": "Canvas",  "purpose": "Canvas-2D Perspektiv-Preview: Boden-Grid, Stages, Personen mit DoF-Blur, Lineale, Safe-Areas, Drittel, Fadenkreuz, PTZ-Maus, Focus-Pick/Lock.", "file": "src/components/Preview/CameraPreview.tsx" },
+    { "id": "preview",           "label": "Camera view",         "layer": "renderer", "group": "Canvas",  "purpose": "Canvas-2D Perspektiv-Preview: Boden-Grid, Stages, Personen mit DoF-Blur, Lineale, Safe-Areas, Drittel, Fadenkreuz, PTZ-Maus, Focus-Pick/Lock.", "file": "src/components/Preview/Kamerablick.tsx" },
     { "id": "export-panel",      "label": "Export Panel",        "layer": "renderer", "group": "Canvas",  "purpose": "Hört auf 'multicam-export'. Composite-PNG aus 2D + 3D + Preview + Calculator-Daten. Erzwingt Grid-Layout, fängt Canvases via Export-Registry ab.", "file": "src/components/Export/ExportPanel.tsx" },
 
     // ── Renderer: Store ────────────────────────────────────

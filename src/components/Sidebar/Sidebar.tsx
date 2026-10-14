@@ -34,6 +34,7 @@ import { defaultWallHeight } from '../../utils/wallHeight';
 import { WallHeightField } from './WallHeightField';
 import { DEFAULT_PATTERN_ROWS, PATTERN_ROWS_MAX, PATTERN_ROWS_MIN } from '../../utils/wallSurface';
 import { FieldRow, Group, Note, Readout, ValueSlider } from './fields';
+import Regler from '../ui/Regler';
 // Derselbe Objektiv-Regler wie im Preview-Tab: logarithmische Bahn, Rastung,
 // direkte Zahleneingabe. Zwei Implementierungen waeren zwei Bedienungen.
 import LensSlider from '../Preview/LensSlider';
@@ -1069,6 +1070,7 @@ function CameraCard({
               step={1}
               decimals={0}
               unit="°"
+              standard={0}
               onChange={(v) => updateCamera(cam.id, { pan: v })}
               title={t('sidebar.cam.pan.title', '0° points right, positive values turn clockwise.')}
             />
@@ -1080,6 +1082,7 @@ function CameraCard({
               step={1}
               decimals={0}
               unit="°"
+              standard={0}
               onChange={(v) => updateCamera(cam.id, { tilt: v })}
               title={t('sidebar.cam.tilt.title', 'Negative values tilt downwards.')}
             />
@@ -1264,6 +1267,7 @@ function CameraCard({
                     max={limits.travelM}
                     step={0.05}
                     unit="m"
+                    standard={0}
                     title={t('sidebar.cam.track.title', 'Current position on rail or jib. Live moves happen in the Rig tab.')}
                     onChange={(v) => updateCamera(cam.id, { trackOffset: v })}
                     right={
@@ -2243,17 +2247,18 @@ export default function Sidebar() {
                 />
               </label>
             </div>
-            <label className="block">
-              <span className="text-bc-muted">{format(t('sidebar.zoom', 'Zoom: {v}px/m'), { v: pixelsPerMeter })}</span>
-              <input
-                type="range"
-                className="w-full accent-bc-accent"
-                min={10}
-                max={80}
-                value={pixelsPerMeter}
-                onChange={(e) => setPixelsPerMeter(parseInt(e.target.value))}
-              />
-            </label>
+            <Regler
+              label={t('sidebar.zoomLabel', 'Plan zoom')}
+              value={pixelsPerMeter}
+              min={10}
+              max={80}
+              schritt={1}
+              dezimalen={0}
+              einheit="px/m"
+              standard={30}
+              marken={[10, 30, 50, 80]}
+              onChange={setPixelsPerMeter}
+            />
           </div>
         )}
       </div>
@@ -2295,19 +2300,31 @@ export default function Sidebar() {
             </p>
             {backgroundPlan && (
               <>
-                <label className="block">
-                  <span className="text-bc-muted">{format(t('sidebar.opacity', 'Opacity: {v}%'), { v: (backgroundPlan.opacity * 100).toFixed(0) })}</span>
-                  <input type="range" className="w-full accent-bc-accent" min={0.05} max={1} step={0.05}
-                    value={backgroundPlan.opacity}
-                    onChange={(e) => setBackgroundPlan({ ...backgroundPlan, opacity: parseFloat(e.target.value) })} />
-                </label>
-                <label className="block">
-                  <span className="text-bc-muted">{format(t('sidebar.scaleX', 'Scale X: {v} mm/px ({w}m wide)'), { v: (backgroundPlan.scaleX * 1000).toFixed(1), w: (backgroundPlan.widthPx * backgroundPlan.scaleX).toFixed(1) })}</span>
-                  <input type="range" className="w-full accent-bc-accent"
-                    min={0.001} max={0.5} step={0.001}
-                    value={backgroundPlan.scaleX}
-                    onChange={(e) => { const v = parseFloat(e.target.value); setBackgroundPlan({ ...backgroundPlan, scaleX: v, ...(scaleLocked ? { scaleY: v } : {}) }); }} />
-                </label>
+                <Regler
+                  label={t('sidebar.opacityLabel', 'Opacity')}
+                  value={Math.round(backgroundPlan.opacity * 100)}
+                  min={5}
+                  max={100}
+                  schritt={5}
+                  dezimalen={0}
+                  einheit="%"
+                  marken={[5, 50, 100]}
+                  onChange={(v) => setBackgroundPlan({ ...backgroundPlan, opacity: v / 100 })}
+                />
+                {/* mm/px auf log-Bahn: ein Plan liegt zwischen 1 und 500 mm/px,
+                    linear waeren alle ueblichen Massstaebe im ersten Prozent. */}
+                <Regler
+                  label={t('sidebar.scaleXLabel', 'Scale X')}
+                  value={backgroundPlan.scaleX * 1000}
+                  min={1}
+                  max={500}
+                  skala="log"
+                  dezimalen={1}
+                  einheit="mm/px"
+                  marken={[1, 5, 10, 50, 100, 500]}
+                  hinweis={format(t('sidebar.planWidth', '{w} m wide'), { w: (backgroundPlan.widthPx * backgroundPlan.scaleX).toFixed(1) })}
+                  onChange={(mm) => { const v = mm / 1000; setBackgroundPlan({ ...backgroundPlan, scaleX: v, ...(scaleLocked ? { scaleY: v } : {}) }); }}
+                />
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setScaleLocked(!scaleLocked)}
@@ -2318,13 +2335,19 @@ export default function Sidebar() {
                   </button>
                   <span className="text-[10px] text-bc-dim">{scaleLocked ? t('sidebar.xyLinked', 'X/Y linked') : t('sidebar.xyIndependent', 'X/Y independent')}</span>
                 </div>
-                <label className={`block ${scaleLocked ? 'opacity-40 pointer-events-none' : ''}`}>
-                  <span className="text-bc-muted">{format(t('sidebar.scaleY', 'Scale Y: {v} mm/px ({h}m tall)'), { v: (backgroundPlan.scaleY * 1000).toFixed(1), h: (backgroundPlan.heightPx * backgroundPlan.scaleY).toFixed(1) })}</span>
-                  <input type="range" className="w-full accent-bc-accent"
-                    min={0.001} max={0.5} step={0.001}
-                    value={backgroundPlan.scaleY}
-                    onChange={(e) => setBackgroundPlan({ ...backgroundPlan, scaleY: parseFloat(e.target.value) })} />
-                </label>
+                <Regler
+                  label={t('sidebar.scaleYLabel', 'Scale Y')}
+                  value={backgroundPlan.scaleY * 1000}
+                  min={1}
+                  max={500}
+                  skala="log"
+                  dezimalen={1}
+                  einheit="mm/px"
+                  marken={[1, 5, 10, 50, 100, 500]}
+                  disabled={scaleLocked}
+                  hinweis={format(t('sidebar.planHeight', '{h} m tall'), { h: (backgroundPlan.heightPx * backgroundPlan.scaleY).toFixed(1) })}
+                  onChange={(mm) => setBackgroundPlan({ ...backgroundPlan, scaleY: mm / 1000 })}
+                />
                 {/* Quick fit buttons */}
                 <div className="flex gap-1">
                   <button
@@ -2496,21 +2519,22 @@ export default function Sidebar() {
                     title={t('sidebar.stage.colour.title', 'Colour of the riser')}
                     aria-label={t('sidebar.stage.colour.aria', 'Colour of the riser')}
                   />
-                  <label className="flex flex-1 items-center gap-1 text-bc-dim" title={t('sidebar.stage.opacity.title', 'Opacity in per cent')}>
-                    <input
-                      type="range"
-                      className="flex-1 accent-bc-accent"
+                  <div className="min-w-0 flex-1">
+                    <Regler
+                      label={t('sidebar.stage.opacity.aria', 'Opacity of the riser in per cent')}
+                      labelVersteckt
+                      value={Math.round((s.opacity ?? 0.4) * 100)}
                       min={10}
                       max={100}
-                      step={5}
-                      value={Math.round((s.opacity ?? 0.4) * 100)}
-                      aria-label={t('sidebar.stage.opacity.aria', 'Opacity of the riser in per cent')}
-                      onChange={(e) => updateStage(s.id, { opacity: parseInt(e.target.value, 10) / 100 })}
+                      schritt={5}
+                      dezimalen={0}
+                      einheit="%"
+                      standard={40}
+                      marken={[]}
+                      title={t('sidebar.stage.opacity.title', 'Opacity in per cent')}
+                      onChange={(v) => updateStage(s.id, { opacity: v / 100 })}
                     />
-                    <span className="w-8 text-right text-[10px] tabular-nums text-bc-muted">
-                      {Math.round((s.opacity ?? 0.4) * 100)}%
-                    </span>
-                  </label>
+                  </div>
                 </div>
               </div>
             ))}

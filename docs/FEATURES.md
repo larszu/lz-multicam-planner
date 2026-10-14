@@ -191,8 +191,8 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 - **Room (optional, collapsed in the sidebar):** ceiling height, floor (concrete, wood, carpet, grass, tiles, black stage floor), walls (plain colour, painted plaster, concrete, brick, wood panelling, black drape — used for the hall walls and every drawn wall in the 3D view; painted plaster takes each wall's own colour), **audience areas** and **video walls**. Add an area with *Seated area* or *Standing area*, then move, resize and rotate it in the 2D plan; rows, row gap, rise per row, first-row height and occupancy sit under *Fine-tune*. Seated areas are rows of seats on a rising stand, standing areas a loose, dense crowd on the floor; one click switches between the two. Video walls are dragged and rotated the same way (the arrow shows where the picture faces); their card also has X, Y (centre of the lower edge in plan metres), Z (lower edge above the floor), turn, width and height as numbers. Audience areas have X and Y under *Fine-tune*. Nothing here is required — without areas the 3D view fills the free floor with people by itself
 
 ### 3D Venue View
-- **Views:** *Top* (plan from above, stage at the top like in the 2D plan), *Perspective* and *Camera view* — the view glides there instead of jumping
-- **Camera list** on the right: number, camera, lens range @ current focal length, rig and horizontal FOV. **Click a camera to look through its lens**; the frame is masked to the sensor's aspect ratio and follows pan, tilt and zoom live (e.g. from the Rig panel). Any mouse, key or touch input takes you back to free movement
+- **Views:** *Top* (plan from above, stage at the top like in the 2D plan) and *Perspective* glide there instead of jumping. *Camera view* shows the selected camera's picture with all its controls — the same view as the *Preview* tab (see *Camera view & Preview*); *Top* or *Perspective* bring the free 3D view back
+- **Camera list** on the right: number, camera, lens range @ current focal length, rig and horizontal FOV. **Click a camera to look through its lens** — opens the camera view for it. On a narrow window the list steps aside in the camera view; ‹ › switch cameras there
 - **Coverage** wedges on the floor from each camera to its focus point, with a sight line; the selected camera also shows its 3D FOV pyramid
 - **Tally** from the Multiview: Program camera red, Preview green — on the camera in 3D and in the list
 - **Photoreal by default:** dark arena with haze, trusses with fixtures whose beams stand in the haze, warm front light on the stage with real shadows, LED walls that glow and light the stage, floodlights over pitches, a night sky outdoors. Ambient occlusion, bloom, AgX tone mapping. One **Quality** switch: *Auto* (starts high, lowers once if the frame rate stays low), *High*, *Low*, and *Simple* — a light 3D view without lighting effects, shadows or post-processing for slow computers. A spinner covers the view until the scene has drawn its first frame
@@ -201,7 +201,6 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 - **Camera operators** (toggle, off by default) stand at tripods, pedestals and dollies and carry shoulder cameras
 - **People on stage** appear as detailed people in every view, facing the cameras. Pose and clothing follow the object and its name: *Moderation*/*Host* speaks in a jacket or dress, *Vocal* sings into a mic, guitar and seated objects get their pose, others stand in varied poses — always the same look for the same person
 - **Light: Hall · Daylight** (with show light): *Daylight* puts the venue under the open sky — sun, sky, moon and stars from date, time, place (German cities or coordinates), the floor plan's north direction and weather (clear, partly cloudy, overcast, haze). The time slider marks sunrise, sunset, golden hour and blue hour. Stage lights stay visible by day; at night the exposure matches the hall look. Applies to the rendered camera pictures too. Times are in the computer's time zone
-- **Camera view like the camera's picture:** sensor and focal length set the angle, planning overlays (coverage, labels) disappear, and on *High* the depth of field follows focal length, aperture and focus distance
 - **Show light** off = evenly lit planning view with grid. **Video wall** draws one wall per stage when the room has none; **Camera operators**, **Labels** and **Floor plan** can be toggled; all toggles are remembered
 - Rendering building blocks come from `@avplan/scene3d` (see *Shared suite packages*)
 - Drag to look around — the picture follows the mouse like in 3D and map apps (drag right, the scene moves right); WASD to move, Space/Shift up/down, Ctrl sprint, scroll to dolly
@@ -209,13 +208,17 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 - Drag cameras in space, visualize stage meshes & venue boundaries
 - Background floor plan projection, floor grid with metric labels
 
-### Camera Preview
-- **Rendered by default:** the camera's picture through the same scene as the 3D view — stage, people, audience, show light, wall materials — with the lens's focal length, sensor, pan and tilt
+### Camera view & Preview
+One view answers *what does this camera see?* — in the **Preview** tab and as **Camera view** in the 3D view. Same picture, same controls, same settings (overlays, presets, transition time are shared between both).
+- **Rendered by default:** the camera's picture through the same scene as the 3D view — stage, people, audience, show light, wall materials — with the lens's focal length, sensor, pan and tilt. Show light, audience and the *Simple* quality of the 3D view apply here as well
 - **3D · Simple** switch under the picture: *Simple* is the classic drawing (ground grid, sky/horizon, stage outlines, reference silhouettes); it is also shown while the 3D scene loads
-- Show light, audience and the *Simple* quality of the 3D view apply to the rendered picture as well
-- Overlays: rule of thirds, safe areas, crosshair, data HUD
-- Pan/tilt by dragging — with the mouse or one finger; pinch with two fingers to zoom the lens
-- On a narrow window the data readout moves **below** the image instead of taking a fixed column beside it: the picture gets the full width
+- **Overlays** behind one button: safe areas, rule of thirds, crosshair with focus distance, data panel, ground grid (*Simple*); invert the pan or tilt direction there too. The picture always carries the pan/tilt HUD, rulers and the in-frame / image-circle badges
+- Pan/tilt by dragging — with the mouse or one finger; wheel or pinch with two fingers zooms the lens
+- **Focus pick:** tap a person to set the focus distance; *Lock subject* keeps focus on the person nearest the crosshair while they or the camera move
+- **Lens:** focal length, aperture and focus on logarithmic sliders that snap to the marks (full stops for the aperture); − / + step one mark. *Manual* opens focal length or aperture beyond the real lens, with editable limits
+- **Presets** per camera store optics and position; they are approached with the **transition time** *Cut · Fast 3 s · Slow 10 s · Manual*, the same move as in the shotlist. **Capture shot** (main action) puts the current view into the shotlist
+- **Camera control** folds open under the presets: pan/tilt pad, track, height, speed steps and takes (see *Shotlist & Rig*)
+- **One scroll area:** picture, controls, presets and camera control scroll together, so everything is reachable in a small window and on a phone. From about 760 px width the data panel sits beside the picture, below that underneath it
 
 ### Multiview
 - Every camera live as a tile, like the multiviewer of a vision mixer — camera, lens range, focal length and horizontal FOV on each tile
@@ -229,7 +232,7 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 
 ### Shotlist & Rig
 - **Shotlist:** *Capture shot* freezes the selected camera — position, pan, tilt, focal length, aperture, focus — as a numbered shot with a thumbnail. Several shotlists per project; name each shot, add a note, set the transition (*Off · Fast · Slow · Manual*) and the movement style of the rig. A transition that is physically too fast for the rig is flagged. Step through with Q / E, play the sequence, export the storyboard as PNG or print it / save it as PDF. Shotlists are part of the project: they are saved in the `.mcplan` (and the `.avplan` cameras slot), come back with the autosave and follow undo / redo. Opening a project saved before shotlists lived in the file takes over the shotlists this browser kept on its own whose shots point at that project's cameras; each list moves into the first such project, and a copy of the old lists stays in local storage
-- **Rig control** sits under the Preview, so the move and its picture are visible together: pan / tilt with the arrow keys or by dragging, track (J / L) on rigs that travel, height, focal length; speed steps within the rig's real limits (m/s, °/s). *Record take* stores a movement per camera that can be replayed, also in a loop
+- **Rig control** folds open as *Camera control* in the camera view, so the move and its picture are visible together: pan / tilt with the arrow keys or by dragging, track (J / L) on rigs that travel, height, focal length; speed steps within the rig's real limits (m/s, °/s). *Record take* stores a movement per camera that can be replayed, also in a loop
 
 ### FOV & DoF Calculator
 - 9 sensor sizes (Full Frame, Super 35, APS-C, MFT, 1", 2/3", 1/2", 1/3", 1/2.3")
@@ -309,6 +312,15 @@ same values as the Cable Planner:
 - **2D plan and 3D planning view follow the theme**; camera, lens and coverage
   colours stay unchanged. The camera preview and the 3D show look are a
   simulated room and stay as they are.
+- **One slider everywhere** (lens, pan/tilt, room, floor plan, daylight,
+  calculator): round handle, track filled up to the value, marks underneath
+  whose labels never overlap. Drag the track or the **name** (like a knob),
+  type the value into its field (Enter applies, ↑/↓ one step), arrow keys
+  fine, Shift+arrow coarse, Home/End for the limits; **double-click or
+  double-tap** resets to the default where there is one (pan, tilt, track,
+  time of day …). Marks snap magnetically; Shift keeps the value free. On
+  touch the track is 44 px high and a vertical swipe still scrolls the page.
+  Checked by `slider:check` (target size, and no second, native slider).
 - All values live in `src/index.css` (`--color-bc-*`, `--radius-bc-*`,
   `--shadow-bc-*`). Checked by `brand:check` (values in both modes, signal
   once, logo colours, switch present), `form:check` (radius/shadow only via

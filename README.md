@@ -52,9 +52,10 @@ it — framed to the sensor, following pan, tilt and zoom.
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/preview-dark.webp">
   <img src="docs/img/preview-light.webp" alt="Rendered camera preview of a church stage with safe areas and lens data">
 </picture>
-<b>Rendered preview.</b> The camera's picture with its focal length, aperture
-and focus, plus safe areas, thirds and a data readout. Set the move with the
-rig control underneath and save it to a shotlist.
+<b>Camera view.</b> The camera's picture with its focal length, aperture
+and focus, plus safe areas, thirds and a data readout — the same view in the
+Preview tab and in the 3D view. Fold out the camera control underneath and
+save the shot to a shotlist.
 </td>
 <td width="50%" valign="top">
 <picture>
@@ -88,7 +89,7 @@ before the first rehearsal.
 1. [Open the planner in the browser](https://larszu.github.io/lz-multicam-planner/) or install the [desktop app](https://github.com/larszu/lz-multicam-planner/releases/latest).
 2. Start from a template (sidebar → *Templates*) or upload your floor plan.
 3. *Add* a camera, choose body and lens, drag it into position.
-4. Check the shot in *Preview* and *3D view*; switch between cameras in *Multiview*.
+4. Check the shot in *Preview* or *3D view → Camera view* (the same view); switch between cameras in *Multiview*.
 5. Save the project (`.mcplan`, `Ctrl/⌘+S`) or export a PNG sheet with plan, 3D view, preview and data. *Save* writes back to the file you opened or saved last and only asks the first time; *Save as…* (`Ctrl/⌘+Shift+S`) always asks for a name and location. The desktop app, Chrome and Edge save in place; other browsers download a new copy each time.
 
 ### Windows: dedicated graphics card

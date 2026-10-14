@@ -1,12 +1,12 @@
-/** DE-Overrides: CameraPreview, ExportPanel. Keys: preview.* */
+/** DE-Overrides: Kamerablick, ExportPanel. Keys: preview.* */
 export const preview: Record<string, string> = {
-  // ── CameraPreview: canvas overlays ──
+  // ── Kamerablick: canvas overlays ──
   'preview.crosshairFocus': 'Fokus {d}m',
   'preview.badge.outOfFrame': '⚠ {label} NICHT IM BILD',
   'preview.badge.inFrameRatio': '{n}/{total} im Bild',
   'preview.badge.inFrame': '{n} im Bild',
 
-  // ── CameraPreview: DOM ──
+  // ── Kamerablick: DOM ──
   'preview.emptyState': 'Kamera auswählen, um die Vorschau zu sehen',
   'preview.presetNamePrompt': 'Preset-Name:',
   'preview.prevCamera': 'Vorherige Kamera',
@@ -22,21 +22,17 @@ export const preview: Record<string, string> = {
   'preview.overlay.thirds': 'Drittel',
   'preview.overlay.crosshair': 'Fadenkreuz',
   'preview.overlay.data': 'Daten',
-  'preview.flipH': 'Horizontale Schwenkrichtung umkehren',
   'preview.invertH': 'H invertieren',
-  'preview.flipV': 'Vertikale Neigerichtung umkehren',
   'preview.invertV': 'V invertieren',
   'preview.focusPickLeave': 'Irgendwo klicken, um den Fokus-Wähler zu verlassen',
   'preview.focusPickEnter': 'Person in der Vorschau wählen, um die Fokusdistanz zu setzen',
   'preview.focusPick': 'Fokus wählen',
-  'preview.on': 'AN',
   'preview.releaseLock': 'Fokussperre lösen',
   'preview.unlock': 'Entsperren',
   'preview.subject': 'Motiv',
   'preview.lockSubjectTitle': 'Fokusdistanz auf das Motiv nahe dem Fadenkreuz sperren',
   'preview.lockSubject': 'Motiv sperren',
   'preview.hintFocusPick': 'Person klicken, um die Fokusdistanz zu setzen',
-  'preview.hintDrag': 'Ziehen: Schwenk/Neige · Scrollen: Zoom',
   'preview.manualTitle': 'Brennweite vorübergehend über den realen Objektivbereich hinaus verstellen',
   'preview.manual': 'Manuell',
   'preview.manualMin': 'Manuelle minimale Brennweite (mm)',
@@ -48,7 +44,7 @@ export const preview: Record<string, string> = {
   'preview.add': 'Hinzufügen',
   'preview.notes': 'Notizen',
 
-  // ── CameraPreview: data readout cells ──
+  // ── Kamerablick: data readout cells ──
   'preview.data.focalLength': 'Brennweite',
   'preview.data.aperture': 'Blende',
   'preview.data.distance': 'Distanz',
@@ -86,13 +82,8 @@ export const preview: Record<string, string> = {
   'preview.export.noCameras': 'Keine Kameras zum Exportieren. Zuerst eine Kamera hinzufügen.',
   'preview.export.generating': 'Export wird erstellt…',
   // Die beiden Schrittknöpfe am Objektiv-Regler.
-  'preview.step.back': 'Eine Stufe zurück',
-  'preview.step.forward': 'Eine Stufe weiter',
   // Regler-Hilfen und Presets in der Vorschau (B-61: waren fest deutsch).
-  'preview.focal.title': 'Brennweite — logarithmisch, rastet auf die Marken. Shift = frei, Mausrad = Stufe.',
-  'preview.aperture.title': 'Blende — Normreihe in vollen Stufen (√2). Shift = stufenlos, Mausrad = eine Stufe.',
   'preview.aperture.beyond': 'Blende über die echten Objektiv-Grenzen hinaus durchfahren',
-  'preview.focus.title': 'Fokusdistanz — nah fein, fern grob (logarithmisch). Zahl anklicken für direkte Eingabe.',
   'preview.preset.hasPose': 'enthält Kamera-Position',
   'preview.preset.none': 'noch keins',
   'preview.addShot': 'Aktuelle Ansicht als Shot in die Shotlist aufnehmen',
@@ -107,5 +98,35 @@ export const preview: Record<string, string> = {
   'preview.apertureManualMin': 'Manuelles Minimum (Blende)',
   'preview.transitionSeconds': 'Fahrtzeit in Sekunden (Bearbeiten schaltet auf Manuell)',
   'preview.transitionTime': 'Transition-Time',
-  'preview.transitionToggle': 'Umschalten: OFF (springt) / Schnell 3 s / Langsam 10 s / Manuell',
+
+  // ── Kamerablick (2026-10-14): ein Blick fuer Vorschau und 3D ──
+  'preview.zoom': 'Zoom',
+  'preview.lens': 'Objektiv',
+  'preview.focal.title2': 'Brennweite — logarithmisch, rastet an den Marken (Shift = frei).',
+  'preview.aperture.title2': 'Blende — rastet auf volle Stufen (Shift = stufenlos).',
+  'preview.focus.title2': 'Fokusdistanz — nah fein, fern grob (logarithmisch).',
+  'preview.hintDrag2': 'Bild ziehen: Schwenk/Neige · Mausrad oder zwei Finger: Zoom',
+  'preview.overlays': 'Einblendungen',
+  'preview.overlay.dataPanel': 'Datenspalte',
+  'preview.data.fovH': 'Bildwinkel H',
+  'preview.presets': 'Presets',
+  'preview.deletePresetNamed': 'Preset {name} löschen',
+  'preview.preset.assign': '{cam} zuordnen',
+  'preview.transition.off': 'Schnitt',
+  'preview.transition.fast': 'Schnell 3 s',
+  'preview.transition.slow': 'Langsam 10 s',
+  'preview.transition.manual': 'Manuell',
+  'preview.shot.done': 'Shot aufgenommen.',
+  'preview.shot.failed': 'Aufnehmen fehlgeschlagen.',
+  'preview.shot.noImage': 'Shot gespeichert — ohne Bild.',
+  'preview.showCamera': 'Durch {cam} schauen',
+  'preview.control': 'Kamerasteuerung',
+  'preview.control.hint': 'Pan/Tilt-Pad, Fahrweg, Takes',
+
+  // ── Regler (components/ui/Regler.tsx), gilt fuer alle Regler der App ──
+  'regler.value': 'Wert',
+  'regler.knob.title': 'Seitlich ziehen zum Verstellen · Doppelklick: Standardwert',
+  'regler.field.title': 'Wert eintippen · Enter übernimmt · ↑/↓ ein Schritt',
+  'regler.stepBack': 'Eine Stufe zurück',
+  'regler.stepForward': 'Eine Stufe weiter',
 };

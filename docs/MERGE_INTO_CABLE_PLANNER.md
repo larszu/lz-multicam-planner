@@ -221,7 +221,7 @@ und können fast unverändert übernommen werden:
 | `src/components/Templates/TemplateSelector.tsx` | `components/MultiCam/` | Persistenz → Library |
 | `src/components/Venue2D/Venue2D.tsx` | `components/MultiCam/Venue2D/` | Events → Actions |
 | `src/components/Venue3D/Venue3D.tsx` | `components/MultiCam/Venue3D/` | three-Version abgleichen |
-| `src/components/Preview/CameraPreview.tsx` | `components/MultiCam/Preview/` | übernehmen |
+| `src/components/Preview/Kamerablick.tsx` | `components/MultiCam/Preview/` | übernehmen |
 | `src/components/Export/ExportPanel.tsx` | `components/MultiCam/Export/` | in `lib/exportPdf`/Export-Pipeline integrieren |
 | `src/components/ErrorBoundary.tsx` | (Cable-Planner hat evtl. eigene) | dedupliziieren |
 | `src/store/useStore.ts` | `store/slices/multicamSlice.ts` | Slice + projectHistory |

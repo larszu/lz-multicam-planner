@@ -84,13 +84,14 @@ function Deflector({
   }, [onChange]);
 
   return (
-    <div className={axes === 'xy' ? 'shrink-0' : 'w-full'} style={axes === 'xy' ? { width: size } : undefined}>
+    <div className={axes === 'xy' ? 'w-full max-w-[var(--pad)] shrink-0' : 'w-full'} style={axes === 'xy' ? ({ '--pad': `${size}px` } as React.CSSProperties) : undefined}>
       <div className="text-[10px] text-bc-dim mb-1">{label}</div>
       <div
         ref={ref}
         title={hint}
-        style={{ height: axes === 'xy' ? size : 40 }}
-        className={`relative border ${disabled ? 'border-bc-border/50 bg-bc-dark/40' : 'border-bc-border bg-bc-dark cursor-crosshair'}`}
+        // `touchAction: none`: sonst scrollt auf Touch die Seite, statt zu fahren.
+        style={{ height: axes === 'xy' ? undefined : 44, aspectRatio: axes === 'xy' ? '1' : undefined, touchAction: 'none' }}
+        className={`relative rounded-bc-m border ${disabled ? 'border-bc-border/50 bg-bc-dark/40' : 'border-bc-border bg-bc-sunken cursor-crosshair'}`}
         onPointerDown={(e) => {
           if (disabled) return;
           e.currentTarget.setPointerCapture(e.pointerId);
@@ -109,7 +110,7 @@ function Deflector({
         <div className="absolute inset-y-2 left-1/2 border-l border-bc-border/60" />
         {!disabled && (
           <div
-            className="absolute w-3 h-3 bg-bc-yellow"
+            className="absolute w-3 h-3 rounded-bc-full bg-bc-yellow"
             style={{
               left: `calc(50% + ${pos.x * 45}% - 6px)`,
               top: `calc(50% + ${pos.y * 45}% - 6px)`,
@@ -167,7 +168,11 @@ function runTakePlayback(
   };
 }
 
-export default function RigControlPanel() {
+/**
+ * `eingebettet`: steht im Kamerablick (#193) — ohne eigenen Scrollbereich und
+ * ohne eigene Kamerawahl; der Kamerablick scrollt als Ganzes und waehlt die Kamera.
+ */
+export default function RigControlPanel({ eingebettet = false }: { eingebettet?: boolean } = {}) {
   const { t } = useTranslation();
   const cameras = useStore((s) => s.cameras);
   const selectedCameraId = useStore((s) => s.selectedCameraId);
@@ -404,11 +409,11 @@ export default function RigControlPanel() {
   const hasTravel = limits.travelM > 0;
 
   return (
-    <div className="h-full overflow-auto bg-bc-panel text-xs text-bc-text-bright" data-rig-control>
-      <div className="p-3 space-y-3 max-w-[860px]">
+    <div className={`${eingebettet ? '' : 'h-full overflow-auto bg-bc-panel'} text-xs text-bc-text-bright`} data-rig-control>
+      <div className={`${eingebettet ? 'px-2 pb-1' : 'p-3'} space-y-3 max-w-[860px]`}>
         {/* Kopf: welche Kamera, welches Rig */}
-        <div className="flex items-center gap-2">
-          <select
+        <div className="flex flex-wrap items-center gap-2">
+          {!eingebettet && <select
             className="border border-bc-border bg-bc-panel-raised px-2 py-1 text-bc-text-bright"
             value={cam.id}
             onChange={(e) => selectCamera(e.target.value)}
@@ -416,13 +421,14 @@ export default function RigControlPanel() {
             {cameras.map((c) => (
               <option key={c.id} value={c.id}>{c.label}</option>
             ))}
-          </select>
+          </select>}
           <span className="text-bc-muted truncate">
             {limits.rig?.name ?? mountTypeLabel(t, limits.type)} · {motionProfileLabel(t, limits.type)}
           </span>
           <button
             onClick={() => setArmed((a) => !a)}
-            className={`ml-auto px-2 py-1 border ${armed ? 'border-bc-yellow text-bc-yellow-text' : 'border-bc-border text-bc-muted'}`}
+            aria-pressed={armed}
+            className={`ml-auto rounded-bc-full px-3 font-semibold ${armed ? 'bg-bc-yellow/20 text-bc-yellow-text' : 'bg-bc-panel-raised text-bc-muted'}`}
             title={t('rig.keys.title', 'Arm keyboard control. Off when the keys are needed elsewhere.')}
           >
             {armed ? t('rig.keysArmed', 'Keys armed') : t('rig.keysOff', 'Keys off')}
@@ -430,18 +436,22 @@ export default function RigControlPanel() {
         </div>
 
         {/* Tempo */}
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-bc-dim">{t('rig.speed', 'Speed')}</span>
-          {SPEED_STEPS.map((s, i) => (
-            <button
-              key={s.key}
-              onClick={() => setSpeed(i)}
-              title={format(t('rig.speedStep', '{hint} (key {key})'), { hint: speedStepHint(t, s.key), key: s.key })}
-              className={`px-2 py-0.5 border ${i === speedIndex ? 'border-bc-yellow text-bc-yellow-text' : 'border-bc-border text-bc-muted'}`}
-            >
-              {speedStepLabel(t, s.key)}
-            </button>
-          ))}
+          <div className="bc-seg bc-seg-kompakt" role="group" aria-label={t('rig.speed', 'Speed')}>
+            {SPEED_STEPS.map((s, i) => (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => setSpeed(i)}
+                aria-pressed={i === speedIndex}
+                title={format(t('rig.speedStep', '{hint} (key {key})'), { hint: speedStepHint(t, s.key), key: s.key })}
+                className="px-3"
+              >
+                {speedStepLabel(t, s.key)}
+              </button>
+            ))}
+          </div>
           <span className="ml-auto text-bc-faint">
             {format(t('rig.limits', 'max {travel} m/s · {rot}°/s · {lift} m/s lift'), {
               travel: profile.maxTravelMps.toFixed(2),
@@ -452,7 +462,7 @@ export default function RigControlPanel() {
         </div>
 
         {/* Pult */}
-        <div className="flex gap-3 items-start">
+        <div className="flex flex-wrap items-start gap-3">
           <Deflector
             label={t('rig.panTilt', 'Pan / Tilt (← → ↑ ↓)')}
             hint={t('rig.panTilt.hint', 'Dragging pans and tilts — possible at the same time as the move.')}
@@ -460,7 +470,7 @@ export default function RigControlPanel() {
             size={220}
             onChange={(i) => { padRef.current = i; startLoop(); }}
           />
-          <div className="flex-1 min-w-0 space-y-2">
+          <div className="min-w-[13rem] flex-1 space-y-2">
             <Deflector
               label={hasTravel ? t('rig.track.keys', 'Track (J / L)') : t('rig.track.none', 'Track - this rig does not travel')}
               hint={hasTravel ? t('rig.track.hint', 'Dragging moves the dolly; releasing stops it.') : t('rig.track.noneHint', 'Tripods, hi-hats and the like have no track.')}
@@ -469,7 +479,7 @@ export default function RigControlPanel() {
               disabled={!hasTravel}
               onChange={(i) => { jogRef.current = i; startLoop(); }}
             />
-            <div className="grid grid-cols-3 gap-1 text-[11px]">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(6rem,1fr))] gap-1.5 text-[11px]">
               <Readout label={t('rig.track', 'Track')} value={hasTravel ? `${(cam.trackOffset ?? 0).toFixed(2)} m` : '—'} sub={hasTravel ? `±${limits.travelM.toFixed(2)} m` : ''} />
               <Readout label={t('rig.height', 'Height')} value={`${cam.z.toFixed(2)} m`} sub={`${limits.minHeightM.toFixed(2)}–${limits.maxHeightM.toFixed(2)}`} />
               <Readout label="Pan" value={`${cam.pan.toFixed(1)}°`} />
@@ -481,7 +491,7 @@ export default function RigControlPanel() {
         </div>
 
         {/* Tastenlegende */}
-        <div className="border border-bc-border bg-bc-panel-raised px-2 py-1.5 text-[10px] text-bc-muted leading-relaxed">
+        <div className="rounded-bc-m bg-bc-panel-raised px-2 py-1.5 text-[11px] text-bc-muted leading-relaxed">
           <b className="text-bc-text">{t('rig.keys', 'Keys')}</b> — <b>J/L</b> {t('rig.key.track', 'track')} · <b>← →</b> {t('rig.key.pan', 'pan')} · <b>↑ ↓</b> {t('rig.key.tilt', 'tilt')} ·
           {' '}<b>R/F</b> {t('rig.key.height', 'height')} · <b>[ ]</b> {t('rig.key.align', 'align rig')} · <b>, .</b> {t('rig.key.zoom', 'zoom')} · <b>0</b> {t('rig.key.park', 'park')} ·
           {' '}<b>1/2/3</b> {t('rig.key.speed', 'speed')}. {t('rig.keys.hint', 'Several keys at once move several axes together.')}
@@ -562,8 +572,8 @@ export default function RigControlPanel() {
 
 function Readout({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="border border-bc-border bg-bc-panel-raised px-2 py-1">
-      <div className="text-bc-dim text-[10px]">{label}</div>
+    <div className="rounded-bc-m bg-bc-panel-raised px-2 py-1">
+      <div className="text-bc-dim text-[11px]">{label}</div>
       <div className="text-bc-text-bright tabular-nums">{value}</div>
       {sub && <div className="text-bc-faint text-[10px]">{sub}</div>}
     </div>

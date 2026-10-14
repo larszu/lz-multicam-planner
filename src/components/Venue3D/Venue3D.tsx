@@ -18,13 +18,13 @@ import { FLAT_STAGE_M, groundHeightAt, stageColor, stageOpacity, stageTopZ } fro
 import { FiLock, FiUnlock } from 'react-icons/fi';
 import { VIEW3D_FOV_DEG, defaultCameraPos, defaultPitchRad } from '../../utils/view3d';
 import { useTranslation } from '../../i18n';
-import { easeOut, povFraming, shortestAngleDelta, topFraming, type Framing } from '../../utils/view3dScene';
+import { easeOut, shortestAngleDelta, topFraming, type Framing } from '../../utils/view3dScene';
 import { useSchmal } from '../../lib/useSchmal';
 import { useView3DPrefs } from './view3dPrefs';
 import { PLANUNG_JE_THEMA, PLANUNGS_BODEN } from './planungsLook';
 import { useIstHell } from '../../lib/useIstHell';
 import { Atmosphere, CoverageWedge, ScenePipeline } from './ShowScene';
-import { entsorgeKameraCache, stufenWerte, type Detail, type Stufe, type StufenWerte, type Tally, type Tiefenschaerfe } from '../../avplan/scene3d';
+import { entsorgeKameraCache, stufenWerte, type Detail, type Stufe, type StufenWerte, type Tally } from '../../avplan/scene3d';
 import { kameraModell, type KameraModell } from '../../utils/kameraModell';
 import { Bediener } from './KameraModell';
 import { useKameraRig } from './useKameraRig';
@@ -37,6 +37,7 @@ import { LABEL_FONT } from './labelFont';
 import CameraListPanel, { type CameraRow } from './CameraListPanel';
 import { cameraRowDetail } from './cameraRow';
 import { WEBGL_POWER_PREFERENCE } from '../../utils/gpuInfo';
+import Kamerablick from '../Preview/Kamerablick';
 
 /** Fahrt der Blickkamera (Ansichts-Knoepfe, Klick in der Kameraliste). */
 export const FLY_EVENT = 'multicam-3d-fly';
@@ -989,8 +990,6 @@ export default function Venue3D() {
   const [editMode, setEditMode] = useState<CameraEditMode>('move');
   const [prefs, updatePrefs] = useView3DPrefs();
   const schmal = useSchmal();
-  // Durch welche Kamera gerade geschaut wird. Jede Handbewegung beendet das.
-  const [povId, setPovId] = useState<string | null>(null);
   const [preset, setPreset] = useState<ViewPreset>('perspective');
   const [werte, setWerte] = useState<StufenWerte>(() => stufenWerte('high'));
   const [stufe, setStufe] = useState<Stufe>('high');
@@ -1017,54 +1016,27 @@ export default function Venue3D() {
   }, []);
 
   const goPerspective = useCallback(() => {
-    setPovId(null);
     setPreset('perspective');
     flyTo({ framing: { pos: [camX, camY, camZ], yaw: 0, pitch: startPitch, fovDeg: VIEW3D_FOV_DEG } });
   }, [camX, camY, camZ, startPitch, flyTo]);
 
   const goTop = useCallback(() => {
-    setPovId(null);
     setPreset('top');
     flyTo({ topOf: { widthM: venue.widthM, depthM: venue.heightM } });
   }, [venue.widthM, venue.heightM, flyTo]);
 
-  const goCamera = useCallback((id: string, durationMs = 700) => {
-    const cam = useStore.getState().cameras.find((c) => c.id === id);
-    if (!cam) return;
-    const { fov } = cameraFov(cam);
-    if (!fov) return;
-    const pos = effectiveCameraPos(cam);
-    setPovId(id);
+  // Kamerablick (2026-10-14): dieselbe Komponente wie der Vorschau-Reiter —
+  // Bild, Overlays, Objektiv, Presets, Kamerasteuerung. Vorher flog die freie
+  // 3D-Kamera an den Standort und zeigte nur das Bild; zwei Kamerablicke mit
+  // zwei Bedienungen. Die 3D-Szene bleibt dahinter geladen, damit der Weg
+  // zurueck zu „Perspektive" sofort da ist.
+  const goCamera = useCallback((id: string) => {
+    if (useStore.getState().selectedCameraId !== id) selectCamera(id);
     setPreset('camera');
-    flyTo({ framing: povFraming({ ...cam, x: pos.x, y: pos.y }, fov.horizontalDeg, 16 / 9), povHFovDeg: fov.horizontalDeg, durationMs });
-  }, [flyTo]);
+  }, [selectCamera]);
+  const kamerablick = preset === 'camera' && !!selectedCameraId;
 
-  // Im Kamerablick faehrt die Ansicht mit, wenn die Kamera schwenkt oder
-  // zoomt — Rig-Pult und 3D zeigen dann dasselbe Bild.
-  // Wird die Kamera geloescht, waehrend man durch sie schaut, gilt der Blick als beendet.
-  const povCam = povId ? cameras.find((c) => c.id === povId) : undefined;
-  const povKey = povCam ? [povCam.x, povCam.y, povCam.z, povCam.pan, povCam.tilt, povCam.focalLength, povCam.extenderActive, povCam.trackOffset ?? 0, povCam.lensId, povCam.cameraId].join('|') : '';
-  const lastPovKey = useRef('');
-  useEffect(() => {
-    if (!povId || !povKey) { lastPovKey.current = ''; return; }
-    if (lastPovKey.current && lastPovKey.current !== povKey) goCamera(povId, 0);
-    lastPovKey.current = povKey;
-  }, [povId, povKey, goCamera]);
-
-  const povRef = useRef(povId);
-  useEffect(() => { povRef.current = povId; }, [povId]);
-  const handleManualMove = useCallback(() => {
-    if (!povRef.current) return;
-    povRef.current = null;
-    setPovId(null);
-    setPreset('perspective');
-    flyTo({ fovDeg: VIEW3D_FOV_DEG, durationMs: 250 });
-  }, [flyTo]);
-
-  const pickCamera = useCallback((id: string) => {
-    selectCamera(id);
-    goCamera(id);
-  }, [selectCamera, goCamera]);
+  const pickCamera = useCallback((id: string) => goCamera(id), [goCamera]);
 
   const fovById = useMemo(() => {
     const m = new Map<string, ReturnType<typeof cameraFov>>();
@@ -1109,65 +1081,41 @@ export default function Venue3D() {
   const { draussen, farDist, personBlick } = kulisse;
 
   const [bereit, setBereit] = useState(false);
-  const povInfo = povCam ? fovById.get(povCam.id) : undefined;
-
-
-  // Bildfenster im Seitenverhaeltnis des Sensors, Rest abgedunkelt.
-  const povRatio = povInfo?.fov && povInfo.fov.horizontalDeg > 0
-    ? Math.tan((povInfo.fov.verticalDeg * Math.PI) / 360) / Math.tan((povInfo.fov.horizontalDeg * Math.PI) / 360)
-    : 9 / 16;
-
-  // Im Kamerablick soll die Ansicht wie das Bild dieser Kamera wirken: ohne
-  // Planungs-Beiwerk, mit der Schaerfentiefe ihres Objektivs.
-  const realPov = show && !!povCam;
-  const dof: Tiefenschaerfe | null = useMemo(() => {
-    if (!realPov || !povCam || !povInfo?.sensor) return null;
-    return {
-      fokusM: Math.max(0.3, povCam.focusDistance),
-      blende: povCam.aperture,
-      brennweiteMm: povCam.focalLength * (povCam.extenderActive || 1),
-      sensorBreiteMm: povInfo.sensor.widthMm,
-    };
-  }, [realPov, povCam, povInfo]);
   const thema = useIstHell() ? 'hell' : 'dunkel';
+
+  const ansichtWahl = (
+    <div className="bc-seg shadow-bc-2" role="group" aria-label={t('venue.view.group', 'View')}>
+      {([
+        { id: 'top', label: t('venue.view.top', 'Top'), go: goTop },
+        { id: 'perspective', label: t('venue.view.perspective', 'Perspective'), go: goPerspective },
+        { id: 'camera', label: t('venue.view.camera', 'Camera view'), go: () => { if (selectedCameraId) goCamera(selectedCameraId); }, disabled: !selectedCameraId },
+      ] as { id: ViewPreset; label: string; go: () => void; disabled?: boolean }[]).map((b) => (
+        <button
+          key={b.id}
+          type="button"
+          onClick={b.go}
+          disabled={b.disabled}
+          aria-pressed={preset === b.id && (b.id !== 'camera' || kamerablick)}
+          className="whitespace-nowrap px-3 text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {b.label}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <div className="flex w-full h-full" style={{ minHeight: 500 }}>
       <div className="relative flex-1 min-w-0 h-full overflow-hidden">
-        <div className="bc-seg absolute top-3 left-3 z-10 shadow-bc-2" role="group" aria-label={t('venue.view.group', 'View')}>
-          {([
-            { id: 'top', label: t('venue.view.top', 'Top'), go: goTop },
-            { id: 'perspective', label: t('venue.view.perspective', 'Perspective'), go: goPerspective },
-            { id: 'camera', label: t('venue.view.camera', 'Camera view'), go: () => { if (selectedCameraId) goCamera(selectedCameraId); }, disabled: !selectedCameraId },
-          ] as { id: ViewPreset; label: string; go: () => void; disabled?: boolean }[]).map((b) => (
-            <button
-              key={b.id}
-              type="button"
-              onClick={b.go}
-              disabled={b.disabled}
-              aria-pressed={preset === b.id}
-              className="px-3 text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {b.label}
-            </button>
-          ))}
-        </div>
+        {!kamerablick && <div className="absolute top-3 left-3 z-10">{ansichtWahl}</div>}
 
-        {povCam && povInfo?.fov && (
-          <div className="absolute inset-0 z-[5] pointer-events-none flex items-center justify-center">
-            <div
-              className="relative w-full outline outline-1 outline-bc-on-media/60"
-              style={{ aspectRatio: `${1 / povRatio}`, boxShadow: '0 0 0 100vmax rgba(0, 0, 0, 0.45)' }}
-            >
-              <div className="absolute left-2 bottom-2 px-2 py-1 text-[11px] font-semibold text-bc-on-media bg-bc-media/70 tabular-nums">
-                {povCam.label} · {Math.round(povCam.focalLength * 10) / 10} mm · {povInfo.fov.horizontalDeg.toFixed(1)}° H
-                {povCam.id === programCameraId && <span className="ml-2 px-1 bg-bc-signal">PGM</span>}
-              </div>
-            </div>
+        {kamerablick && (
+          <div className="absolute inset-0 z-20 bg-bc-panel">
+            <Kamerablick kopf={ansichtWahl} />
           </div>
         )}
 
-        {!schmal && !povCam && (
+        {!schmal && !kamerablick && (
           <div className="absolute bottom-3 left-3 z-10 pointer-events-none rounded-bc-m px-3 py-2 text-[11px] leading-relaxed text-bc-on-media bg-bc-media/60 backdrop-blur-sm">
             <b>{t('venue.selectCamera', 'Select camera')}</b> {t('venue.unlockToEdit', '→ unlock to edit')}<br/>
             <b>XY</b> {t('venue.floorMove', 'floor move')} &nbsp;|&nbsp;
@@ -1181,17 +1129,19 @@ export default function Venue3D() {
 
         {!bereit && <LoadingIndicator overlay label={t('venue.loading', 'Loading 3D scene…')} />}
 
+        {/* Im Kamerablick unsichtbar statt ausgehaengt: der Weg zurueck ist sofort da,
+            und die Html-Knoepfe der Szene liegen sonst ueber dem Kamerablick. */}
         {/* `key`: Schatten und Kantenglaettung legt der Renderer beim Anlegen
             fest — der Wechsel zur einfachen Ansicht braucht einen neuen. */}
-        <Canvas key={simple ? 'simple' : 'real'} frameloop="demand" gl={{ preserveDrawingBuffer: true, antialias: simple, powerPreference: WEBGL_POWER_PREFERENCE }} dpr={simple ? 1 : [1, 1.5]} shadows={!simple}>
+        <Canvas key={simple ? 'simple' : 'real'} style={kamerablick ? { visibility: 'hidden' } : undefined} frameloop="demand" gl={{ preserveDrawingBuffer: true, antialias: simple, powerPreference: WEBGL_POWER_PREFERENCE }} dpr={simple ? 1 : [1, 1.5]} shadows={!simple}>
           <Suspense fallback={null}>
           <ErsterFrame onBereit={setBereit} />
-          {!simple && <ScenePipeline quality={prefs.quality === 'simple' ? 'low' : prefs.quality} show={show} dof={dof} onWerte={onWerte} belichtung={tag ? tagBelichtung : undefined} />}
+          {!simple && <ScenePipeline quality={prefs.quality === 'simple' ? 'low' : prefs.quality} show={show} dof={null} onWerte={onWerte} belichtung={tag ? tagBelichtung : undefined} />}
           {tag
             ? <Tageslicht sky={prefs.sky} diagM={diag} mitte={{ x: venue.widthM / 2, y: venue.heightM / 2 }} farDist={farDist} onBelichtung={setTagBelichtung} />
             : <Atmosphere look={show ? (draussen ? 'nacht' : 'arena') : 'planung'} hintergrund={show ? undefined : PLANUNG_JE_THEMA[thema]} diagM={diag} domeRadius={farDist * 0.8} />}
           <PerspectiveCamera makeDefault position={[camX, camY, camZ]} fov={VIEW3D_FOV_DEG} near={0.1} far={farDist} />
-          <FPSControls mouseLookEnabled={unlockedCameraId === null} defaultPitch={startPitch} onManualMove={handleManualMove} />
+          <FPSControls mouseLookEnabled={unlockedCameraId === null} defaultPitch={startPitch} />
 
           <Kulisse
             daten={kulisse}
@@ -1223,7 +1173,7 @@ export default function Venue3D() {
           {!show && <VenueWalls widthM={venue.widthM} heightM={venue.heightM} />}
           {prefs.labels && !show && <FloorLabels widthM={venue.widthM} heightM={venue.heightM} />}
 
-          {prefs.coverage && !realPov && cameras.map((cam, i) => {
+          {prefs.coverage && cameras.map((cam, i) => {
             const fov = fovById.get(cam.id)?.fov;
             if (!fov) return null;
             const pos = effectiveCameraPos(cam);
@@ -1262,10 +1212,10 @@ export default function Venue3D() {
               look={{
                 showFrustum: cam.id === selectedCameraId || !prefs.coverage,
                 showVolume: !prefs.coverage,
-                showLabel: prefs.labels && !realPov,
+                showLabel: prefs.labels,
                 labelSize,
                 tally: cam.id === programCameraId ? 'pgm' : cam.id === selectedCameraId && programCameraId ? 'pvw' : null,
-                isPov: !!povCam && cam.id === povCam.id,
+                isPov: false,
               }}
             />
           ))}
@@ -1283,7 +1233,7 @@ export default function Venue3D() {
             >
               <group position={[0, groundHeightAt(venue.stages, p.x, p.y), 0]}>
                 {/* Menschen sehen in jeder Darstellung gleich aus (#173). */}
-                <Figur person={p} facingDeg={personBlick(p.x, p.y)} name={prefs.labels && !show} objektName={!realPov} />
+                <Figur person={p} facingDeg={personBlick(p.x, p.y)} name={prefs.labels && !show} objektName />
               </group>
             </DraggableOnFloor>
           ))}
@@ -1292,18 +1242,19 @@ export default function Venue3D() {
         </Canvas>
       </div>
 
-      <CameraListPanel
+      {/* Schmal hat der Kamerablick die Breite fuer sich; die Kamera wechselt er selbst (‹ ›). */}
+      {!(schmal && kamerablick) && <CameraListPanel
         rows={rows}
         selectedId={selectedCameraId}
         programId={programCameraId}
-        povId={povCam?.id ?? null}
+        povId={kamerablick ? selectedCameraId : null}
         prefs={prefs}
         onPrefs={updatePrefs}
         onPick={pickCamera}
         hasFloorPlan={!!backgroundPlan}
         hasRoomWalls={!!venue.videoWalls?.length}
         stufe={stufe}
-      />
+      />}
     </div>
   );
 }
