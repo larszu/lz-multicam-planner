@@ -121,6 +121,9 @@ export interface Lens {
   squeeze?: number;
   isCustom?: boolean;
   notes?: string;
+  /** Nur fuer eingebaute Optiken: zu welchen Kameras sie gehoert. Fehlt das
+   *  Feld, gilt die Namensregel `ptz-<kamera-id>`. */
+  forCameraIds?: string[];
 }
 
 // ── Object type presets ──

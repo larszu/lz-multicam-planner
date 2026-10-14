@@ -1,6 +1,6 @@
 import { useStore, OBJECT_PRESETS } from '../../store/useStore';
 import { CAMERAS, getCameraById, getAdapterInfo, getEffectiveSensor, getCoverageStatus, getSpeedBooster, speedBoosterExists } from '../../data/cameras';
-import { LENSES, getLensById, getCompatibleLenses, pickInitialMountAndLens } from '../../data/lenses';
+import { LENSES, getLensById, getCompatibleLenses, pickInitialMountAndLens, integratedLensesFor, lensFitsCamera, GENERIC_INTEGRATED_LENS } from '../../data/lenses';
 import { computeFov, computeDof } from '../../utils/fov';
 import { checkPresets, presetRows, type PresetFinding } from '../../utils/ptzPresets';
 import { conflictsForCamera, conflictText } from '../../utils/sightline';
@@ -322,10 +322,13 @@ function CameraCard({
   // that plate are physically attachable.
   const activeMount = cam.activeMount ?? camDef?.mount;
   // Strict: only lenses that physically attach to the active mount.
-  const compatLenses = camDef ? getCompatibleLenses(camDef.mount, camDef.adaptedMounts, cam.activeMount) : allLenses;
+  const isIntegrated = camDef?.mount === 'integrated';
+  const compatLenses = camDef
+    ? (isIntegrated ? integratedLensesFor(camDef.id, [...customLenses, ...bibLenses]) : getCompatibleLenses(camDef.mount, camDef.adaptedMounts, cam.activeMount))
+    : allLenses;
   const allCompat = [
     ...compatLenses,
-    ...[...customLenses, ...bibLenses].filter((l) => !activeMount || l.mount === activeMount || l.mount === 'universal' || l.mount === 'integrated'),
+    ...(isIntegrated ? [] : [...customLenses, ...bibLenses].filter((l) => !activeMount || l.mount === activeMount || l.mount === 'universal')),
   ];
   // Deduplicate by id
   const compatDeduped = [...new Map(allCompat.map((l) => [l.id, l])).values()];
@@ -504,7 +507,9 @@ function CameraCard({
           {/* Camera selector grouped by type */}
           <label className="block">
             <span className="flex items-center justify-between gap-2 text-bc-muted">
-              <span>{format(t('sidebar.cam.cameraLabel', 'Camera · {mount} mount · {sensor}'), { mount: String(camDef?.mount), sensor: String(camDef?.sensor.name) })}</span>
+              <span>{isIntegrated
+                ? format(t('sidebar.cam.cameraLabelIntegrated', 'Camera · built-in lens · {sensor}'), { sensor: String(camDef?.sensor.name) })
+                : format(t('sidebar.cam.cameraLabel', 'Camera · {mount} mount · {sensor}'), { mount: String(camDef?.mount), sensor: String(camDef?.sensor.name) })}</span>
               {camDef && (
                 <span className="flex items-center gap-0.5">
                   {/* Edit applies to every camera. For built-ins it creates a
@@ -589,7 +594,7 @@ function CameraCard({
                 // Pick a mount + first compatible lens. Falls back through the
                 // adaptedMounts list if the native mount has no compatible
                 // lenses (e.g. PMW-F5's FZ).
-                const pick = pickInitialMountAndLens(newCam.mount, newCam.adaptedMounts, customLenses);
+                const pick = pickInitialMountAndLens(newCam.mount, newCam.adaptedMounts, customLenses, newCam.id);
                 const lens = pick.lens;
                 const supportsExtender = cam.extenderActive === 1 || !!lens?.extenderFactors?.includes(cam.extenderActive);
                 updateCamera(cam.id, {
@@ -646,7 +651,7 @@ function CameraCard({
               onCancel={() => setShowNewCustomCam(false)}
               onSubmit={(spec) => {
                 const newId = addCustomCamera(spec);
-                const firstLens = getCompatibleLenses(spec.mount, spec.adaptedMounts)[0];
+                const firstLens = pickInitialMountAndLens(spec.mount, spec.adaptedMounts, customLenses, newId).lens;
                 updateCamera(cam.id, {
                   cameraId: newId,
                   activeMount: spec.mount,
@@ -672,9 +677,11 @@ function CameraCard({
               onSubmit={(spec) => {
                 useStore.getState().updateCustomCamera(camDef.id, spec);
                 // If the mount changed and the current lens no longer fits, swap to a compatible one
-                const stillCompatible = lensDef && (lensDef.mount === spec.mount || lensDef.mount === 'integrated');
+                const stillCompatible = lensDef && (spec.mount === 'integrated'
+                  ? lensDef.mount === 'integrated'
+                  : lensDef.mount === spec.mount || lensDef.mount === 'universal');
                 if (!stillCompatible) {
-                  const next = getCompatibleLenses(spec.mount, spec.adaptedMounts)[0];
+                  const next = pickInitialMountAndLens(spec.mount, spec.adaptedMounts, customLenses, camDef.id).lens;
                   if (next) {
                     updateCamera(cam.id, {
                       lensId: next.id,
@@ -704,7 +711,7 @@ function CameraCard({
                   const newMount = e.target.value;
                   // If the current lens doesn't fit the new mount, pick the first
                   // compatible one so the camera card stays in a coherent state.
-                  const stillCompatible = lensDef && (lensDef.mount === newMount || lensDef.mount === 'integrated');
+                  const stillCompatible = lensDef && (lensDef.mount === newMount || lensDef.mount === 'universal');
                   let nextLensId = cam.lensId;
                   let nextFocal = cam.focalLength;
                   let nextAperture = cam.aperture;
@@ -832,6 +839,48 @@ function CameraCard({
               <option value="__new__">{t('sidebar.cam.addCustomLens', '＋ Add custom lens…')}</option>
             </select>
           </label>
+          {/* Eingebaute Optik (#158): gehoert genau zu dieser Kamera. Fehlen
+              die Daten, steht ein Platzhalter — Hinweis statt Sperre. */}
+          {isIntegrated && camDef && !(lensDef && lensFitsCamera(lensDef, camDef.id)) && (
+            <div className="mt-1 rounded-bc-chip border border-bc-yellow/40 bg-bc-yellow/10 px-2 py-1.5 text-[11px] text-bc-text">
+              {lensDef?.id === GENERIC_INTEGRATED_LENS.id
+                ? t('sidebar.cam.integratedNoData', 'No data for the built-in lens of this camera yet — a typical 20x lens stands in.')
+                : t('sidebar.cam.integratedForeign', 'This built-in lens belongs to another camera.')}
+              <div className="mt-1 flex flex-wrap gap-2">
+                {lensDef?.id !== GENERIC_INTEGRATED_LENS.id && (
+                  <button
+                    type="button"
+                    className="text-bc-accent underline"
+                    onClick={() => {
+                      const own = integratedLensesFor(camDef.id, [...customLenses, ...bibLenses])[0];
+                      updateCamera(cam.id, { lensId: own.id, focalLength: own.focalLengthMin, aperture: own.maxApertureWide, extenderActive: 1 });
+                    }}
+                  >
+                    {t('sidebar.cam.integratedUseOwn', 'Use its own lens')}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="text-bc-accent underline"
+                  onClick={() => {
+                    const base = lensDef?.mount === 'integrated' ? lensDef : GENERIC_INTEGRATED_LENS;
+                    setNewLens({
+                      manufacturer: camDef.manufacturer,
+                      model: `${camDef.model} (built-in)`,
+                      focalMin: String(base.focalLengthMin),
+                      focalMax: String(base.focalLengthMax),
+                      aperture: String(base.maxApertureWide),
+                      mount: 'integrated',
+                      type: 'zoom',
+                    });
+                    setShowNewLens(true);
+                  }}
+                >
+                  {t('sidebar.cam.integratedEnter', 'Enter values from the data sheet')}
+                </button>
+              </div>
+            </div>
+          )}
           <LibraryBadge id={lensDef?.id} />
           {lensDef?.isCustom && (
             <UploadStatus item={{ kind: 'lens', lens: lensDef }} onUpload={() => setProposal({ kind: 'lens', lens: lensDef })} />
@@ -884,7 +933,7 @@ function CameraCard({
                   <input type="number" className="w-full bg-bc-panel border border-bc-border px-1 py-0.5 text-bc-text-bright text-xs"
                     value={newLens.aperture} onChange={(e) => setNewLens({ ...newLens, aperture: e.target.value })} /></label>
               </div>
-              <div className="grid grid-cols-2 gap-1">
+              {newLens.mount !== 'integrated' && <div className="grid grid-cols-2 gap-1">
                 <select className="bg-bc-panel border border-bc-border px-1 py-0.5 text-bc-text-bright text-xs"
                   value={newLens.mount} onChange={(e) => setNewLens({ ...newLens, mount: e.target.value })}>
                   {['B4', 'EF', 'PL', 'E', 'MFT', 'RF', 'L', 'FZ', 'universal'].map((m) => (
@@ -896,7 +945,7 @@ function CameraCard({
                   <option value="zoom">{t('sidebar.cam.zoom', 'Zoom')}</option>
                   <option value="prime">{t('sidebar.cam.prime', 'Prime')}</option>
                 </select>
-              </div>
+              </div>}
               <button
                 onClick={() => {
                   if (!newLens.manufacturer || !newLens.model) return;
@@ -907,7 +956,8 @@ function CameraCard({
                     focalLengthMax: parseFloat(newLens.focalMax) || 100,
                     maxApertureWide: parseFloat(newLens.aperture) || 2.8,
                     mount: newLens.mount,
-                    type: newLens.type,
+                    type: newLens.mount === 'integrated' ? 'integrated' : newLens.type,
+                    ...(newLens.mount === 'integrated' && camDef ? { forCameraIds: [camDef.id] } : {}),
                   });
                   updateCamera(cam.id, {
                     lensId: newId,

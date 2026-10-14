@@ -760,7 +760,7 @@ export const useStore = create<AppState>((set, get) => ({
       let activeMount = camDef.mount;
       let lensDef = lensId ? allLenses.find((l) => l.id === lensId) : undefined;
       if (!lensDef) {
-        const pick = pickInitialMountAndLens(camDef.mount, camDef.adaptedMounts, s.customLenses);
+        const pick = pickInitialMountAndLens(camDef.mount, camDef.adaptedMounts, s.customLenses, camDef.id);
         activeMount = pick.mount;
         lensDef = pick.lens ?? allLenses[0];
       }

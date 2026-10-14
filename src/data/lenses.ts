@@ -239,10 +239,10 @@ export const LENSES: Lens[] = [
   { id: 'ptz-sony-brc-x400', manufacturerUrl: 'https://pro.sony/en_GB/products/ptz-network-cameras/brc-x400', manufacturer: 'Sony', model: 'BRC-X400 integrated 20x', focalLengthMin: 4.4, focalLengthMax: 88, maxApertureWide: 2.0, maxApertureTele: 3.8, mount: 'integrated', type: 'integrated', notes: '20x optical zoom' },
   { id: 'ptz-sony-srg-x120', manufacturerUrl: 'https://pro.sony/en_GB/products/ptz-network-cameras/srg-x120', manufacturer: 'Sony', model: 'SRG-X120 integrated 12x', focalLengthMin: 4.4, focalLengthMax: 52.8, maxApertureWide: 2.0, maxApertureTele: 3.7, mount: 'integrated', type: 'integrated', notes: '12x optical zoom' },
   { id: 'ptz-sony-brc-h800', manufacturerUrl: 'https://pro.sony/en_GB/products/ptz-network-cameras/brc-h800', manufacturer: 'Sony', model: 'BRC-H800 integrated 12x', focalLengthMin: 9.3, focalLengthMax: 111.6, maxApertureWide: 2.8, maxApertureTele: 4.5, mount: 'integrated', type: 'integrated', notes: '12x optical zoom, HD PTZ' },
-  { id: 'ptz-pana-ue150', manufacturerUrl: 'https://pro-av.panasonic.net/en/products/aw-ue150/', manufacturer: 'Panasonic', model: 'AW-UE150 integrated 20x', focalLengthMin: 8.8, focalLengthMax: 176.0, maxApertureWide: 2.8, maxApertureTele: 4.5, mount: 'integrated', type: 'integrated', notes: '20x optical zoom' },
-  { id: 'ptz-pana-ue40', manufacturerUrl: 'https://connect.na.panasonic.com/av/video/ptz/aw-ue40?hsLang=en', manufacturer: 'Panasonic', model: 'AW-UE40 integrated 24x', focalLengthMin: 4.12, focalLengthMax: 98.9, maxApertureWide: 1.8, maxApertureTele: 4.0, mount: 'integrated', type: 'integrated', notes: '24x optical zoom' },
-  { id: 'ptz-canon-crn500', manufacturerUrl: 'https://www.canon-europe.com/ptz-cameras/cr-n500/specifications/', manufacturer: 'Canon', model: 'CR-N500 integrated 15x', focalLengthMin: 8.3, focalLengthMax: 124.5, maxApertureWide: 2.8, maxApertureTele: 4.5, mount: 'integrated', type: 'integrated', notes: '15x optical zoom' },
-  { id: 'ptz-canon-crn300', manufacturerUrl: 'https://www.canon-europe.com/ptz-cameras/cr-n300/specifications/', manufacturer: 'Canon', model: 'CR-N300 integrated 20x', focalLengthMin: 3.67, focalLengthMax: 73.4, maxApertureWide: 1.8, maxApertureTele: 2.8, mount: 'integrated', type: 'integrated', notes: '20x optical zoom' },
+  { id: 'ptz-pana-ue150', manufacturerUrl: 'https://pro-av.panasonic.net/en/products/aw-ue150/', manufacturer: 'Panasonic', model: 'AW-UE150 integrated 20x', focalLengthMin: 8.8, focalLengthMax: 176.0, maxApertureWide: 2.8, maxApertureTele: 4.5, mount: 'integrated', type: 'integrated', notes: '20x optical zoom', forCameraIds: ['pana-aw-ue150'] },
+  { id: 'ptz-pana-ue40', manufacturerUrl: 'https://connect.na.panasonic.com/av/video/ptz/aw-ue40?hsLang=en', manufacturer: 'Panasonic', model: 'AW-UE40 integrated 24x', focalLengthMin: 4.12, focalLengthMax: 98.9, maxApertureWide: 1.8, maxApertureTele: 4.0, mount: 'integrated', type: 'integrated', notes: '24x optical zoom', forCameraIds: ['panasonic-aw-ue40'] },
+  { id: 'ptz-canon-crn500', manufacturerUrl: 'https://www.canon-europe.com/ptz-cameras/cr-n500/specifications/', manufacturer: 'Canon', model: 'CR-N500 integrated 15x', focalLengthMin: 8.3, focalLengthMax: 124.5, maxApertureWide: 2.8, maxApertureTele: 4.5, mount: 'integrated', type: 'integrated', notes: '15x optical zoom', forCameraIds: ['canon-cr-n500'] },
+  { id: 'ptz-canon-crn300', manufacturerUrl: 'https://www.canon-europe.com/ptz-cameras/cr-n300/specifications/', manufacturer: 'Canon', model: 'CR-N300 integrated 20x', focalLengthMin: 3.67, focalLengthMax: 73.4, maxApertureWide: 1.8, maxApertureTele: 2.8, mount: 'integrated', type: 'integrated', notes: '20x optical zoom', forCameraIds: ['canon-cr-n300', 'canon-cr-n300w'] },
   { id: 'ptz-sony-fr7', manufacturer: 'Sony', model: 'FR7 (no integrated lens)', focalLengthMin: 28, focalLengthMax: 135, maxApertureWide: 4, mount: 'E', type: 'zoom', notes: 'Use E-mount lens' },
   // ══════════════════════════════════════════════
   //  CINEMA-OPTIKEN (PL/LPL) — T-Blenden laut Hersteller (2026-09)
@@ -1009,6 +1009,7 @@ export const LENSES: Lens[] = [
 ];
 
 export function getLensById(id: string, customLenses?: Lens[]): Lens | undefined {
+  if (id === GENERIC_INTEGRATED_LENS.id) return GENERIC_INTEGRATED_LENS;
   return LENSES.find((l) => l.id === id) ?? customLenses?.find((l) => l.id === id) ?? libraryLenses().find((l) => l.id === id);
 }
 
@@ -1028,14 +1029,46 @@ export function getLensesByMount(mount: string): Lens[] {
  * lenses mountable simultaneously. Picking a B4 lens on a PMW-F5 requires the
  * user to first switch the Mount selector to "B4 (LA-FZB1)".
  *
- * `universal` and `integrated` lenses are returned unconditionally because they
- * either have no mount (PTZ integrated) or are intentionally cross-mount stubs.
+ * `universal` lenses are cross-mount stubs and always offered. An `integrated`
+ * lens belongs to exactly its own camera body (#158): a PTZ never gets another
+ * model's built-in optics, and a camera with a mount never gets one at all.
  */
-export function getCompatibleLenses(cameraMount: string, _adaptedMounts?: string[], activeMount?: string): Lens[] {
-  if (cameraMount === 'integrated') return LENSES.filter((l) => l.mount === 'integrated');
+export function getCompatibleLenses(cameraMount: string, _adaptedMounts?: string[], activeMount?: string, cameraId?: string): Lens[] {
+  if (cameraMount === 'integrated') return integratedLensesFor(cameraId);
   const target = activeMount ?? cameraMount;
-  return LENSES.filter((l) => l.mount === target || l.mount === 'universal' || l.mount === 'integrated');
+  return LENSES.filter((l) => l.mount === target || l.mount === 'universal');
 }
+
+/** Gehoert diese eingebaute Optik zu dieser Kamera? */
+export function lensFitsCamera(lens: Lens, cameraId: string | undefined): boolean {
+  if (lens.mount !== 'integrated' || !cameraId) return false;
+  return (lens.forCameraIds ?? [lens.id.replace(/^ptz-/, '')]).includes(cameraId);
+}
+
+/** Die eingebaute Optik einer Kamera — eigene/Bibliotheks-Eintraege zuerst. */
+export function integratedLensesFor(cameraId: string | undefined, extra: Lens[] = []): Lens[] {
+  const own = [...extra, ...LENSES].filter((l) => lensFitsCamera(l, cameraId));
+  return own.length > 0 ? own : [GENERIC_INTEGRATED_LENS];
+}
+
+/**
+ * Platzhalter fuer eine Kamera mit eingebauter Optik, deren Daten (noch) fehlen.
+ * Typische 20x-PTZ-Optik, damit Vorschau und Bildfeld sofort etwas zeigen; die
+ * Oberflaeche weist darauf hin und bietet an, die Werte aus dem Datenblatt
+ * einzutragen (Hinweis statt Sperre).
+ */
+export const GENERIC_INTEGRATED_LENS: Lens = {
+  id: 'integrated-generic',
+  manufacturer: '',
+  model: 'Built-in lens (placeholder, typical 20x)',
+  focalLengthMin: 4.4,
+  focalLengthMax: 88,
+  maxApertureWide: 2.0,
+  maxApertureTele: 3.8,
+  mount: 'integrated',
+  type: 'integrated',
+  notes: 'Placeholder — enter the values from the data sheet',
+};
 
 /**
  * Pick a sensible default mount + first matching lens for placing a camera or
@@ -1049,11 +1082,13 @@ export function pickInitialMountAndLens(
   cameraMount: string,
   adaptedMounts?: string[],
   extraLenses: Lens[] = [],
+  cameraId?: string,
 ): { mount: string; lens: Lens | undefined } {
+  if (cameraMount === 'integrated') return { mount: cameraMount, lens: integratedLensesFor(cameraId, extraLenses)[0] };
   const candidates = [cameraMount, ...(adaptedMounts ?? [])];
   for (const m of candidates) {
     const builtIn = getCompatibleLenses(cameraMount, adaptedMounts, m)[0];
-    const custom = extraLenses.find((l) => l.mount === m || l.mount === 'universal' || l.mount === 'integrated');
+    const custom = extraLenses.find((l) => l.mount === m || l.mount === 'universal');
     const lens = builtIn ?? custom;
     if (lens) return { mount: m, lens };
   }
