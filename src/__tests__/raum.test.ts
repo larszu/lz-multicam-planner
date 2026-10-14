@@ -164,19 +164,21 @@ describe('Projektdatei: Raum abwaertskompatibel', () => {
   });
 
   it('Raum-Felder kommen durch, Kaputtes faellt weg', () => {
-    const roh = { ...halle(), ceilingHeightM: 9, floorMaterial: 'lava', seatingBlocks: [{ id: 'b', x: 1, y: 1, width: 4, rows: 2 }, { kaputt: true }] } as unknown as Venue;
+    const roh = { ...halle(), ceilingHeightM: 9, floorMaterial: 'lava', wallMaterial: 'glass', seatingBlocks: [{ id: 'b', x: 1, y: 1, width: 4, rows: 2 }, { kaputt: true }] } as unknown as Venue;
     const v = venueAusDatei(roh, roh.stages);
     expect(v.ceilingHeightM).toBe(9);
     expect(v.floorMaterial).toBeUndefined();
+    expect(v.wallMaterial).toBeUndefined();
     expect(v.seatingBlocks).toHaveLength(1);
   });
 
   it('Austauschformat traegt den Raum hin und zurueck', () => {
-    const venue = halle({ ceilingHeightM: 8, floorMaterial: 'wood', seatingBlocks: [{ id: 'b', x: 10, y: 9, width: 8, rows: 6, standing: true }], videoWalls: [{ id: 'w', x: 10, y: 1, widthM: 4, heightM: 2.25 }] });
+    const venue = halle({ ceilingHeightM: 8, floorMaterial: 'wood', wallMaterial: 'brick', seatingBlocks: [{ id: 'b', x: 10, y: 9, width: 8, rows: 6, standing: true }], videoWalls: [{ id: 'w', x: 10, y: 1, widthM: 4, heightM: 2.25 }] });
     const ex = toVenueExchange({ venue, persons: [], walls: [], backgroundPlan: null, appVersion: 't', exportedAt: '' });
     const zurueck = fromVenueExchange(JSON.parse(JSON.stringify(ex))).venue;
     expect(zurueck.ceilingHeightM).toBe(8);
     expect(zurueck.floorMaterial).toBe('wood');
+    expect(zurueck.wallMaterial).toBe('brick');
     expect(zurueck.seatingBlocks).toEqual(venue.seatingBlocks);
     expect(zurueck.videoWalls).toEqual(venue.videoWalls);
   });
@@ -203,9 +205,13 @@ describe('Projektdatei: Laden und Speichern', () => {
     const { useStore, buildProjectFile } = await import('../store/useStore');
     useStore.getState().applyProjectFile(datei(halle()));
     expect(useStore.getState().venue.seatingBlocks).toBeUndefined();
+    expect(useStore.getState().venue.wallMaterial).toBeUndefined();
 
     useStore.getState().addSeatingBlock(true);
     useStore.getState().addVideoWall();
+    useStore.getState().setVenue({ ...useStore.getState().venue, wallMaterial: 'drape' });
+    const wand = useStore.getState().venue.videoWalls![0];
+    useStore.getState().updateVideoWall(wand.id, { x: 4.5, y: 2, bottomM: 2.5, rotationDeg: 90 });
     const gespeichert = JSON.parse(JSON.stringify(buildProjectFile(useStore.getState()))) as ProjectFile;
     useStore.getState().applyProjectFile(datei(halle()));
     useStore.getState().applyProjectFile(gespeichert);
@@ -213,5 +219,7 @@ describe('Projektdatei: Laden und Speichern', () => {
     expect(v.seatingBlocks).toHaveLength(1);
     expect(v.seatingBlocks![0].standing).toBe(true);
     expect(v.videoWalls).toHaveLength(1);
+    expect(v.videoWalls![0]).toMatchObject({ x: 4.5, y: 2, bottomM: 2.5, rotationDeg: 90 });
+    expect(v.wallMaterial).toBe('drape');
   });
 });

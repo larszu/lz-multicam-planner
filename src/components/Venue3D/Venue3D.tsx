@@ -22,7 +22,7 @@ import { useTranslation } from '../../i18n';
 import { easeOut, povFraming, shortestAngleDelta, topFraming, type Framing } from '../../utils/view3dScene';
 import { useSchmal } from '../../lib/useSchmal';
 import { useView3DPrefs } from './view3dPrefs';
-import { Arena, Atmosphere, CoverageWedge, CrowdAndSeating, FieldMesh, LedWalls, ScenePipeline, ShowRig, StageBodyReal } from './ShowScene';
+import { Arena, Atmosphere, CoverageWedge, CrowdAndSeating, FieldMesh, LedWalls, ScenePipeline, ShowRig, StageBodyReal, WallSurfaceMaterial } from './ShowScene';
 import { erzeugeMensch, publikumsVariante, stufenWerte, type Pose, type Stufe, type StufenWerte, type Tiefenschaerfe } from '../../avplan/scene3d';
 import { autoVideoWalls, hatSpielfeld, istSpielfeld } from '../../utils/showRig';
 import { sitzblockNormal } from '../../avplan/floorplan';
@@ -1490,7 +1490,9 @@ export default function Venue3D() {
             return (
               <mesh key={w.id} position={[cx, w.height / 2, cy]} rotation={[0, -angle, 0]}>
                 <boxGeometry args={[len, w.height, 0.15]} />
-                {show
+                {show && venue.wallMaterial
+                  ? <WallSurfaceMaterial art={venue.wallMaterial} laengeM={len} hoeheM={w.height} farbe={w.color} />
+                  : show
                   ? <meshStandardMaterial color={w.color ?? '#3a3d42'} roughness={0.9} />
                   : <meshStandardMaterial color={w.color ?? '#6b7280'} opacity={0.6} transparent />}
               </mesh>

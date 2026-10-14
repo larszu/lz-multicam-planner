@@ -7,7 +7,7 @@ import type { Stage, Venue } from '../types';
 import { stageTopZ } from './stageBody';
 import { audienceSeats, type AudienceInput } from './view3dScene';
 
-const RAUM_SCHLUESSEL = ['ceilingHeightM', 'floorMaterial', 'seatingBlocks', 'videoWalls'] as const;
+const RAUM_SCHLUESSEL = ['ceilingHeightM', 'floorMaterial', 'wallMaterial', 'seatingBlocks', 'videoWalls'] as const;
 
 /**
  * Venue aus einer Projektdatei: bekannte Felder wie gelesen, Raum-Felder nur,

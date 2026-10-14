@@ -8,7 +8,9 @@
 import { FiPlus, FiTrash2 } from 'react-icons/fi';
 import { useStore } from '../../store/useStore';
 import { useTranslation, format } from '../../i18n';
-import { RAUM_BOEDEN, sitzblockNormal, sitzblockPlaetze, videowandNormal, type RaumBoden, type VenueSeatingBlock } from '../../avplan/floorplan';
+import { RAUM_BOEDEN, RAUM_WAENDE, sitzblockNormal, sitzblockPlaetze, videowandNormal, type RaumBoden, type RaumWand, type VenueSeatingBlock } from '../../avplan/floorplan';
+
+const rund = (v: number) => Math.round(v * 100) / 100;
 
 const zahl = (v: string, fallback: number) => {
   const n = parseFloat(v);
@@ -46,6 +48,14 @@ export default function RoomPanel() {
     turf: t('room.floor.turf', 'Grass'),
     tiles: t('room.floor.tiles', 'Tiles'),
     stage: t('room.floor.stage', 'Black stage floor'),
+  };
+
+  const wandName: Record<RaumWand, string> = {
+    plaster: t('room.walls.plaster', 'Painted plaster'),
+    concrete: t('room.walls.concrete', 'Concrete'),
+    brick: t('room.walls.brick', 'Brick'),
+    wood: t('room.walls.wood', 'Wood panelling'),
+    drape: t('room.walls.drape', 'Black drape'),
   };
 
   const art = (b: VenueSeatingBlock) => (
@@ -96,6 +106,21 @@ export default function RoomPanel() {
             {RAUM_BOEDEN.map((b) => <option key={b} value={b}>{bodenName[b]}</option>)}
           </select>
         </label>
+        <label className="col-span-2">
+          <span className="text-bc-muted">{t('room.walls', 'Walls')}</span>
+          <select
+            className="w-full bg-bc-dark border border-bc-border px-2 py-1 text-bc-text-bright"
+            value={venue.wallMaterial ?? ''}
+            title={t('room.walls.title', 'Surface of the hall walls and of every drawn wall in the 3D view. Painted plaster takes each wall\'s own colour.')}
+            onChange={(e) => {
+              const { wallMaterial: _, ...rest } = venue;
+              setVenue(e.target.value ? { ...rest, wallMaterial: e.target.value as RaumWand } : rest);
+            }}
+          >
+            <option value="">{t('room.walls.plain', 'Plain colour')}</option>
+            {RAUM_WAENDE.map((w) => <option key={w} value={w}>{wandName[w]}</option>)}
+          </select>
+        </label>
       </div>
 
       <div className="pt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-bc-muted">{t('room.audience', 'Audience')}</div>
@@ -122,6 +147,8 @@ export default function RoomPanel() {
             <details>
               <summary className="cursor-pointer text-[11px] text-bc-dim hover:text-bc-text">{t('room.details', 'Fine-tune')}</summary>
               <div className="grid grid-cols-3 gap-1 pt-1">
+                <Zahl label={t('room.x', 'X m')} value={rund(b.x)} step={0.1} min={-10000} max={10000} title={t('room.x.title', 'Centre, from the left edge of the plan')} onChange={(v) => updateSeatingBlock(b.id, { x: v })} />
+                <Zahl label={t('room.y', 'Y m')} value={rund(b.y)} step={0.1} min={-10000} max={10000} title={t('room.y.title', 'Centre, from the top edge of the plan')} onChange={(v) => updateSeatingBlock(b.id, { y: v })} />
                 <Zahl label={t('room.rows', 'Rows')} value={b.rows} step={1} min={1} max={200} onChange={(v) => updateSeatingBlock(b.id, { rows: Math.round(v) })} />
                 <Zahl label={t('room.rowSpacing', 'Row gap m')} value={b.rowSpacingM} step={0.05} min={0.4} max={3} onChange={(v) => updateSeatingBlock(b.id, { rowSpacingM: v })} />
                 <Zahl label={t('room.width', 'Width m')} value={b.width} step={0.5} min={1} max={2000} onChange={(v) => updateSeatingBlock(b.id, { width: v })} />
@@ -161,10 +188,12 @@ export default function RoomPanel() {
               </button>
             </div>
             <div className="grid grid-cols-4 gap-1">
+              <Zahl label={t('room.x', 'X m')} value={rund(w.x)} step={0.1} min={-10000} max={10000} title={t('room.wallX.title', 'Centre of the lower edge, from the left edge of the plan')} onChange={(v) => updateVideoWall(w.id, { x: v })} />
+              <Zahl label={t('room.y', 'Y m')} value={rund(w.y)} step={0.1} min={-10000} max={10000} title={t('room.wallY.title', 'Centre of the lower edge, from the top edge of the plan')} onChange={(v) => updateVideoWall(w.id, { y: v })} />
+              <Zahl label={t('room.z', 'Z m')} value={w.bottomM} step={0.25} min={0} max={200} title={t('room.bottom.title', 'Lower edge above the floor')} onChange={(v) => updateVideoWall(w.id, { bottomM: v })} />
+              <Zahl label={t('room.rotation', 'Turn °')} value={w.rotationDeg} step={5} min={0} max={359} onChange={(v) => updateVideoWall(w.id, { rotationDeg: v })} />
               <Zahl label={t('room.width', 'Width m')} value={w.widthM} step={0.5} min={0.5} max={400} onChange={(v) => updateVideoWall(w.id, { widthM: v })} />
               <Zahl label={t('room.height', 'High m')} value={w.heightM} step={0.25} min={0.25} max={200} onChange={(v) => updateVideoWall(w.id, { heightM: v })} />
-              <Zahl label={t('room.bottom', 'Lift m')} value={w.bottomM} step={0.25} min={0} max={200} title={t('room.bottom.title', 'Lower edge above the floor')} onChange={(v) => updateVideoWall(w.id, { bottomM: v })} />
-              <Zahl label={t('room.rotation', 'Turn °')} value={w.rotationDeg} step={5} min={0} max={359} onChange={(v) => updateVideoWall(w.id, { rotationDeg: v })} />
             </div>
           </div>
         );

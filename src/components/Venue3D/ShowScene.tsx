@@ -16,7 +16,7 @@ import { stageTopZ } from '../../utils/stageBody';
 import { coverageWedge } from '../../utils/view3dScene';
 import { publikumsBild } from '../../utils/raum';
 import { showRig } from '../../utils/showRig';
-import { videowandNormal, type RaumBoden, type VenueVideoWall } from '../../avplan/floorplan';
+import { videowandNormal, type RaumBoden, type RaumWand, type VenueVideoWall } from '../../avplan/floorplan';
 import {
   HINTERGRUENDE,
   SZENEN_ZEIT,
@@ -116,6 +116,7 @@ export function Arena({ venue, show }: { venue: Venue; show: boolean }) {
   const w = venue.widthM;
   const d = venue.heightM;
   const decke = venue.ceilingHeightM;
+  const wandArt = venue.wallMaterial;
   const obj = useMemo(() => {
     const g = new THREE.Group();
     const flaeche = new THREE.Mesh(new THREE.PlaneGeometry(w, d), show ? oberflaechenMaterial(boden, { breiteM: w, tiefeM: d }) : new THREE.MeshStandardMaterial({ color: '#252a36', roughness: 1 }));
@@ -134,9 +135,11 @@ export function Arena({ venue, show }: { venue: Venue; show: boolean }) {
     if (show && decke) {
       // Innenseiten nach innen: von aussen (Draufsicht, Rundgang) bleiben
       // Waende und Decke durchsichtig, von innen sind sie da.
-      const wand = new THREE.MeshStandardMaterial({ color: '#16171a', roughness: 0.92, side: THREE.FrontSide });
+      // Ohne gewaehlte Wandoberflaeche (#171) bleibt die dunkle Halle.
+      const schlicht = new THREE.MeshStandardMaterial({ color: '#16171a', roughness: 0.92, side: THREE.FrontSide });
       const seiten: [number, number, number, number][] = [[w / 2, 0, w, 0], [w / 2, d, w, Math.PI], [0, d / 2, d, Math.PI / 2], [w, d / 2, d, -Math.PI / 2]];
       for (const [x, z, laenge, rot] of seiten) {
+        const wand = wandArt ? oberflaechenMaterial(wandArt, { breiteM: laenge, tiefeM: decke }) : schlicht;
         const m = new THREE.Mesh(new THREE.PlaneGeometry(laenge, decke), wand);
         m.position.set(x, decke / 2, z);
         m.rotation.y = rot;
@@ -149,9 +152,21 @@ export function Arena({ venue, show }: { venue: Venue; show: boolean }) {
       g.add(deckeM);
     }
     return g;
-  }, [w, d, boden, decke, show]);
+  }, [w, d, boden, decke, wandArt, show]);
   useEntsorgen(obj);
   return obj ? <primitive object={obj} /> : null;
+}
+
+/* ── Gezeichnete Wand mit der Wandoberflaeche des Raums (#171) ──
+   Putz ist gestrichen und nimmt die Farbe der Wand an; die anderen
+   Oberflaechen haben ihre eigene. */
+export function WallSurfaceMaterial({ art, laengeM, hoeheM, farbe }: { art: RaumWand; laengeM: number; hoeheM: number; farbe?: string }) {
+  const mat = useMemo(
+    () => oberflaechenMaterial(art, { breiteM: laengeM, tiefeM: hoeheM, farbe: art === 'plaster' ? farbe : undefined }),
+    [art, laengeM, hoeheM, farbe],
+  );
+  useEffect(() => () => { mat.map?.dispose(); mat.roughnessMap?.dispose(); mat.dispose(); }, [mat]);
+  return <primitive object={mat} attach="material" />;
 }
 
 /* ── Spielfeld mit Linien statt blauer Flaeche ── */

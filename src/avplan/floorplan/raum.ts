@@ -1,5 +1,5 @@
 // @avplan/floorplan — Raum ueber den Grundriss hinaus: Deckenhoehe,
-// Boden, Tribuenen- und Sitzbloecke, Videowaende. Quelle aller
+// Boden, Waende, Tribuenen- und Sitzbloecke, Videowaende. Quelle aller
 // Planer-Kopien (ADR-015). Nicht in der Kopie aendern.
 //
 // Plan-Koordinaten wie ueberall: x nach rechts, y nach unten (Tiefe), Meter.
@@ -13,6 +13,12 @@
 export type RaumBoden = 'concrete' | 'wood' | 'carpet' | 'turf' | 'tiles' | 'stage'
 
 export const RAUM_BOEDEN: readonly RaumBoden[] = ['concrete', 'wood', 'carpet', 'turf', 'tiles', 'stage']
+
+/** Oberflaeche der Waende. `drape` ist schwarzer Buehnenmolton, wie er in
+ *  Hallen vor die eigentliche Wand gehaengt wird. */
+export type RaumWand = 'plaster' | 'concrete' | 'brick' | 'wood' | 'drape'
+
+export const RAUM_WAENDE: readonly RaumWand[] = ['plaster', 'concrete', 'brick', 'wood', 'drape']
 
 export interface VenueSeatingBlock {
   id: string
@@ -54,6 +60,7 @@ export interface VenueVideoWall {
 export interface RaumErweiterung {
   ceilingHeightM?: number
   floorMaterial?: RaumBoden
+  wallMaterial?: RaumWand
   seatingBlocks?: VenueSeatingBlock[]
   videoWalls?: VenueVideoWall[]
 }
@@ -224,6 +231,7 @@ export function raumAus(roh: unknown): RaumErweiterung {
   const out: RaumErweiterung = {}
   if (typeof r.ceilingHeightM === 'number' && Number.isFinite(r.ceilingHeightM) && r.ceilingHeightM > 0) out.ceilingHeightM = r.ceilingHeightM
   if (typeof r.floorMaterial === 'string' && (RAUM_BOEDEN as readonly string[]).includes(r.floorMaterial)) out.floorMaterial = r.floorMaterial as RaumBoden
+  if (typeof r.wallMaterial === 'string' && (RAUM_WAENDE as readonly string[]).includes(r.wallMaterial)) out.wallMaterial = r.wallMaterial as RaumWand
   const istObjekt = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object'
   if (Array.isArray(r.seatingBlocks)) {
     out.seatingBlocks = r.seatingBlocks

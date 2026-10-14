@@ -1,4 +1,4 @@
-// Prozedurale PBR-Oberflaechen: Boden, Buehne, Tribuene, Sitze.
+// Prozedurale PBR-Oberflaechen: Boden, Waende, Buehne, Tribuene, Sitze.
 //
 // Gezeichnet statt geladen — keine Bilddateien im Paket, keine Lizenzfrage,
 // offline. Jede Art liefert Farbe und Rauheit aus demselben Muster, damit
@@ -6,7 +6,7 @@
 // einmal erzeugt; die Wiederholung bekommt jede Flaeche als eigene Kopie.
 import * as THREE from 'three'
 
-export type OberflaechenArt = 'concrete' | 'wood' | 'carpet' | 'turf' | 'tiles' | 'stage' | 'seat' | 'riser'
+export type OberflaechenArt = 'concrete' | 'wood' | 'carpet' | 'turf' | 'tiles' | 'stage' | 'seat' | 'riser' | 'plaster' | 'brick' | 'drape'
 
 interface Muster {
   /** Kantenlaenge einer Kachel in Metern. */
@@ -174,6 +174,64 @@ const MUSTER: Record<OberflaechenArt, Muster> = {
     zeichnen: (c, n, rau) => {
       moduliere(c, n, fbm(n, 71, [32, 96]), 0.12)
       moduliere(rau, n, fbm(n, 72, [64]), 0.1)
+    },
+  },
+  plaster: {
+    // Gestrichener Putz: hell, matt, nur leichte Rollspur.
+    kachelM: 3, rauheit: 0.9, metall: 0, grund: '#d8d4cc',
+    zeichnen: (c, n, rau) => {
+      moduliere(c, n, fbm(n, 91, [6, 20, 80]), 0.05)
+      moduliere(rau, n, fbm(n, 92, [40]), 0.06)
+    },
+  },
+  brick: {
+    // Normalformat 24 × 7,1 cm mit 1 cm Fuge, Laeuferverband.
+    kachelM: 1.0, rauheit: 0.85, metall: 0, grund: '#8e4b36',
+    zeichnen: (c, n, rau) => {
+      const r = zufall(101)
+      const reihen = 12
+      const h = n / reihen
+      const steine = 4
+      const b = n / steine
+      for (let i = 0; i < reihen; i++) {
+        const versatz = i % 2 ? b / 2 : 0
+        for (let j = -1; j < steine; j++) {
+          const ton = 0.8 + r() * 0.35
+          c.fillStyle = `rgb(${Math.round(142 * ton)},${Math.round(75 * ton)},${Math.round(54 * ton)})`
+          c.fillRect(j * b + versatz, i * h, b, h)
+        }
+      }
+      moduliere(c, n, fbm(n, 102, [16, 64]), 0.15)
+      c.fillStyle = '#bdb6aa'
+      rau.fillStyle = 'rgba(255,255,255,0.9)'
+      for (let i = 0; i < reihen; i++) {
+        c.fillRect(0, i * h, n, 3)
+        rau.fillRect(0, i * h, n, 3)
+        const versatz = i % 2 ? b / 2 : 0
+        for (let j = 0; j <= steine; j++) {
+          c.fillRect(j * b + versatz, i * h, 3, h)
+          rau.fillRect(j * b + versatz, i * h, 3, h)
+        }
+      }
+    },
+  },
+  drape: {
+    // Schwarzer Molton in senkrechten Falten, schluckt Licht.
+    kachelM: 2, rauheit: 1, metall: 0, grund: '#121212',
+    zeichnen: (c, n) => {
+      const bild = c.getImageData(0, 0, n, n)
+      const falten = 8
+      for (let y = 0; y < n; y++) {
+        for (let x = 0; x < n; x++) {
+          const m = 1 + Math.sin((x / n) * falten * Math.PI * 2) * 0.45
+          const k = (y * n + x) * 4
+          bild.data[k] *= m
+          bild.data[k + 1] *= m
+          bild.data[k + 2] *= m
+        }
+      }
+      c.putImageData(bild, 0, 0)
+      moduliere(c, n, fbm(n, 111, [64, 128]), 0.08)
     },
   },
   riser: {
