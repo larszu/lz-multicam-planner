@@ -21,6 +21,7 @@ import { useView3DPrefs } from '../Venue3D/view3dPrefs';
 import { PLANUNG_JE_THEMA, PLANUNGS_BODEN } from '../Venue3D/planungsLook';
 import { useIstHell } from '../../lib/useIstHell';
 import { HOST_BREITE, HOST_HOEHE, RenderMessung, bildPixel, setzeRenderer3D, szene3DGeaendert } from './kameraBild3d';
+import { WEBGL_POWER_PREFERENCE } from '../../utils/gpuInfo';
 
 export default function KameraBildHost() {
   const [prefs] = useView3DPrefs();
@@ -31,7 +32,7 @@ export default function KameraBildHost() {
       style={{ position: 'fixed', left: -20000, top: 0, width: HOST_BREITE, height: HOST_HOEHE, pointerEvents: 'none' }}
     >
       {/* `key`: Schatten legt der Renderer beim Anlegen fest. */}
-      <Canvas key={simple ? 'simple' : 'real'} frameloop="demand" dpr={1} shadows={!simple} gl={{ antialias: true }}>
+      <Canvas key={simple ? 'simple' : 'real'} frameloop="demand" dpr={1} shadows={!simple} gl={{ antialias: true, powerPreference: WEBGL_POWER_PREFERENCE }}>
         <Suspense fallback={null}>
           <HostSzene key={prefs.quality} />
         </Suspense>

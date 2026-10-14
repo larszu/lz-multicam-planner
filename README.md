@@ -91,6 +91,14 @@ before the first rehearsal.
 4. Check the shot in *Preview* and *3D view*; switch between cameras in *Multiview*.
 5. Save the project (`.mcplan`, `Ctrl/⌘+S`) or export a PNG sheet with plan, 3D view, preview and data. *Save* writes back to the file you opened or saved last and only asks the first time; *Save as…* (`Ctrl/⌘+Shift+S`) always asks for a name and location. The desktop app, Chrome and Edge save in place; other browsers download a new copy each time.
 
+### Windows: dedicated graphics card
+
+The app asks for the high-performance GPU on its own. On laptops with Intel and NVIDIA/AMD graphics, Windows can still hand it the integrated one, and the 3D view stutters.
+
+- **Use the installer** (`LZ Multicam Planner Setup x.y.z.exe`). It installs to a fixed folder that stays the same across updates, so a Windows graphics setting for it lasts. The portable `.exe` unpacks itself into `%TEMP%\lz-multicam-planner` and runs from there; a setting on the downloaded file does not reach that copy.
+- Windows Settings → System → Display → Graphics → add the app → *High performance*, then restart the app. Which file to add is shown in the app under *Settings → General → Graphics* (*Program file*).
+- The same place shows the WebGL renderer and the graphics cards Chromium sees, with the one in use marked. If it still says Intel UHD/Iris while an NVIDIA card is listed, the app says so there.
+
 ## Kurz auf Deutsch
 
 LZ Multicam Planner zeichnet Kameras in den Raum und zeigt sofort, ob die
@@ -98,6 +106,11 @@ Optiken passen: Grundriss mit echtem Bildwinkel, fotorealistisches 3D mit Blick
 durch jede Kamera, gerenderte Vorschau und Multiview mit Preview, Program, CUT
 und AUTO. Läuft im Browser und als Desktop-App für macOS und Windows,
 kostenlos nutzbar.
+
+Windows-Rechner mit zwei Grafikkarten: den Installer statt der portablen
+Fassung nehmen und die Programmdatei (angezeigt unter *Einstellungen →
+Allgemein → Grafik*) in den Windows-Grafikeinstellungen auf *Hohe Leistung*
+stellen.
 
 ## Documentation
 

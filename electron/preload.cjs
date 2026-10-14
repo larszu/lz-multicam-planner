@@ -20,3 +20,7 @@ contextBridge.exposeInMainWorld('multicamProjectFile', {
     edited: !!(state && state.edited),
   }),
 });
+
+contextBridge.exposeInMainWorld('multicamGpu', {
+  info: () => ipcRenderer.invoke('gpu-info:get'),
+});

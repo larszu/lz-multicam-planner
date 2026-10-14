@@ -36,6 +36,7 @@ import { useKulissenDaten } from './kulissenDaten';
 import { LABEL_FONT } from './labelFont';
 import CameraListPanel, { type CameraRow } from './CameraListPanel';
 import { cameraRowDetail } from './cameraRow';
+import { WEBGL_POWER_PREFERENCE } from '../../utils/gpuInfo';
 
 /** Fahrt der Blickkamera (Ansichts-Knoepfe, Klick in der Kameraliste). */
 export const FLY_EVENT = 'multicam-3d-fly';
@@ -1182,7 +1183,7 @@ export default function Venue3D() {
 
         {/* `key`: Schatten und Kantenglaettung legt der Renderer beim Anlegen
             fest — der Wechsel zur einfachen Ansicht braucht einen neuen. */}
-        <Canvas key={simple ? 'simple' : 'real'} frameloop="demand" gl={{ preserveDrawingBuffer: true, antialias: simple }} dpr={simple ? 1 : [1, 1.5]} shadows={!simple}>
+        <Canvas key={simple ? 'simple' : 'real'} frameloop="demand" gl={{ preserveDrawingBuffer: true, antialias: simple, powerPreference: WEBGL_POWER_PREFERENCE }} dpr={simple ? 1 : [1, 1.5]} shadows={!simple}>
           <Suspense fallback={null}>
           <ErsterFrame onBereit={setBereit} />
           {!simple && <ScenePipeline quality={prefs.quality === 'simple' ? 'low' : prefs.quality} show={show} dof={dof} onWerte={onWerte} belichtung={tag ? tagBelichtung : undefined} />}

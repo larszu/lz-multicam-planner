@@ -77,6 +77,9 @@
         "portable"
       ]
     },
+    "portable": {
+      "unpackDirName": "lz-multicam-planner"
+    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,

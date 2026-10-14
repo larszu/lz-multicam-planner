@@ -49,6 +49,7 @@ import { useTranslation, type Language } from '../../i18n';
 import { liesThema, setzeThema, type Thema } from '../../lib/thema';
 import DeviceLibrarySection from './DeviceLibrarySection';
 import AiSection from './AiSection';
+import GpuSection from './GpuSection';
 import type { SettingsSection } from './openSettings';
 import hauptlogoDunkel from '../../assets/brand/lzm_hauptlogo_offwhite.svg';
 import hauptlogoHell from '../../assets/brand/lzm_hauptlogo_navy.svg';
@@ -216,6 +217,7 @@ export default function SettingsDialog({ onClose, initialSection = 'general' }: 
               )}
             </p>
           </section>
+          <GpuSection />
           </>)}
         </div>
         </main>

@@ -7,6 +7,39 @@ const fs = require('fs');
 // token and Chromium storage (projects, layouts, library cache) stay put.
 if (app.isPackaged) app.setPath('userData', path.join(app.getPath('appData'), 'MultiCam Planner'));
 
+// GPU-Wahl (Windows-Bericht: NVIDIA in den Windows-Grafikeinstellungen
+// gewaehlt, die App lief trotzdem auf der Intel UHD und ruckelte).
+// - force_high_performance_gpu: Chromium fordert auf Rechnern mit zwei GPUs
+//   die leistungsstarke an (macOS: diskrete GPU; Windows: ANGLE/D3D11 mit
+//   High-Performance-Praeferenz).
+// - use-angle=d3d11: auf Windows das D3D11-Backend fest, kein stilles
+//   Ausweichen auf D3D9/WARP, das immer die Standard-GPU nimmt.
+// Muss vor `ready` stehen; danach wirken Schalter nicht mehr.
+app.commandLine.appendSwitch('force_high_performance_gpu');
+if (process.platform === 'win32') app.commandLine.appendSwitch('use-angle', 'd3d11');
+
+// Diagnose fuer die Einstellungen: welche GPU Chromium sieht und benutzt,
+// und welche EXE Windows in den Grafikeinstellungen braucht. Die portable
+// Fassung laeuft aus einem entpackten Ordner in %TEMP%; der Pfad der
+// gestarteten Datei steht in PORTABLE_EXECUTABLE_FILE.
+ipcMain.handle('gpu-info:get', async () => {
+  let basic = null;
+  try { basic = await app.getGPUInfo('basic'); } catch { /* GPU-Prozess nicht bereit */ }
+  let featureStatus = null;
+  try { featureStatus = app.getGPUFeatureStatus(); } catch { /* vor ready */ }
+  return {
+    platform: process.platform,
+    execPath: process.execPath,
+    portableExecutable: process.env.PORTABLE_EXECUTABLE_FILE || null,
+    switches: { forceHighPerformanceGpu: app.commandLine.hasSwitch('force_high_performance_gpu'), useAngle: app.commandLine.getSwitchValue('use-angle') || null },
+    gpuDevice: Array.isArray(basic?.gpuDevice) ? basic.gpuDevice.map((d) => ({
+      vendorId: d.vendorId, deviceId: d.deviceId, active: !!d.active,
+      vendorString: d.vendorString || null, deviceString: d.deviceString || null, driverVersion: d.driverVersion || null,
+    })) : [],
+    webgl: featureStatus ? featureStatus.webgl : null,
+  };
+});
+
 // Anmelde-Token der Geraetebibliothek (devices.zumpelars.de). Verschluesselt
 // mit dem Schluesselbund des Betriebssystems; ohne Schluesselbund nur im
 // Speicher dieser Sitzung — nie im Klartext auf der Platte. Der Inhalt wird

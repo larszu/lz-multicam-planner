@@ -20,6 +20,7 @@ import { paintLines } from '../../utils/paintState';
 import { shadingLines } from '../../utils/shadingCapability';
 import { registryLines } from '../../utils/paintRegistry';
 import { useTranslation, format } from '../../i18n';
+import { WEBGL_POWER_PREFERENCE } from '../../utils/gpuInfo';
 
 export type ExportMode = 'current' | 'all' | 'widetele' | 'all-widetele';
 
@@ -59,7 +60,7 @@ export default function ExportPanel() {
       if (c.closest('[data-venue3d]')) return c;
     }
     for (const c of canvases) {
-      const ctx = c.getContext('webgl2') || c.getContext('webgl');
+      const ctx = c.getContext('webgl2', { powerPreference: WEBGL_POWER_PREFERENCE }) || c.getContext('webgl', { powerPreference: WEBGL_POWER_PREFERENCE });
       if (ctx) return c;
     }
     return null;

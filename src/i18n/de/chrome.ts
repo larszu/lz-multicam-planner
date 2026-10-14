@@ -59,6 +59,13 @@ export const chrome: Record<string, string> = {
   'header.theme.group': 'Darstellung',
   'settings.about.suite':
     'Teil der LZ Planner Suite — Kamerapositionen, Objektive, Deckung und Schichtübergabe.',
+  'settings.gpu': 'Grafik',
+  'settings.gpu.renderer': 'WebGL-Renderer',
+  'settings.gpu.noWebgl': 'WebGL nicht verfügbar',
+  'settings.gpu.devices': 'Grafikkarten',
+  'settings.gpu.active': 'in Benutzung',
+  'settings.gpu.exe': 'Programmdatei',
+  'settings.gpu.integratedHint': 'Die App läuft auf der integrierten Grafik, obwohl eine eigene Grafikkarte eingebaut ist. In den Windows-Einstellungen unter System → Anzeige → Grafik die Programmdatei oben auf „Hohe Leistung“ stellen und die App neu starten. Die portable Fassung läuft aus einem temporären Ordner – damit die Einstellung bleibt, den Installer nehmen.',
 
   // ── Die Statusleiste (ADR-007 Abschnitt 6: Meldungen links, Zähler rechts) ──
   'status.cameras': '{count} Kameras',
