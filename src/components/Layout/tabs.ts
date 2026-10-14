@@ -12,7 +12,7 @@
 // bleibt die Datei frei von JSX, und Fast-Refresh beschwert sich nicht ueber
 // eine Komponenten-Datei, die auch Konstanten exportiert.
 // ───────────────────────────────────────────────────────────────────────────
-import { FiLayout, FiBox, FiMonitor, FiSliders, FiFilm, FiMove, FiGrid } from 'react-icons/fi';
+import { FiLayout, FiBox, FiMonitor, FiSliders, FiFilm, FiGrid } from 'react-icons/fi';
 import type { IconType } from 'react-icons';
 
 export interface TabDef {
@@ -34,5 +34,4 @@ export const TABS: TabDef[] = [
   { id: 'tab-multiview', key: 'header.tab.multiview', label: 'Multiview', Icon: FiGrid },
   { id: 'tab-calc', key: 'header.tab.calculator', label: 'Calculator', Icon: FiSliders },
   { id: 'tab-shotlist', label: 'Shotlist', Icon: FiFilm },
-  { id: 'tab-rig', label: 'Rig', Icon: FiMove },
 ];

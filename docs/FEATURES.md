@@ -339,13 +339,10 @@ dictionary. That is how the copy inside `av-planner-suite` is already built
 (482 German override keys in 14 files); turning the direction around would mean
 touching ~500 strings again for no visible gain.
 
-This is a property of *this repository*, decided on 2026-09-08 (E-17/E-20):
-`sony-camera-bridge` is English-source as well, while `cable-planner` and
-`light-planner` are German-source. Upstream here still has no i18n at all and
-a hard-coded German UI — that gap is tracked as B-25. `npm run lang:check`
-holds the declaration today and starts measuring by itself as soon as the first
-fallback string appears. The machine-readable copy sits in `package.json` under
-`avplan.sourceLanguage`.
+This is a property of *this repository* (E-17/E-20, 2026-09-08). The UI is
+English-source with German as the first translation (`src/i18n/de/`);
+`npm run lang:check` measures it, and the machine-readable declaration sits in
+`package.json` under `avplan.sourceLanguage`.
 
 ---
 

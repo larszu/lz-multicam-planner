@@ -134,6 +134,8 @@ export const sidebar: Record<string, string> = {
   'sidebar.cam.mismatch': 'Objektiv-Anschluss {lens} passt nicht zum aktiven Anschluss {active}. Bis das stimmt, rechnet die App mit dem nackten Sensor — Werte weichen von der Realität ab.',
   'sidebar.cam.focalReducer': '(Speed Booster)',
   'sidebar.cam.cameraLabel': 'Kamera · {mount}-Anschluss · {sensor}',
+  'sidebar.cam.circleVignette': 'Objektiv deckt den Sensor nicht ({p} %) — starke Vignettierung, Crop nötig.',
+  'sidebar.cam.circleMarginal': 'Bildkreis knapp ({p} %) — Ecken können abdunkeln.',
   'sidebar.cam.cameraLabelIntegrated': 'Kamera · eingebaute Optik · {sensor}',
   'sidebar.cam.integratedNoData': 'Für die eingebaute Optik dieser Kamera sind noch keine Daten hinterlegt — eine typische 20×-Optik steht als Platzhalter.',
   'sidebar.cam.integratedForeign': 'Diese eingebaute Optik gehört zu einer anderen Kamera.',

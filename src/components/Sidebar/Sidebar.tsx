@@ -785,7 +785,10 @@ function CameraCard({
               Warnung. Vorher hatte beides dieselbe Alarmfarbe. */}
           {coverage && coverage.status !== 'ok' && (
             <Note tone={coverage.status === 'vignette' ? 'warn' : 'info'}>
-              {coverage.message}
+              {format(coverage.status === 'vignette'
+                ? t('sidebar.cam.circleVignette', 'Lens does not cover the sensor ({p} %) — heavy vignetting, crop needed.')
+                : t('sidebar.cam.circleMarginal', 'Image circle is tight ({p} %) — corners may darken.'),
+              { p: (coverage.ratio * 100).toFixed(0) })}
             </Note>
           )}
 
