@@ -187,6 +187,9 @@ function VenueWalls({ widthM, heightM }: { widthM: number; heightM: number }) {
  */
 function FPSControls({ mouseLookEnabled, defaultPitch, onManualMove }: { mouseLookEnabled: boolean; defaultPitch: number; onManualMove?: () => void }) {
   const { camera, gl, size } = useThree();
+  // Die Ansicht rendert nur auf Anforderung (frameloop="demand"): die
+  // Steuerung fordert Bilder an, solange sich etwas bewegt.
+  const invalidate = useThree((s) => s.invalidate);
   // Laufende Fahrt. Haende am Steuer (Maus, Tasten, Rad, Finger) brechen die
   // Bewegung ab — nur der Bildwinkel faehrt zu Ende, sonst bliebe ein Tele-
   // Bildwinkel aus dem Kamerablick am freien Rundgang haengen.
@@ -243,10 +246,11 @@ function FPSControls({ mouseLookEnabled, defaultPitch, onManualMove }: { mouseLo
         fromFov: persp.fov,
         toFov,
       };
+      invalidate();
     };
     window.addEventListener(FLY_EVENT, onFly);
     return () => window.removeEventListener(FLY_EVENT, onFly);
-  }, [camera, size.width, size.height]);
+  }, [camera, size.width, size.height, invalidate]);
 
   useEffect(() => {
     const registry = getExportRegistry();
@@ -260,6 +264,7 @@ function FPSControls({ mouseLookEnabled, defaultPitch, onManualMove }: { mouseLo
         camera.position.fromArray(state.pos);
         yaw.current = state.yaw;
         pitch.current = state.pitch;
+        invalidate();
       },
       fitVenue: (widthM: number, heightM: number) => {
         const diag = Math.sqrt(widthM * widthM + heightM * heightM);
@@ -276,10 +281,11 @@ function FPSControls({ mouseLookEnabled, defaultPitch, onManualMove }: { mouseLo
         camera.position.set(camX, camY, camZ);
         yaw.current = Math.atan2(-dx, -dz);
         pitch.current = Math.atan2(dy, horizDist);
+        invalidate();
       },
     };
     return () => { registry.framing3D = null; };
-  }, [camera]);
+  }, [camera, invalidate]);
 
   useEffect(() => {
     const canvas = gl.domElement;
@@ -400,6 +406,11 @@ function FPSControls({ mouseLookEnabled, defaultPitch, onManualMove }: { mouseLo
       canvas.releasePointerCapture?.(e.pointerId);
     };
 
+    // Jede Eingabe weckt die Ansicht; das Weiterlaufen haelt useFrame.
+    const weck = () => invalidate();
+    const WECKER = ['keydown', 'keyup', 'mousemove', 'mouseup'] as const;
+    for (const ev of WECKER) window.addEventListener(ev, weck);
+    for (const ev of ['wheel', 'pointerdown', 'pointermove', 'pointerup'] as const) canvas.addEventListener(ev, weck, { passive: true });
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     canvas.addEventListener('mousedown', onMouseDown);
@@ -428,9 +439,11 @@ function FPSControls({ mouseLookEnabled, defaultPitch, onManualMove }: { mouseLo
       canvas.removeEventListener('pointermove', onPointerMove);
       canvas.removeEventListener('pointerup', onPointerUp);
       canvas.removeEventListener('pointercancel', onPointerUp);
+      for (const ev of WECKER) window.removeEventListener(ev, weck);
+      for (const ev of ['wheel', 'pointerdown', 'pointermove', 'pointerup'] as const) canvas.removeEventListener(ev, weck);
       finger.leeren();
     };
-  }, [camera, gl, mouseLookEnabled, takeOver]);
+  }, [camera, gl, mouseLookEnabled, takeOver, invalidate]);
 
   useFrame((_, delta) => {
     const f = fly.current;
@@ -466,6 +479,8 @@ function FPSControls({ mouseLookEnabled, defaultPitch, onManualMove }: { mouseLo
     // Apply look direction – use Euler directly so roll is always 0
     camera.rotation.order = 'YXZ';
     camera.rotation.set(pitch.current, yaw.current, 0);
+    // Fahrt oder gedrueckte Taste: naechstes Bild anfordern.
+    if (fly.current || keys.current.size > 0) invalidate();
   });
 
   return null;
@@ -921,9 +936,18 @@ function FloorPlanOverlay({ plan }: { plan: BackgroundPlan }) {
 function ErsterFrame({ onBereit }: { onBereit: (b: boolean) => void }) {
   const frames = useRef(0);
   useEffect(() => () => onBereit(false), [onBereit]);
+  const invalidate = useThree((s) => s.invalidate);
+  // Texturen, Schrift und Modelle laden nach — in den ersten Sekunden ein paar
+  // Bilder nachfordern, damit sie ohne Mausbewegung erscheinen.
+  useEffect(() => {
+    const t = window.setInterval(() => invalidate(), 200);
+    const stop = window.setTimeout(() => window.clearInterval(t), 3000);
+    return () => { window.clearInterval(t); window.clearTimeout(stop); };
+  }, [invalidate]);
   useFrame(() => {
     frames.current += 1;
     if (frames.current === 2) onBereit(true);
+    else if (frames.current < 2) invalidate();
   });
   return null;
 }
@@ -1125,7 +1149,7 @@ export default function Venue3D() {
 
         {/* `key`: Schatten und Kantenglaettung legt der Renderer beim Anlegen
             fest — der Wechsel zur einfachen Ansicht braucht einen neuen. */}
-        <Canvas key={simple ? 'simple' : 'real'} gl={{ preserveDrawingBuffer: true, antialias: simple }} dpr={simple ? 1 : [1, 2]} shadows={!simple}>
+        <Canvas key={simple ? 'simple' : 'real'} frameloop="demand" gl={{ preserveDrawingBuffer: true, antialias: simple }} dpr={simple ? 1 : [1, 1.5]} shadows={!simple}>
           <Suspense fallback={null}>
           <ErsterFrame onBereit={setBereit} />
           {!simple && <ScenePipeline quality={prefs.quality === 'simple' ? 'low' : prefs.quality} show={show} dof={dof} onWerte={onWerte} />}

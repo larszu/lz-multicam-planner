@@ -30,7 +30,7 @@ export default function KameraBildHost() {
       style={{ position: 'fixed', left: -20000, top: 0, width: HOST_BREITE, height: HOST_HOEHE, pointerEvents: 'none' }}
     >
       {/* `key`: Schatten legt der Renderer beim Anlegen fest. */}
-      <Canvas key={simple ? 'simple' : 'real'} dpr={1} shadows={!simple} gl={{ antialias: true }}>
+      <Canvas key={simple ? 'simple' : 'real'} frameloop="demand" dpr={1} shadows={!simple} gl={{ antialias: true }}>
         <Suspense fallback={null}>
           <HostSzene key={prefs.quality} />
         </Suspense>
@@ -86,6 +86,9 @@ function HostSzene() {
 
         const { w, h } = bildPixel(rolle, cssW, dpr, gesenkt ? 0.6 : 1);
         const t0 = performance.now();
+        // Ohne laufende Schleife (frameloop="demand") setzt hier die Zeit fuer
+        // Dunst und Videowand.
+        SZENEN_ZEIT.value = t0 / 1000;
         gl.setRenderTarget(null);
         gl.setScissorTest(true);
         gl.setViewport(0, 0, w, h);
