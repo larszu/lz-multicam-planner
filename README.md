@@ -225,6 +225,12 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 
 ### 💾 Project & Layout
 - Save/load projects as JSON with version tracking and unsaved changes detection
+- **Undo / redo:** `Ctrl/⌘+Z` steps back, `Ctrl/⌘+Shift+Z` (or `Ctrl+Y`) steps
+  forward; also under *Edit*, greyed out when there is nothing to undo. Every
+  change to the plan counts — cameras, stage, room, walls, persons, floor plan
+  — and one drag, one slider move or one edited field is one step. Inside a
+  text or number field the field's own undo applies. Opening a file or starting
+  a new project starts the history afresh (up to 100 steps).
 - **Autosave:** the open project is kept in the browser's local storage one
   second after the last change (and at once when the page is left) and comes
   back on the next start — including whether it has unsaved changes. The start

@@ -316,6 +316,9 @@ interface AppState {
   loadProject: (file: File) => Promise<void>;
   /** Wendet ein bereits geparstes ProjectFile auf den Store an (Kern von loadProject). */
   applyProjectFile: (project: ProjectFile) => void;
+  /** Zaehlt jedes Oeffnen/Neu. Die Historie (#175) beginnt dann von vorn:
+   *  ein Strg+Z soll nicht in das vorher offene Projekt zurueckspringen. */
+  projectEpoch: number;
   /** Leeres Projekt — „Datei > Neues Projekt". Setzt GENAU das zurueck, was
    *  auch das Oeffnen einer Datei ersetzt, weil es denselben Weg geht. */
   newProject: () => void;
@@ -347,6 +350,29 @@ interface AppState {
 let nextId = 1;
 function uid(prefix = 'cam'): string {
   return `${prefix}-${nextId++}`;
+}
+
+/** Was Rueckgaengig/Wiederherstellen (#175) zuruecksetzt: die Planungsdaten,
+ *  nicht Auswahl, Ansicht oder Bibliothek. */
+export const HISTORY_KEYS = ['venue', 'cameras', 'persons', 'walls', 'backgroundPlan', 'avForeign', 'stageForeign', 'floorPlanForeign', 'wallForeign', 'personForeign'] as const;
+export type HistorySnapshot = Pick<AppState, (typeof HISTORY_KEYS)[number]>;
+
+export function takeHistorySnapshot(s: AppState): HistorySnapshot {
+  return Object.fromEntries(HISTORY_KEYS.map((k) => [k, s[k]])) as HistorySnapshot;
+}
+
+/** Setzt einen Stand der Historie ein. Die Id-Zaehler laufen nur vorwaerts:
+ *  „Alles loeschen" setzt sie auf 1, und ein Rueckgaengig danach holte sonst
+ *  Ids zurueck, die das naechste „Hinzufuegen" noch einmal vergaebe. */
+export function restoreHistorySnapshot(snap: HistorySnapshot): void {
+  nextId = Math.max(nextId, maxIdSuffix([...snap.cameras.map((c) => c.id), ...snap.walls.map((w) => w.id)]) + 1);
+  personId = Math.max(personId, maxIdSuffix(snap.persons.map((p) => p.id)) + 1);
+  stageId = Math.max(stageId, maxIdSuffix((snap.venue.stages ?? []).map((st) => st.id)) + 1);
+  const { selectedCameraId } = useStore.getState();
+  useStore.setState({
+    ...snap,
+    ...(selectedCameraId && !snap.cameras.some((c) => c.id === selectedCameraId) ? { selectedCameraId: null } : {}),
+  });
 }
 
 const CUSTOM_TEMPLATES_KEY = 'multicam-custom-templates';
@@ -1197,6 +1223,8 @@ export const useStore = create<AppState>((set, get) => ({
     });
   },
 
+  projectEpoch: 0,
+
   applyProjectFile: (project: ProjectFile) => {
     if (project.formatVersion !== 1) {
       // KEIN Hook: der Store ist keine Komponente. Die Sprache steht in ihm
@@ -1299,6 +1327,7 @@ export const useStore = create<AppState>((set, get) => ({
       walls: wallsFixed.items,
       projectVersion: project.projectVersion,
       lastSavedVersion: project.projectVersion,
+      projectEpoch: get().projectEpoch + 1,
       // Eine Datei ohne Id (vor cable-planner#908 gespeichert) bekommt hier
       // ihre — und behaelt sie ab dem naechsten Speichern.
       projectId: isProjectId(project.projectId) ? project.projectId : legacyProjectId(project),

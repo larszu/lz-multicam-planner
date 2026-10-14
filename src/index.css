@@ -557,9 +557,22 @@ canvas {
   height: 40px;
   flex: none;
   padding: 0 12px;
+  border-bottom: 1px solid var(--color-bc-border);
+  /* Ueber dem Arbeitsbereich, sonst malen Plan und Canvas ueber die Klappen. */
+  position: relative;
+  z-index: 40;
+}
+
+/* Das Glas sitzt auf einer eigenen Ebene: `backdrop-filter` am Header selbst
+ * machte ihn zum Bezugsrahmen der `fixed`-Klappen — sie wurden von der
+ * Menueleiste abgeschnitten und lagen unter dem 2D-Plan. */
+.bc-topbar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   background: color-mix(in oklab, var(--color-bc-panel) 82%, transparent);
   backdrop-filter: blur(16px) saturate(1.4);
-  border-bottom: 1px solid var(--color-bc-border);
 }
 
 /* Die Statusleiste: 24 px, dieselbe Zahl wie `.cp-statusbar` und `.statusbar`

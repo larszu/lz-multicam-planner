@@ -4,6 +4,7 @@ import { TABS } from './components/Layout/tabs';
 import FirstSteps from './components/Layout/FirstSteps';
 import StatusBar from './components/Layout/StatusBar';
 import CommandPalette, { type Command } from './components/Layout/CommandPalette';
+import { history, useHistoryShortcuts } from './store/history';
 import Sidebar from './components/Sidebar/Sidebar';
 import Venue2D from './components/Venue2D/Venue2D';
 import Venue3D from './components/Venue3D/Venue3D';
@@ -186,6 +187,7 @@ function useLayoutModel(t: TFn) {
 export default function App() {
   const { t } = useTranslation();
   const { sidebarCollapsed, setSidebarCollapsed } = useStore();
+  useHistoryShortcuts();
   const idRepairCount = useStore((state) => state.lastIdRepair);
   const dismissIdRepair = useStore((state) => state.dismissIdRepair);
   const libraryMerge = useStore((state) => state.lastLibraryMerge);
@@ -248,7 +250,9 @@ export default function App() {
     { id: 'layout:focus', group: 'Layout', label: 'Focus layout', run: () => handleSetLayoutMode('focus') },
     { id: 'layout:grid', group: 'Layout', label: 'Grid layout', run: () => handleSetLayoutMode('grid') },
     { id: 'tools:inventory', group: 'Tools', label: 'Inventory', run: () => setInventoryOpen(true) },
-  ], [handleSelectTab, handleSetLayoutMode]);
+    { id: 'edit:undo', group: 'Edit', label: t('app.menu.undo', 'Undo'), run: () => history.undo() },
+    { id: 'edit:redo', group: 'Edit', label: t('app.menu.redo', 'Redo'), run: () => history.redo() },
+  ], [handleSelectTab, handleSetLayoutMode, t]);
 
   const handleApplyPreset = useCallback((presetId: string) => {
     if (presetId === 'focus') {

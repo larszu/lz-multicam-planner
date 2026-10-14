@@ -6,6 +6,8 @@ export const chrome: Record<string, string> = {
   //    jemand, der zwischen zwei Werkzeugen wechselt, dasselbe liest.
   'app.menu.file': 'Datei',
   'app.menu.edit': 'Bearbeiten',
+  'app.menu.undo': 'Rückgängig',
+  'app.menu.redo': 'Wiederherstellen',
   'app.menu.tools': 'Werkzeuge',
   'app.menu.view': 'Ansicht',
   'app.menu.help': 'Hilfe',

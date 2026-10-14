@@ -1,5 +1,6 @@
 import { useStore, APP_VERSION, buildProjectFile, defaultProjectFileName } from '../../store/useStore';
-import { FiCamera, FiBox, FiSliders, FiSave, FiUpload, FiDownload, FiX, FiCheck, FiMapPin, FiPlus, FiSettings } from 'react-icons/fi';
+import { FiCamera, FiBox, FiSliders, FiSave, FiUpload, FiDownload, FiX, FiCheck, FiMapPin, FiPlus, FiSettings, FiRotateCcw, FiRotateCw } from 'react-icons/fi';
+import { history, useHistoryState } from '../../store/history';
 import { toVenueExchange, parseVenueExchange } from '../../utils/venueExchange';
 import { cameraListOf, buildAvPlanExport } from '../../store/avplanExport';
 import { parseAvPlan } from '../../utils/avplan';
@@ -66,6 +67,8 @@ export default function Header({
   const beschriftung = (tab: TabDef) => (tab.key ? t(tab.key, tab.label) : tab.label);
   const editModes = useMemo(() => getEditModes(t), [t]);
   const { venue, projectVersion, lastSavedVersion, saveProject, loadProject, newProject, editMode, setEditMode, avForeign, showForeign, toggleShowForeign } = useStore();
+  const { canUndo, canRedo } = useHistoryState();
+  const modKey = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
   const hasForeignLighting = !!(avForeign.lighting && Array.isArray((avForeign.lighting as { fixtures?: unknown }).fixtures) && (avForeign.lighting as { fixtures: unknown[] }).fixtures.length > 0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const venueInputRef = useRef<HTMLInputElement>(null);
@@ -384,14 +387,17 @@ export default function Header({
           )}
         </Menu>
 
-        {/* ── Edit ──
-            Kein Rueckgaengig: diese App fuehrt keine Historie. Was „Edit"
-            hier hat, ist der Bearbeitungs-Modus (#43) — er sperrt alles ausser
-            der gewaehlten Kategorie. Ein ausgegrautes „Undo" waere ein
-            PLACEHOLDER; wer die Historie baut, traegt es hier ein. */}
+        {/* ── Edit ── */}
         <Menu label={t('app.menu.edit', 'Edit')}>
           {(close) => (
             <>
+              <MenuItem icon={<FiRotateCcw size={13} />} disabled={!canUndo} onClick={() => { close(); history.undo(); }} note={`${modKey}+Z`}>
+                {t('app.menu.undo', 'Undo')}
+              </MenuItem>
+              <MenuItem icon={<FiRotateCw size={13} />} disabled={!canRedo} onClick={() => { close(); history.redo(); }} note={`${modKey}+Shift+Z`}>
+                {t('app.menu.redo', 'Redo')}
+              </MenuItem>
+              <MenuSeparator />
               <MenuHeading>{t('header.editMode', 'Edit mode')}</MenuHeading>
               {editModes.map((m) => (
                 <MenuItem
