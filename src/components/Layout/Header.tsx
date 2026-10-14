@@ -1,4 +1,4 @@
-import { useStore, APP_VERSION, buildProjectFile, defaultProjectFileName } from '../../store/useStore';
+import { useStore, APP_VERSION } from '../../store/useStore';
 import { FiCamera, FiBox, FiSliders, FiSave, FiUpload, FiDownload, FiX, FiCheck, FiMapPin, FiPlus, FiSettings, FiRotateCcw, FiRotateCw } from 'react-icons/fi';
 import { history, useHistoryState } from '../../store/history';
 import { toVenueExchange, parseVenueExchange } from '../../utils/venueExchange';
@@ -22,6 +22,7 @@ import { buildShiftReport, printShiftReport } from '../../utils/shiftReport';
 import { shiftReportFingerprint } from '../../utils/documentContent';
 import { buildStamp } from '../../utils/documentStamp';
 import { openFirstSteps } from './firstStepsEvent';
+import { canOpenWithTarget, currentElectronPath, openedFromInput, openProjectWithTarget, reportDocumentState, saveProject, saveProjectAs, useProjectFileState } from '../../store/projectSave';
 
 
 // Edit-mode slider options (issue #43). Each mode locks everything except its
@@ -66,7 +67,7 @@ export default function Header({
   // eingeloest. Wer keinen hat, steht mit seinem Label fuer sich.
   const beschriftung = (tab: TabDef) => (tab.key ? t(tab.key, tab.label) : tab.label);
   const editModes = useMemo(() => getEditModes(t), [t]);
-  const { venue, projectVersion, lastSavedVersion, saveProject, loadProject, newProject, editGroups, setEditMode, avForeign, showForeign, toggleShowForeign } = useStore();
+  const { venue, projectVersion, lastSavedVersion, newProject, editGroups, setEditMode, avForeign, showForeign, toggleShowForeign } = useStore();
   const { canUndo, canRedo } = useHistoryState();
   const modKey = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
   const hasForeignLighting = !!(avForeign.lighting && Array.isArray((avForeign.lighting as { fixtures?: unknown }).fixtures) && (avForeign.lighting as { fixtures: unknown[] }).fixtures.length > 0);
@@ -100,28 +101,51 @@ export default function Header({
     setShowSaveInput(false);
   }, [onSaveLayoutPreset, savePresetName]);
 
+  // #199 — Desktop und Browser mit File System Access oeffnen mit Ziel,
+  // damit „Speichern" danach ohne Dialog in dieselbe Datei schreibt. Die
+  // uebrigen Browser bekommen das klassische Datei-Feld.
   const handleLoad = useCallback(() => {
-    fileInputRef.current?.click();
+    // Synchron entscheiden: das Datei-Feld oeffnet nur mit frischer
+    // Nutzer-Geste, ein `await` davor kann sie in Firefox/Safari aufbrauchen.
+    if (canOpenWithTarget()) void openProjectWithTarget();
+    else fileInputRef.current?.click();
   }, []);
 
-  // Speichern unter: der Vorschlag kommt aus DERSELBEN Funktion, die der
-  // Store ohne Argument benutzt. Eine zweite Formel an dieser Stelle waere
-  // die zweite Rechnung - der Vorschlag im Feld hiesse anders als die Datei,
-  // die ein blosses Speichern ablegt.
-  const handleSaveAs = useCallback(() => {
-    const vorschlag = defaultProjectFileName(buildProjectFile(useStore.getState()));
-    const name = window.prompt(t('header.saveAs.prompt', 'File name'), vorschlag);
-    if (!name) return;
-    saveProject(name);
-  }, [saveProject, t]);
+  const saveTexts = useMemo(() => ({
+    promptName: t('header.saveAs.prompt', 'File name'),
+    downloaded: t('header.save.downloaded', 'This browser cannot overwrite files, so {name} was downloaded. Chrome, Edge or the desktop app save in place.'),
+    failed: t('header.save.failed', 'Could not save the file. Use Save as… to choose another location.'),
+  }), [t]);
+  const fileState = useProjectFileState();
+  const handleSave = useCallback(() => { void saveProject(saveTexts); }, [saveTexts]);
+  const handleSaveAs = useCallback(() => { void saveProjectAs(saveTexts); }, [saveTexts]);
+
+  // Strg/⌘+S und Strg/⌘+Shift+S — auch in Eingabefeldern: dort gibt es kein
+  // eigenes Speichern, und der Browser boete sonst an, die SEITE zu sichern.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== 's') return;
+      e.preventDefault();
+      if (e.shiftKey) handleSaveAs(); else handleSave();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [handleSave, handleSaveAs]);
+
+  // Fenstertitel und (macOS) Dokument-Zustand des Fensters.
+  const titleName = fileState.fileName ?? venue.name;
+  useEffect(() => {
+    document.title = `${unsaved ? '● ' : ''}${titleName} — LZ Multicam Planner`;
+    reportDocumentState(currentElectronPath(), unsaved);
+  }, [titleName, unsaved]);
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      await loadProject(file);
+      await openedFromInput(file);
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [loadProject]);
+  }, []);
 
   // Bedarf 50 — das Uebergabe-Blatt. Der Stempel kommt aus DERSELBEN
   // Ableitung wie der Bericht (`shiftReportFingerprint`), sonst stempelt er
@@ -259,7 +283,7 @@ export default function Header({
         <div className="flex min-w-0 shrink-0 items-center gap-2 text-bc-text-bright">
           <Signet className="mr-1 h-5 w-auto shrink-0" />
           <span className="hidden text-sm font-bold sm:inline">LZ Multicam Planner</span>
-          <span className="ml-2 hidden text-xs text-bc-muted lg:inline">— {venue.name}</span>
+          <span className="ml-2 hidden truncate text-xs text-bc-muted lg:inline" title={fileState.fileName ?? undefined}>— {titleName}</span>
           {/* Minimal unsaved-changes indicator (no project-version counter). */}
           {unsaved && (
             <span
@@ -268,6 +292,11 @@ export default function Header({
             >
               <span aria-hidden="true" className="sm:hidden">●</span>
               <span className="hidden sm:inline">{t('header.unsaved', '● unsaved')}</span>
+            </span>
+          )}
+          {fileState.notice && (
+            <span role="status" className="ml-2 hidden max-w-xs truncate text-xs text-bc-muted md:inline" title={fileState.notice}>
+              {fileState.notice}
             </span>
           )}
         </div>
@@ -301,13 +330,17 @@ export default function Header({
                 {t('header.open', 'Open…')}
               </MenuItem>
               <MenuSeparator />
-              <MenuItem icon={<FiSave size={13} />} onClick={() => { close(); saveProject(); }}>
+              <MenuItem
+                icon={<FiSave size={13} />}
+                onClick={() => { close(); handleSave(); }}
+                note={fileState.fileName ? `${fileState.fileName} · ${modKey}+S` : `${modKey}+S`}
+              >
                 {t('header.save', 'Save')}
               </MenuItem>
               <MenuItem
                 icon={<FiSave size={13} />}
                 onClick={() => { close(); handleSaveAs(); }}
-                note={t('header.saveAs.note', 'Asks for the file name')}
+                note={`${t('header.saveAs.note', 'Always asks for a name and location')} · ${modKey}+Shift+S`}
               >
                 {t('header.saveAs', 'Save as…')}
               </MenuItem>

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, session, ipcMain, safeStorage } = require('electron');
+const { app, BrowserWindow, shell, session, ipcMain, safeStorage, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -39,6 +39,61 @@ ipcMain.handle('device-library-token:set', (_event, value) => {
 ipcMain.handle('device-library-token:clear', () => {
   sessionToken = null;
   try { fs.unlinkSync(tokenFile()); } catch { /* war nicht da */ }
+});
+
+// Projektdatei (#199). Geschrieben wird nur in Pfade, die der Nutzer in
+// dieser Sitzung selbst in einem Dialog gewaehlt hat — der Renderer kann
+// sonst keinen beliebigen Pfad ueberschreiben lassen.
+const approvedPaths = new Set();
+const PROJECT_FILTERS = [{ name: 'LZ Multicam Planner', extensions: ['mcplan'] }, { name: 'JSON', extensions: ['json'] }];
+const lastDir = () => {
+  const last = [...approvedPaths].pop();
+  return last ? path.dirname(last) : app.getPath('documents');
+};
+
+ipcMain.handle('project-file:save-as', async (event, defaultName, text) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const safeName = path.basename(String(defaultName || 'project.mcplan'));
+  const r = await dialog.showSaveDialog(win, {
+    defaultPath: path.join(lastDir(), safeName),
+    filters: PROJECT_FILTERS,
+  });
+  if (r.canceled || !r.filePath) return null;
+  const filePath = /\.(mcplan|json)$/i.test(r.filePath) ? r.filePath : `${r.filePath}.mcplan`;
+  await fs.promises.writeFile(filePath, String(text), 'utf8');
+  approvedPaths.add(filePath);
+  return { path: filePath, name: path.basename(filePath) };
+});
+
+ipcMain.handle('project-file:write', async (_event, filePath, text) => {
+  if (!approvedPaths.has(filePath)) return false;
+  try {
+    // Erst daneben schreiben, dann umbenennen: ein Abbruch mitten im
+    // Schreiben laesst die alte Datei heil.
+    const tmp = `${filePath}.tmp-${process.pid}`;
+    await fs.promises.writeFile(tmp, String(text), 'utf8');
+    await fs.promises.rename(tmp, filePath);
+    return true;
+  } catch {
+    return false;
+  }
+});
+
+ipcMain.handle('project-file:open', async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: PROJECT_FILTERS, defaultPath: lastDir() });
+  if (r.canceled || !r.filePaths[0]) return null;
+  const filePath = r.filePaths[0];
+  const text = await fs.promises.readFile(filePath, 'utf8');
+  approvedPaths.add(filePath);
+  return { path: filePath, name: path.basename(filePath), text };
+});
+
+ipcMain.on('project-file:document-state', (event, state) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win || process.platform !== 'darwin') return;
+  win.setDocumentEdited(!!state.edited);
+  win.setRepresentedFilename(state.path && approvedPaths.has(state.path) ? state.path : '');
 });
 
 const ALLOWED_EXTERNAL_PROTOCOLS = ['https:', 'mailto:'];

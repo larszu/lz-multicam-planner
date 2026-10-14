@@ -315,7 +315,6 @@ interface AppState {
   bumpVersion: () => void;
   /** Ohne Namen: der Vorgabename aus Venue und Projektstand. Mit Namen:
    *  Speichern unter. */
-  saveProject: (fileName?: string) => void;
   loadProject: (file: File) => Promise<void>;
   /** Wendet ein bereits geparstes ProjectFile auf den Store an (Kern von loadProject). */
   applyProjectFile: (project: ProjectFile) => void;
@@ -374,6 +373,7 @@ export function restoreHistorySnapshot(snap: HistorySnapshot): void {
   const { selectedCameraId } = useStore.getState();
   useStore.setState({
     ...snap,
+
     ...(selectedCameraId && !snap.cameras.some((c) => c.id === selectedCameraId) ? { selectedCameraId: null } : {}),
   });
 }
@@ -1172,30 +1172,13 @@ export const useStore = create<AppState>((set, get) => ({
   // ── Project versioning ──
   projectId: newProjectId(),
   projectVersion: 1,
-  lastSavedVersion: 0,
+  lastSavedVersion: 1, // #199 — ein frisches, leeres Projekt ist nicht „ungespeichert" (wie nach „Neu")
   autosaveStorageFull: false,
   hasUnsavedChanges: () => {
     const s = get();
     return s.projectVersion !== s.lastSavedVersion;
   },
   bumpVersion: () => set((s) => ({ projectVersion: s.projectVersion + 1 })),
-
-  saveProject: (fileName?: string) => {
-    const project = buildProjectFile(get());
-    const json = JSON.stringify(project, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    // Speichern unter reicht einen Namen herein; ohne ihn bleibt es beim
-    // Vorgabenamen. Den Ablage-ORT kann der Browser nicht anbieten - danach
-    // fragt der Download-Dialog. Ohne diesen Unterschied waeren die beiden
-    // Menuepunkte zwei Wege zu derselben Sache.
-    a.download = fileName || defaultProjectFileName(project);
-    a.click();
-    URL.revokeObjectURL(url);
-    set({ lastSavedVersion: project.projectVersion });
-  },
 
   loadProject: async (file: File) => {
     const text = await file.text();
@@ -1448,3 +1431,13 @@ export const useStore = create<AppState>((set, get) => ({
     });
   },
 }));
+
+// #199 — „ungespeichert" haengt an `projectVersion`. Rueckgaengig/
+// Wiederherstellen und jede Aktion, die das Hochzaehlen vergisst, aenderten
+// das Projekt, ohne dass es danach als ungespeichert galt: Speichern,
+// Strg+Z, Schliessen — weg. Dieses Netz zaehlt fuer sie mit. Oeffnen und Neu
+// (`projectEpoch`) setzen die Version bewusst selbst und bleiben aussen vor.
+useStore.subscribe((s, prev) => {
+  if (s.projectEpoch !== prev.projectEpoch || s.projectVersion !== prev.projectVersion) return;
+  if (HISTORY_KEYS.some((k) => s[k] !== prev[k])) useStore.setState({ projectVersion: s.projectVersion + 1 });
+});

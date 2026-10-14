@@ -146,16 +146,18 @@ assert.ok(
   !/\.then\(\((\w+)\) => \{\s*if \(!\1\)/.test(ohneKommentare),
   'die Dialog-Rueckfrage ist verneint — Abbrechen wuerde das Projekt loeschen',
 );
-for (const s of ['saveProject()', 'handleSaveAs()', 'saveProject(name)']) {
+// #199 — „Speichern" und „Speichern unter" sind zwei Wege: Speichern
+// schreibt ins gemerkte Ziel, Speichern unter fragt IMMER nach Name und Ort.
+// Die Frage selbst stellt `store/projectSave.ts` (Desktop-Dialog,
+// showSaveFilePicker oder — im Browser ohne beides — `window.prompt`); die
+// Kopfzeile muss nur die beiden getrennten Wege aufrufen.
+for (const s of ['saveProject(saveTexts)', 'saveProjectAs(saveTexts)', 'handleSave()', 'handleSaveAs()']) {
   assert.ok(kopf.includes(s), `„Speichern unter" ist nicht eigenstaendig: ${s} fehlt`);
 }
-// Wieder zwei Schreibweisen, eine Zusage: „Speichern unter" HOLT den Namen.
-// Eigenstaendig mit `window.prompt`, in der Suite-Kopie mit `promptDialog`
-// aus `@avplan/ui`. Was beide gemeinsam haben, ist die Frage — und die misst
-// dieser Lauf, statt eine der beiden Fassungen zu bevorzugen.
+const speichernModul = lies('src/store/projectSave.ts');
 assert.ok(
-  /window\.prompt\(|promptDialog\(/.test(kopf),
-  '„Speichern unter" fragt nicht nach dem Dateinamen und ist damit ein zweites „Speichern"',
+  /export async function saveProjectAs[\s\S]*?(saveAs\(|showSaveFilePicker|window\.prompt\(|promptDialog\()/.test(speichernModul),
+  '„Speichern unter" fragt nicht nach Name und Ort und ist damit ein zweites „Speichern"',
 );
 
 // ── 5. Reiter und Menueleiste sind zwei Zeilen ───────────────────────────

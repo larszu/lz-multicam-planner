@@ -89,7 +89,7 @@ before the first rehearsal.
 2. Start from a template (sidebar → *Templates*) or upload your floor plan.
 3. *Add* a camera, choose body and lens, drag it into position.
 4. Check the shot in *Preview* and *3D view*; switch between cameras in *Multiview*.
-5. Save the project (`.mcplan`) or export a PNG sheet with plan, 3D view, preview and data.
+5. Save the project (`.mcplan`, `Ctrl/⌘+S`) or export a PNG sheet with plan, 3D view, preview and data. *Save* writes back to the file you opened or saved last and only asks the first time; *Save as…* (`Ctrl/⌘+Shift+S`) always asks for a name and location. The desktop app, Chrome and Edge save in place; other browsers download a new copy each time.
 
 ## Kurz auf Deutsch
 
