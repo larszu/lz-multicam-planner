@@ -9,10 +9,12 @@ import { istSpielfeld } from '../../utils/showRig';
 import { Arena, CrowdAndSeating, FieldMesh, LedWalls, ShowRig, StageBodyReal, WallSurfaceMaterial } from './ShowScene';
 import type { KulissenDaten } from './kulissenDaten';
 
-export function Kulisse({ daten, show, simple, werte, audience, planungsBoden, einfacheBuehne }: {
+export function Kulisse({ daten, show, tageslicht = false, simple, werte, audience, planungsBoden, einfacheBuehne }: {
   daten: KulissenDaten;
   /** Showlicht an. */
   show: boolean;
+  /** Unter freiem Himmel: Himmel und Sonne bringen ihr Licht selbst mit. */
+  tageslicht?: boolean;
   /** Einfache Darstellung: weniger Publikum. */
   simple: boolean;
   werte: StufenWerte;
@@ -27,10 +29,14 @@ export function Kulisse({ daten, show, simple, werte, audience, planungsBoden, e
     <>
       {show ? (
         <>
-          <hemisphereLight args={['#8ea2d8', '#0d0a08', draussen ? 0.18 : 0.08]} />
-          {/* Streulicht von der Buehne ins Publikum: ohne es waere die Menge ein schwarzes Loch. */}
-          <directionalLight position={[boardLook.x, 18, boardLook.y - diag]} intensity={0.22} color="#7f93ff" />
-          <ShowRig venue={venue} look={boardLook} werte={werte} dunst={draussen ? 0.32 : 0.5} />
+          {!tageslicht && (
+            <>
+              <hemisphereLight args={['#8ea2d8', '#0d0a08', draussen ? 0.18 : 0.08]} />
+              {/* Streulicht von der Buehne ins Publikum: ohne es waere die Menge ein schwarzes Loch. */}
+              <directionalLight position={[boardLook.x, 18, boardLook.y - diag]} intensity={0.22} color="#7f93ff" />
+            </>
+          )}
+          <ShowRig venue={venue} look={boardLook} werte={werte} dunst={draussen || tageslicht ? 0.32 : 0.5} />
         </>
       ) : (
         <>
@@ -41,7 +47,7 @@ export function Kulisse({ daten, show, simple, werte, audience, planungsBoden, e
         </>
       )}
 
-      <Arena venue={venue} show={show} planungsBoden={planungsBoden} />
+      <Arena venue={venue} show={show} offen={tageslicht} planungsBoden={planungsBoden} />
 
       {venue.stages.map((s) => (
         !show && einfacheBuehne

@@ -6,7 +6,8 @@ import * as THREE from 'three';
 import { Text } from '@react-three/drei';
 import { LABEL_FONT } from './labelFont';
 import type { ReferencePerson, StageObjectType } from '../../types';
-import { erzeugeMensch, publikumsVariante, type Pose } from '../../avplan/scene3d';
+import { erzeugeMensch, publikumsVariante } from '../../avplan/scene3d';
+import { personDarstellung, type PersonDarstellung } from '../../utils/personGestalt';
 
 export function PersonMesh({ x, z, height, label, objectType, color, showLabel = true }: { x: number; z: number; height: number; label: string; objectType?: StageObjectType; color?: string; showLabel?: boolean }) {
   const type = objectType ?? 'person';
@@ -181,9 +182,6 @@ export function PersonMesh({ x, z, height, label, objectType, color, showLabel =
   );
 }
 
-/** Typen, die in der Showansicht als echter Mensch erscheinen. */
-const MENSCH_TYPEN: Partial<Record<StageObjectType, Pose>> = { person: 'stehen', 'person-guitar': 'stehen', 'mic-stand': 'stehen', 'sitting-person': 'sitzen' };
-
 function idZahl(id: string): number {
   let h = 2166136261;
   for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
@@ -191,17 +189,19 @@ function idZahl(id: string): number {
 }
 
 /**
- * Referenzperson als Mensch. Kleidung aus der Id, damit dieselbe Person
- * immer gleich aussieht; die Farbe der Person (falls gesetzt) wird das
- * Oberteil. Blickt zur Mitte der Kameras.
+ * Referenzperson als Mensch in voller Detailstufe. Pose, Kleidung und Statur
+ * aus `personDarstellung`, Farben aus der Id, damit dieselbe Person immer
+ * gleich aussieht; die Farbe der Person (falls gesetzt) wird das Oberteil.
+ * Blickt zur Mitte der Kameras.
  */
-export function RealPerson({ id, height, pose, color, facingDeg }: { id: string; height: number; pose: Pose; color?: string; facingDeg: number }) {
+export function RealPerson({ id, height, darstellung, color, facingDeg }: { id: string; height: number; darstellung: PersonDarstellung; color?: string; facingDeg: number }) {
+  const { pose, gestalt } = darstellung;
   const mesh = useMemo(() => {
     const v = publikumsVariante(idZahl(id));
     // Sitzend ist `height` die Hoehe im Sitzen; die Figur misst stehend.
     const stehend = pose === 'sitzen' ? Math.max(1.2, height / 0.72) : height;
-    return erzeugeMensch(pose, { oben: color ?? v.oben, unten: v.unten, haut: v.haut, haar: v.haar, langarm: v.langarm }, stehend);
-  }, [id, height, pose, color]);
+    return erzeugeMensch(pose, { oben: color ?? v.oben, unten: v.unten, haut: v.haut, haar: v.haar, langarm: v.langarm }, stehend, gestalt);
+  }, [id, height, pose, gestalt, color]);
   useEffect(() => () => { mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); }, [mesh]);
   return <primitive object={mesh} rotation={[0, Math.PI / 2 - (facingDeg * Math.PI) / 180, 0]} />;
 }
@@ -212,13 +212,13 @@ export function RealPerson({ id, height, pose, color, facingDeg }: { id: string;
  * `name` zeigt den Namen ueber dem Menschen, `objektName` den am Objekt.
  */
 export function Figur({ person, facingDeg, name, objektName }: { person: ReferencePerson; facingDeg: number; name: boolean; objektName: boolean }) {
-  const pose = MENSCH_TYPEN[person.objectType ?? 'person'];
-  if (!pose) {
+  const darstellung = useMemo(() => personDarstellung(person), [person.id, person.label, person.objectType]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!darstellung) {
     return <PersonMesh x={0} z={0} height={person.height} label={person.label} objectType={person.objectType} color={person.color} showLabel={objektName} />;
   }
   return (
     <>
-      <RealPerson id={person.id} height={person.height} pose={pose} color={person.color} facingDeg={facingDeg} />
+      <RealPerson id={person.id} height={person.height} darstellung={darstellung} color={person.color} facingDeg={facingDeg} />
       {name && (
         <Text font={LABEL_FONT} position={[0, person.height + 0.25, 0]} fontSize={0.22} color={person.color ?? '#f59e0b'} anchorX="center"
           outlineWidth={0.015} outlineColor="#000000">

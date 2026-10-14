@@ -1,4 +1,5 @@
-// Rig-Aufbau in 3D: Stative, Pedestals, Schienen, Ausleger, Krane.
+// Rig-Aufbau in 3D fuer die Montagen, die `@avplan/scene3d` nicht baut
+// (Cable-Cam, Drohne, Scherenbuehne, Steadicam …; siehe utils/kameraModell).
 //
 // Liest dasselbe prozedurale Skelett wie die 2D-Draufsicht
 // (`utils/rigGeometry`) und extrudiert jede Strecke zu einem Zylinder (Rohre,

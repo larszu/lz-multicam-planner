@@ -7,7 +7,7 @@
 // und zu π/2 − θ fuer einen Menschen, der nach lokal +z blickt.
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { menschGeometrie, type Detail, type Pose } from './mensch'
+import { istSitzend, menschGeometrie, type Detail, type Pose } from './mensch'
 import { SZENEN_ZEIT } from './dunst'
 import { oberflaechenMaterial } from './oberflaechen'
 
@@ -92,8 +92,9 @@ const PUBLIKUM_VERT_KOPF = /* glsl */ `
 
 // Lambert statt PBR: tausende kleine Figuren, deren Glanzlicht niemand sieht —
 // das Physik-Modell kostete hier ein Drittel der Bildzeit.
-function publikumMaterial(wiegen: number): THREE.MeshLambertMaterial {
+function publikumMaterial(wiegen: number, detail: Detail): THREE.MeshLambertMaterial {
   const mat = new THREE.MeshLambertMaterial()
+  if (detail === 'hoch') mat.defines = { MENSCH_DETAIL: '' }
   const uWiegen = { value: wiegen }
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uZeit = SZENEN_ZEIT
@@ -106,11 +107,15 @@ function publikumMaterial(wiegen: number): THREE.MeshLambertMaterial {
         transformed.x += uWiegen * (sin(w) * 0.022 * hoehe + sin(w * 1.7) * 0.07 * arm);
         transformed.z += uWiegen * cos(w * 0.8) * 0.012 * hoehe;`)
       .replace('#include <color_vertex>', /* glsl */ `#include <color_vertex>
-        vTeilFarbe = teil < 0.5 ? aHaut : teil < 1.5 ? aOben : teil < 2.5 ? aUnten : teil < 3.5 ? aHaar.rgb : teil < 4.5 ? vec3(0.03) : mix(aHaut, aOben, aHaar.a);`)
+        vTeilFarbe = teil < 0.5 ? aHaut : teil < 1.5 ? aOben : teil < 2.5 ? aUnten : teil < 3.5 ? aHaar.rgb : teil < 4.5 ? vec3(0.03) : mix(aHaut, aOben, aHaar.a);
+        #ifdef MENSCH_DETAIL
+          // TEIL_DETAIL: Sakko wie Oberteil, Augen/Requisit dunkel, Lippen aus der Haut.
+          if (teil > 5.5) vTeilFarbe = teil < 6.5 ? aOben * 0.6 : teil < 8.5 ? vec3(0.05) : teil < 9.5 ? aHaut * vec3(0.86, 0.6, 0.6) : vec3(0.03);
+        #endif`)
     shader.fragmentShader = 'varying vec3 vTeilFarbe;\n' + shader.fragmentShader
       .replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb *= vTeilFarbe;')
   }
-  mat.customProgramCacheKey = () => 'avplan-publikum'
+  mat.customProgramCacheKey = () => `avplan-publikum-${detail}`
   return mat
 }
 
@@ -153,7 +158,7 @@ export function erzeugePublikum(plaetze: PublikumsPlatz[], o: PublikumOptionen =
     const aHaut = new Float32Array(n * 3)
     const aHaar = new Float32Array(n * 4)
     const aPhase = new Float32Array(n)
-    const mesh = new THREE.InstancedMesh(geo, publikumMaterial(pose === 'sitzen' ? (o.wiegen ?? 1) * 0.25 : (o.wiegen ?? 1)), n)
+    const mesh = new THREE.InstancedMesh(geo, publikumMaterial(istSitzend(pose) ? (o.wiegen ?? 1) * 0.25 : (o.wiegen ?? 1), o.detail ?? 'niedrig'), n)
     liste.forEach((p, i) => {
       const v = publikumsVariante(p.r)
       const s = v.groesse / 1.75
@@ -161,7 +166,7 @@ export function erzeugePublikum(plaetze: PublikumsPlatz[], o: PublikumOptionen =
       q.setFromEuler(e)
       // Sitzende sitzen auf einem Sitz von 0,45 m; die Geometrie hat die
       // Sitzflaeche schon dort, also nicht mit der Groesse mitskalieren.
-      pos.set(p.x, p.z + (pose === 'sitzen' ? 0.45 * (1 - s) : 0), p.y)
+      pos.set(p.x, p.z + (istSitzend(pose) ? 0.45 * (1 - s) : 0), p.y)
       skala.set(s * v.breite, s, s * v.breite)
       m.compose(pos, q, skala)
       mesh.setMatrixAt(i, m)

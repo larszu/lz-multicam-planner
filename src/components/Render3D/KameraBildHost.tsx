@@ -14,6 +14,7 @@ import { povFraming } from '../../utils/view3dScene';
 import { SZENEN_ZEIT, stufenWerte, type Stufe } from '../../avplan/scene3d';
 import { Atmosphere } from '../Venue3D/ShowScene';
 import { Kulisse } from '../Venue3D/Kulisse';
+import { Tageslicht } from '../Venue3D/Tageslicht';
 import { Figur } from '../Venue3D/Figuren';
 import { useKulissenDaten } from '../Venue3D/kulissenDaten';
 import { useView3DPrefs } from '../Venue3D/view3dPrefs';
@@ -55,7 +56,9 @@ function HostSzene() {
   const werte = useMemo(() => stufenWerte(stufe), [stufe]);
   const messung = useRef(new RenderMessung());
 
-  useEffect(() => { stelleRendererEin(gl, show, !simple && werte.schatten); }, [gl, show, simple, werte.schatten]);
+  const tag = show && prefs.daylight;
+  const [tagBelichtung, setTagBelichtung] = useState(1);
+  useEffect(() => { stelleRendererEin(gl, show, !simple && werte.schatten, tag ? tagBelichtung : undefined); }, [gl, show, simple, werte.schatten, tag, tagBelichtung]);
 
   // Prioritaet 1 uebernimmt das Rendern von react-three-fiber: der Host
   // zeichnet nur auf Anfrage, nicht in jedem Bild.
@@ -114,12 +117,14 @@ function HostSzene() {
   }, [gl, scene, kamera, prefs.quality, gesenkt]);
 
   // Nach jedem Umbau der Szene sind die kopierten Bilder alt.
-  useEffect(() => { szene3DGeaendert(); }, [daten, show, simple, werte, prefs.audience, thema]);
+  useEffect(() => { szene3DGeaendert(); }, [daten, show, simple, werte, prefs.audience, thema, tag, prefs.sky, tagBelichtung]);
 
   return (
     <>
-      <Atmosphere look={show ? (daten.draussen ? 'nacht' : 'arena') : 'planung'} hintergrund={show ? undefined : PLANUNG_JE_THEMA[thema]} diagM={daten.diag} domeRadius={daten.farDist * 0.8} />
-      <Kulisse daten={daten} show={show} simple={simple} werte={werte} audience={prefs.audience} planungsBoden={PLANUNGS_BODEN[thema]} />
+      {tag
+        ? <Tageslicht sky={prefs.sky} diagM={daten.diag} mitte={{ x: daten.venue.widthM / 2, y: daten.venue.heightM / 2 }} farDist={daten.farDist * 2} onBelichtung={setTagBelichtung} />
+        : <Atmosphere look={show ? (daten.draussen ? 'nacht' : 'arena') : 'planung'} hintergrund={show ? undefined : PLANUNG_JE_THEMA[thema]} diagM={daten.diag} domeRadius={daten.farDist * 0.8} />}
+      <Kulisse daten={daten} show={show} tageslicht={tag} simple={simple} werte={werte} audience={prefs.audience} planungsBoden={PLANUNGS_BODEN[thema]} />
       {daten.persons.map((p) => (
         <group key={p.id} position={[p.x, groundHeightAt(daten.venue.stages, p.x, p.y), p.y]}>
           <Figur person={p} facingDeg={daten.personBlick(p.x, p.y)} name={false} objektName={false} />
@@ -129,10 +134,10 @@ function HostSzene() {
   );
 }
 
-function stelleRendererEin(gl: THREE.WebGLRenderer, show: boolean, schatten: boolean): void {
+function stelleRendererEin(gl: THREE.WebGLRenderer, show: boolean, schatten: boolean, belichtung?: number): void {
   gl.outputColorSpace = THREE.SRGBColorSpace;
   gl.toneMapping = show ? THREE.AgXToneMapping : THREE.NeutralToneMapping;
-  gl.toneMappingExposure = show ? 1.05 : 1;
+  gl.toneMappingExposure = belichtung ?? (show ? 1.05 : 1);
   gl.shadowMap.enabled = schatten;
   gl.shadowMap.needsUpdate = true;
 }

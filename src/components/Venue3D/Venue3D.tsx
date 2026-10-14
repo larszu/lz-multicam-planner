@@ -24,10 +24,14 @@ import { useView3DPrefs } from './view3dPrefs';
 import { PLANUNG_JE_THEMA, PLANUNGS_BODEN } from './planungsLook';
 import { useIstHell } from '../../lib/useIstHell';
 import { Atmosphere, CoverageWedge, ScenePipeline } from './ShowScene';
-import { stufenWerte, type Stufe, type StufenWerte, type Tiefenschaerfe } from '../../avplan/scene3d';
+import { entsorgeKameraCache, stufenWerte, type Detail, type Stufe, type StufenWerte, type Tally, type Tiefenschaerfe } from '../../avplan/scene3d';
+import { kameraModell, type KameraModell } from '../../utils/kameraModell';
+import { Bediener } from './KameraModell';
+import { useKameraRig } from './useKameraRig';
 import { sitzblockNormal } from '../../avplan/floorplan';
 import { Figur } from './Figuren';
 import { Kulisse } from './Kulisse';
+import { Tageslicht } from './Tageslicht';
 import { useKulissenDaten } from './kulissenDaten';
 import { LABEL_FONT } from './labelFont';
 import CameraListPanel, { type CameraRow } from './CameraListPanel';
@@ -596,10 +600,11 @@ function FovPyramid({ cam, isSelected, look }: { cam: ReturnType<typeof useStore
     // own axis (i.e. rolling it). The reorientation is now applied one level
     // up in CameraRig, AFTER the parent pitchRef, so pitch stays pitch.
     <group>
-      {/* Camera body */}
-      <mesh>
-        <boxGeometry args={[0.3, 0.2, 0.4]} />
-        <meshStandardMaterial color={cam.color} emissive={cam.color} emissiveIntensity={isSelected ? 0.5 : 0.15} />
+      {/* Trefferflaeche statt des Modells: ein Klick soll nicht durch
+          hundert Bauteile je Kamera gerechnet werden. */}
+      <mesh position={[0, 0, 0.25]}>
+        <boxGeometry args={[0.45, 0.4, 0.7]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
       {/* FOV volume */}
       {look.showFrustum && look.showVolume && (
@@ -630,13 +635,6 @@ function FovPyramid({ cam, isSelected, look }: { cam: ReturnType<typeof useStore
         <lineSegments geometry={geoMax}>
           <lineBasicMaterial color="#22c55e" opacity={0.4} transparent />
         </lineSegments>
-      )}
-      {/* Tally-Lampe ueber dem Gehaeuse */}
-      {tallyColor && (
-        <mesh position={[0, 0.22, 0]}>
-          <boxGeometry args={[0.18, 0.08, 0.18]} />
-          <meshBasicMaterial color={tallyColor} toneMapped={false} />
-        </mesh>
       )}
       {/* Label: dreht sich zum Betrachter, damit es auch von oben lesbar ist */}
       {look.showLabel && (
@@ -690,8 +688,13 @@ function CameraRig({
   venueWidth,
   venueHeight,
   look,
+  modell,
+  bediener,
 }: {
   look: CameraLook;
+  modell: KameraModell;
+  /** Person an der Kamera zeigen, wo die Halterung eine vorsieht. */
+  bediener: boolean;
   cam: ReturnType<typeof useStore.getState>['cameras'][0];
   isSelected: boolean;
   isUnlocked: boolean;
@@ -736,6 +739,9 @@ function CameraRig({
       pitchRef.current.rotation.set(0, 0, THREE.MathUtils.degToRad(cam.tilt));
     }
   }, [cam.pan, cam.tilt, cam.x, cam.y, cam.z, cam.trackOffset, cam.rigRotation, cam]);
+
+  const eff = effectiveCameraPos(cam);
+  const { rig, versatz } = useKameraRig(modell, { x: eff.x, y: eff.y, z: cam.z, pan: cam.pan, tilt: cam.tilt });
 
   // Ausrichtung des Rigs — einmal im Render aufgeloest, damit die Callbacks
   // nur den Winkel als Abhaengigkeit brauchen und nicht das ganze cam-Objekt.
@@ -785,6 +791,13 @@ function CameraRig({
 
   return (
     <>
+      {/* Das Modell steht auf der verfahrenen Position, die Schiene liegt
+          trotzdem fest: das Rig verschiebt sie um den Fahrweg zurueck. */}
+      <primitive object={rig.gruppe} visible={!look.isPov} />
+      {modell.skelett && !look.isPov && <RigStructure cam={cam} isSelected={isSelected} />}
+      {bediener && modell.bediener && !look.isPov && (
+        <Bediener id={cam.id} pose={modell.bediener} x={eff.x} y={eff.y} z={cam.z} pan={cam.pan} />
+      )}
       {/* Die Gizmos stehen NEBEN dem Rig, nicht darin. Steckt ein
           TransformControls in der Gruppe, die es bewegt, ruft sein
           `updateMatrixWorld` das seines eigenen Vorfahren auf — die Rekursion
@@ -870,8 +883,12 @@ function CameraRig({
                 camera's pan axis. Applying this group AFTER pitchRef means pitch
                 acts on the camera's right axis (X) before reorientation, giving a
                 proper pitch instead of roll. */}
-            <group rotation={[0, -Math.PI / 2, 0]}>
-              <FovPyramid cam={cam} isSelected={isSelected} look={look} />
+            {/* Der Kegel beginnt an der Objektivfront (Knoten `optischeAchse`),
+                nicht an der Pan-Achse. */}
+            <group position={versatz.position} quaternion={versatz.quaternion}>
+              <group rotation={[0, -Math.PI / 2, 0]}>
+                <FovPyramid cam={cam} isSelected={isSelected} look={look} />
+              </group>
             </group>
           </group>
         </group>
@@ -1041,15 +1058,31 @@ export default function Venue3D() {
     };
   }), [cameras, fovById, t]);
 
+  // Einfache Ansicht (#167): ohne Pipeline, Schatten und Showlicht.
+  const simple = prefs.quality === 'simple';
+  const show = prefs.showLight && !simple;
+  const tag = show && prefs.daylight;
+  const [tagBelichtung, setTagBelichtung] = useState(1);
+  // Viele Kameras in der Planungsansicht: einfache Modelle, sonst stockt das
+  // Drehen. Im Showlicht zaehlt das Bild — bis zu einer Grenze.
+  const detail: Detail = cameras.length <= (show ? 16 : 6) ? 'hoch' : 'niedrig';
+  const modelle = useMemo(() => {
+    const m = new Map<string, KameraModell>();
+    for (const c of cameras) {
+      const info = fovById.get(c.id);
+      const tally: Tally = c.id === programCameraId ? 'rot' : c.id === selectedCameraId && programCameraId ? 'gruen' : 'aus';
+      m.set(c.id, kameraModell(c, info?.camDef, info?.lensDef, { detail, tally, deckeM: venue.ceilingHeightM }));
+    }
+    return m;
+  }, [cameras, fovById, detail, programCameraId, selectedCameraId, venue.ceilingHeightM]);
+  useEffect(() => () => entsorgeKameraCache(), []);
+
   const diag = Math.hypot(venue.widthM, venue.heightM);
   const labelSize = Math.min(2.2, Math.max(0.35, diag / 55));
 
   const kulisse = useKulissenDaten(prefs.videoBoard);
   const { draussen, farDist, personBlick } = kulisse;
 
-  // Einfache Ansicht (#167): ohne Pipeline, Schatten und Showlicht.
-  const simple = prefs.quality === 'simple';
-  const show = prefs.showLight && !simple;
   const [bereit, setBereit] = useState(false);
   const povInfo = povCam ? fovById.get(povCam.id) : undefined;
 
@@ -1128,14 +1161,17 @@ export default function Venue3D() {
         <Canvas key={simple ? 'simple' : 'real'} gl={{ preserveDrawingBuffer: true, antialias: simple }} dpr={simple ? 1 : [1, 2]} shadows={!simple}>
           <Suspense fallback={null}>
           <ErsterFrame onBereit={setBereit} />
-          {!simple && <ScenePipeline quality={prefs.quality === 'simple' ? 'low' : prefs.quality} show={show} dof={dof} onWerte={onWerte} />}
-          <Atmosphere look={show ? (draussen ? 'nacht' : 'arena') : 'planung'} hintergrund={show ? undefined : PLANUNG_JE_THEMA[thema]} diagM={diag} domeRadius={farDist * 0.8} />
+          {!simple && <ScenePipeline quality={prefs.quality === 'simple' ? 'low' : prefs.quality} show={show} dof={dof} onWerte={onWerte} belichtung={tag ? tagBelichtung : undefined} />}
+          {tag
+            ? <Tageslicht sky={prefs.sky} diagM={diag} mitte={{ x: venue.widthM / 2, y: venue.heightM / 2 }} farDist={farDist} onBelichtung={setTagBelichtung} />
+            : <Atmosphere look={show ? (draussen ? 'nacht' : 'arena') : 'planung'} hintergrund={show ? undefined : PLANUNG_JE_THEMA[thema]} diagM={diag} domeRadius={farDist * 0.8} />}
           <PerspectiveCamera makeDefault position={[camX, camY, camZ]} fov={VIEW3D_FOV_DEG} near={0.1} far={farDist} />
           <FPSControls mouseLookEnabled={unlockedCameraId === null} defaultPitch={startPitch} onManualMove={handleManualMove} />
 
           <Kulisse
             daten={kulisse}
             show={show}
+            tageslicht={tag}
             simple={simple}
             werte={werte}
             audience={prefs.audience}
@@ -1177,13 +1213,6 @@ export default function Venue3D() {
             );
           })}
 
-          {/* Rig-Aufbau (Stativ, Schiene, Kran) — eigene Gruppe auf der
-              Parkposition, waehrend die Kamera selbst auf der verfahrenen
-              Position sitzt. Sonst wuerde die Schiene mitfahren. */}
-          {cameras.map((cam) => (
-            <RigStructure key={`rig-${cam.id}`} cam={cam} isSelected={cam.id === selectedCameraId} />
-          ))}
-
           {/* Cameras with explicit unlock + gizmo editing */}
           {cameras.map((cam) => (
             <CameraRig
@@ -1203,6 +1232,8 @@ export default function Venue3D() {
               onEditModeChange={setEditMode}
               venueWidth={venue.widthM}
               venueHeight={venue.heightM}
+              modell={modelle.get(cam.id)!}
+              bediener={prefs.operators}
               look={{
                 showFrustum: cam.id === selectedCameraId || !prefs.coverage,
                 showVolume: !prefs.coverage,

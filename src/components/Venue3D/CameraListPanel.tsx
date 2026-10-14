@@ -3,6 +3,7 @@ import type { VenueCamera } from '../../types';
 import { useTranslation } from '../../i18n';
 import type { View3DPrefs, View3DQuality } from './view3dPrefs';
 import type { Stufe } from '../../avplan/scene3d';
+import TageslichtEinstellung from './TageslichtEinstellung';
 
 export interface CameraRow {
   cam: VenueCamera;
@@ -12,7 +13,7 @@ export interface CameraRow {
   hFovDeg: number | null;
 }
 
-type ToggleKey = 'coverage' | 'labels' | 'audience' | 'showLight' | 'videoBoard' | 'floorPlan';
+type ToggleKey = 'coverage' | 'labels' | 'audience' | 'operators' | 'showLight' | 'videoBoard' | 'floorPlan';
 
 /**
  * Kameraliste rechts in der 3D-Ansicht. Ein Klick faehrt die Ansicht in den
@@ -56,6 +57,7 @@ export default function CameraListPanel({
     { key: 'coverage', label: t('venue.toggle.coverage', 'Coverage') },
     { key: 'labels', label: t('venue.toggle.labels', 'Labels') },
     { key: 'audience', label: t('venue.toggle.audience', 'Audience') },
+    { key: 'operators', label: t('venue.toggle.operators', 'Camera operators') },
     { key: 'showLight', label: t('venue.toggle.showLight', 'Show light'), disabled: prefs.quality === 'simple', why: t('venue.toggle.showLightSimple', 'Not in the simple view') },
     { key: 'videoBoard', label: t('venue.toggle.videoBoard', 'Video wall'), disabled: hasRoomWalls, why: t('venue.toggle.videoBoardRoom', 'The room has its own video walls (sidebar, Room)') },
     { key: 'floorPlan', label: t('venue.toggle.floorPlan', 'Floor plan'), disabled: !hasFloorPlan, why: t('venue.toggle.floorPlanNone', 'No floor plan loaded') },
@@ -95,6 +97,32 @@ export default function CameraListPanel({
           );
         })}
       </div>
+
+      {prefs.showLight && prefs.quality !== 'simple' && (
+        <div className="flex items-center gap-2 px-3 pb-2">
+          <span className="text-[11px] text-bc-muted">{t('venue.light.label', 'Light')}</span>
+          <div className="bc-seg bc-seg-kompakt" role="group" aria-label={t('venue.light.label', 'Light')}>
+            {([
+              [false, t('venue.light.hall', 'Hall')],
+              [true, t('venue.light.daylight', 'Daylight')],
+            ] as [boolean, string][]).map(([v, label]) => (
+              <button
+                key={label}
+                type="button"
+                aria-pressed={prefs.daylight === v}
+                onClick={() => onPrefs({ daylight: v })}
+                title={v ? t('venue.light.daylight.title', 'Open air with sun and sky: date, time, place and weather') : undefined}
+                className="px-3 text-[11px] font-medium"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {prefs.showLight && prefs.quality !== 'simple' && prefs.daylight && (
+        <TageslichtEinstellung sky={prefs.sky} onSky={(patch) => onPrefs({ sky: { ...prefs.sky, ...patch } })} />
+      )}
 
       <div className="flex items-center gap-2 px-3 pb-2">
         <span className="text-[11px] text-bc-muted">{t('venue.quality.label', 'Quality')}</span>

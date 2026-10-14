@@ -58,7 +58,7 @@ const HARMLOS = new Set(
     'neues', 'neuen', 'aktuell', 'aktuelle', 'aktuellem', 'dauerhaft',
     'genaue', 'bauen', 'frequenz', 'steuerung', 'teuerste', 'aktuellen', 'steuert', 'gesteuert',
     'ferngesteuert', 'übersteuert', 'ansteuerung',
-    'aktueller', 'aktuelles',
+    'aktueller', 'aktuelles', 'blaue',
     // Englisch und Bezeichner, die als Text auftauchen
     'venueexchange', 'importvenueexchange', 'parsevenueexchange', 'venue',
     'returndue', 'due', 'value', 'values', 'postovalue', 'valuetopos',
@@ -82,6 +82,9 @@ const KENNUNGEN = new Set([
   // `lib/usePlanLaden.ts` vergleicht. Ein Wert des Pakets, kein Text: die
   // Meldung dazu steht uebersetzt daneben.
   'pdf-nicht-verfuegbar',
+  // Werte von @avplan/scene3d (Posen, Statur, Wetter, Schiene, Tally), mit
+  // denen Kamera- und Personenmodell gebaut werden.
+  'laengs', 'haendeVorn', 'handHuefte', 'armeVerschraenkt', 'kraeftig', 'leicht-bewoelkt', 'gruen',
 ]);
 
 /** Hex-Folgen (Farben, Fingerabdruecke) bestehen nur aus a-f und Ziffern. */

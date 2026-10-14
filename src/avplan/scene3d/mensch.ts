@@ -1,6 +1,6 @@
 // Menschen ohne Modelldatei.
 //
-// Ein Koerper aus Kapseln zwischen Gelenkpunkten, Rumpf und Kopf gedreht —
+// Detail 'niedrig' (Publikum): ein Koerper aus Kapseln zwischen Gelenkpunkten, Rumpf und Kopf gedreht —
 // je Pose eine Gelenktabelle. Jeder Eckpunkt traegt seinen Teil (Haut,
 // Oberteil, Hose, Haar, Schuh, Unterarm), damit eine Geometrie fuer tausende
 // Instanzen reicht und die Farben je Person im Shader entstehen.
@@ -9,10 +9,19 @@
 // (zehntausend Knochen-Saetze), und fuer frei verfuegbare, fotorealistische
 // Personen-Scans fehlt eine klare Lizenz. Fuer einzelne Personen kann eine
 // GLB-Datei dazukommen (`personModell.ts`).
+//
+// Detail 'hoch' (einzelne Personen) baut `menschKoerper.ts`: Lofts mit
+// anatomischen Profilen, Kleidung, Haar, PBR-Material.
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { istSitzend, skelett, type Pose } from './menschSkelett'
+import { koerperGeometrie, TEIL_DETAIL, vollstaendig, type Gestalt } from './menschKoerper'
+import { menschMaterial } from './menschMaterial'
 
-export type Pose = 'stehen' | 'sitzen' | 'jubeln'
+export { POSEN, istSitzend, type Pose } from './menschSkelett'
+export { koerperGeometrie, TEIL_DETAIL, GESTALT_STANDARD, type Gestalt, type Statur, type Oberteil, type Unterteil, type Schuhe } from './menschKoerper'
+export { menschMaterial, type MenschMaterialOptionen } from './menschMaterial'
+
 export type Detail = 'niedrig' | 'hoch'
 
 /** Teile in der Reihenfolge des Shaders. */
@@ -26,12 +35,12 @@ interface Gelenke {
   kopf: V
   hueftL: V; knieL: V; knoechelL: V; zehL: V
   schulterL: V; ellbogenL: V; handL: V
-  /** Abweichungen der rechten Seite; sonst gespiegelt. */
-  rechts?: Partial<Pick<Gelenke, 'ellbogenL' | 'handL' | 'knieL' | 'knoechelL' | 'zehL'>>
+  /** Abweichungen der rechten Seite (in gespiegelten Koordinaten); sonst gespiegelt. */
+  rechts?: Partial<Pick<Gelenke, 'hueftL' | 'schulterL' | 'ellbogenL' | 'handL' | 'knieL' | 'knoechelL' | 'zehL'>>
 }
 
 /** Normgroesse 1,75 m, Blick nach +z, Fuesse bzw. Sitzflaeche auf y = 0 / 0,45. */
-const POSEN: Record<Pose, Gelenke> = {
+const KAPSEL_POSEN: Partial<Record<Pose, Gelenke>> = {
   stehen: {
     huefte: [0, 0.88, 0], hals: [0, 1.47, -0.01], kopf: [0, 1.625, 0.01],
     hueftL: [0.095, 0.9, 0], knieL: [0.1, 0.5, 0.02], knoechelL: [0.1, 0.09, -0.01], zehL: [0.105, 0.035, 0.13],
@@ -53,6 +62,27 @@ const POSEN: Record<Pose, Gelenke> = {
 
 const spiegel = (v: V): V => [-v[0], v[1], v[2]]
 
+/** Gelenktabelle fuer die Kapselfigur; neuere Posen kommen aus dem Skelett. */
+function kapselGelenke(pose: Pose): Gelenke {
+  const alt = KAPSEL_POSEN[pose]
+  if (alt) return alt
+  const sk = skelett(pose)
+  const v = (p: THREE.Vector3, dy = 0): V => [p.x, p.y + dy, p.z]
+  const [al, ar] = sk.arme
+  const [bl, br] = sk.beine
+  const zeh = (b: typeof bl): V => [b.knoechel.x + b.fuss.x * 0.14, 0.035, b.knoechel.z + b.fuss.z * 0.14]
+  const hand = (a: typeof al) => v(a.handgelenk.clone().addScaledVector(a.finger, 0.04))
+  return {
+    huefte: v(sk.becken, -0.01), hals: v(sk.hals, -0.02), kopf: v(sk.kopf, 0.005),
+    hueftL: v(bl.huefte, 0.01), knieL: v(bl.knie), knoechelL: v(bl.knoechel, 0.015), zehL: zeh(bl),
+    schulterL: v(al.schulter, -0.01), ellbogenL: v(al.ellbogen), handL: hand(al),
+    rechts: {
+      hueftL: spiegel(v(br.huefte, 0.01)), knieL: spiegel(v(br.knie)), knoechelL: spiegel(v(br.knoechel, 0.015)), zehL: spiegel(zeh(br)),
+      schulterL: spiegel(v(ar.schulter, -0.01)), ellbogenL: spiegel(v(ar.ellbogen)), handL: spiegel(hand(ar)),
+    },
+  }
+}
+
 interface Aufloesung {
   rund: number
   kappe: number
@@ -62,15 +92,10 @@ interface Aufloesung {
   rumpfProfil: [number, number][]
 }
 
-const AUFLOESUNG: Record<Detail, Aufloesung> = {
-  niedrig: {
-    rund: 4, kappe: 1, rumpf: 6, kopfB: 7, kopfH: 5,
-    rumpfProfil: [[0.001, 0], [0.155, 0.04], [0.14, 0.38], [0.172, 0.76], [0.12, 0.96], [0.03, 1]],
-  },
-  hoch: {
-    rund: 12, kappe: 4, rumpf: 20, kopfB: 24, kopfH: 18,
-    rumpfProfil: [[0.001, 0], [0.12, 0.005], [0.155, 0.04], [0.163, 0.18], [0.142, 0.37], [0.15, 0.5], [0.168, 0.66], [0.175, 0.78], [0.168, 0.88], [0.13, 0.95], [0.07, 0.99], [0.03, 1]],
-  },
+// Nur noch fuer die Kapselfigur; 'hoch' baut menschKoerper.ts.
+const AUF: Aufloesung = {
+  rund: 4, kappe: 1, rumpf: 6, kopfB: 7, kopfH: 5,
+  rumpfProfil: [[0.001, 0], [0.155, 0.04], [0.14, 0.38], [0.172, 0.76], [0.12, 0.96], [0.03, 1]],
 }
 
 function mitTeil(g: THREE.BufferGeometry, teil: number | ((p: THREE.Vector3) => number)): THREE.BufferGeometry {
@@ -99,30 +124,6 @@ function glied(a: V, b: V, r: number, auf: Aufloesung, teil: number | ((p: THREE
   return g
 }
 
-/**
- * Konisches Glied mit Kugelgelenken an beiden Enden — Oberschenkel sind
- * oben dicker als am Knie. Nur im feinen Detail; im Publikum reicht die
- * Kapsel, und die Gelenkkugeln kosten Dreiecke.
- */
-function konisch(a: V, b: V, ra: number, rb: number, auf: Aufloesung, teil: number): THREE.BufferGeometry[] {
-  const va = new THREE.Vector3(...a)
-  const vb = new THREE.Vector3(...b)
-  const richtung = vb.clone().sub(va)
-  const l = Math.max(0.01, richtung.length())
-  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), richtung.normalize())
-  const rohr = new THREE.CylinderGeometry(rb, ra, l, auf.rund, 1, true)
-  mitTeil(rohr, teil)
-  rohr.applyQuaternion(q)
-  rohr.translate((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2)
-  const kugel = (p: V, r: number) => {
-    const k = new THREE.SphereGeometry(r, auf.rund, Math.max(4, auf.rund / 2))
-    mitTeil(k, teil)
-    k.translate(...p)
-    return k
-  }
-  return [rohr, kugel(a, ra), kugel(b, rb)]
-}
-
 function rumpf(j: Gelenke, auf: Aufloesung): THREE.BufferGeometry {
   const unten = new THREE.Vector3(...j.huefte)
   const oben = new THREE.Vector3(...j.hals)
@@ -136,46 +137,24 @@ function rumpf(j: Gelenke, auf: Aufloesung): THREE.BufferGeometry {
   return g
 }
 
-function kopf(j: Gelenke, auf: Aufloesung, detail: Detail): THREE.BufferGeometry[] {
+function kopf(j: Gelenke, auf: Aufloesung): THREE.BufferGeometry[] {
   const g = new THREE.SphereGeometry(0.1, auf.kopfB, auf.kopfH)
   g.scale(0.84, 1.1, 1.0)
   // Haar: Kappe oben und hinten. Gesicht, Ohren und Nacken bleiben Haut.
   mitTeil(g, (p) => (p.y > 0.035 || (p.y > -0.06 && p.z < -0.035) ? TEIL.haar : TEIL.haut))
   g.translate(...j.kopf)
-  const teile = [g, glied(j.hals, [j.kopf[0], j.kopf[1] - 0.07, j.kopf[2] - 0.01], 0.048, auf, TEIL.haut)]
-  if (detail === 'hoch') {
-    // Haar als eigene, etwas groessere Kappe: Volumen statt aufgemalter Farbe.
-    const haar = new THREE.SphereGeometry(0.104, auf.kopfB, auf.kopfH, 0, Math.PI * 2, 0, Math.PI * 0.55)
-    haar.scale(0.88, 1.08, 1.04)
-    haar.rotateX(-0.25)
-    mitTeil(haar, TEIL.haar)
-    haar.translate(j.kopf[0], j.kopf[1] + 0.012, j.kopf[2] - 0.012)
-    teile.push(haar)
-    const nase = new THREE.SphereGeometry(0.017, 8, 6)
-    nase.scale(0.8, 1.3, 1)
-    mitTeil(nase, TEIL.haut)
-    nase.translate(j.kopf[0], j.kopf[1] - 0.012, j.kopf[2] + 0.098)
-    teile.push(nase)
-    for (const s of [-1, 1]) {
-      const ohr = new THREE.SphereGeometry(0.022, 8, 6)
-      ohr.scale(0.45, 1, 0.8)
-      mitTeil(ohr, TEIL.haut)
-      ohr.translate(j.kopf[0] + s * 0.083, j.kopf[1] - 0.005, j.kopf[2] - 0.005)
-      teile.push(ohr)
-    }
-  }
-  return teile
+  return [g, glied(j.hals, [j.kopf[0], j.kopf[1] - 0.07, j.kopf[2] - 0.01], 0.048, auf, TEIL.haut)]
 }
 
 function seite(j: Gelenke, links: boolean): Pick<Gelenke, 'hueftL' | 'knieL' | 'knoechelL' | 'zehL' | 'schulterL' | 'ellbogenL' | 'handL'> {
   const r = links ? {} : (j.rechts ?? {})
   const s = (v: V) => (links ? v : spiegel(v))
   return {
-    hueftL: s(j.hueftL),
+    hueftL: s(r.hueftL ?? j.hueftL),
     knieL: s(r.knieL ?? j.knieL),
     knoechelL: s(r.knoechelL ?? j.knoechelL),
     zehL: s(r.zehL ?? j.zehL),
-    schulterL: s(j.schulterL),
+    schulterL: s(r.schulterL ?? j.schulterL),
     ellbogenL: s(r.ellbogenL ?? j.ellbogenL),
     handL: s(r.handL ?? j.handL),
   }
@@ -183,47 +162,36 @@ function seite(j: Gelenke, links: boolean): Pick<Gelenke, 'hueftL' | 'knieL' | '
 
 const CACHE = new Map<string, THREE.BufferGeometry>()
 
-/**
- * Geometrie eines Menschen in Normgroesse (1,75 m) mit Attribut `teil`.
- * Gecacht je Pose und Detail — nicht veraendern, sondern skalieren.
- */
-export function menschGeometrie(pose: Pose, detail: Detail = 'niedrig'): THREE.BufferGeometry {
-  const schluessel = `${pose}|${detail}`
-  const fertig = CACHE.get(schluessel)
-  if (fertig) return fertig
-  const j = POSEN[pose]
-  const auf = AUFLOESUNG[detail]
-  const teile: THREE.BufferGeometry[] = [rumpf(j, auf), ...kopf(j, auf, detail)]
+function kapselGeometrie(pose: Pose): THREE.BufferGeometry {
+  const j = kapselGelenke(pose)
+  const teile: THREE.BufferGeometry[] = [rumpf(j, AUF), ...kopf(j, AUF)]
   for (const links of [true, false]) {
     const s = seite(j, links)
-    if (detail === 'hoch') {
-      teile.push(...konisch(s.hueftL, s.knieL, 0.085, 0.056, auf, TEIL.unten))
-      teile.push(...konisch(s.knieL, s.knoechelL, 0.054, 0.036, auf, TEIL.unten))
-      teile.push(glied(s.knoechelL, s.zehL, 0.042, auf, TEIL.schuh))
-      teile.push(...konisch(s.schulterL, s.ellbogenL, 0.054, 0.04, auf, TEIL.oben))
-      teile.push(...konisch(s.ellbogenL, s.handL, 0.039, 0.028, auf, TEIL.unterarm))
-    } else {
-      teile.push(glied(s.hueftL, s.knieL, 0.072, auf, TEIL.unten))
-      teile.push(glied(s.knieL, s.knoechelL, 0.055, auf, TEIL.unten))
-      teile.push(glied(s.knoechelL, s.zehL, 0.042, auf, TEIL.schuh))
-      teile.push(glied(s.schulterL, s.ellbogenL, 0.05, auf, TEIL.oben))
-      teile.push(glied(s.ellbogenL, s.handL, 0.04, auf, TEIL.unterarm))
-    }
-    if (detail === 'hoch') {
-      const hand = new THREE.SphereGeometry(0.045, 10, 8)
-      hand.scale(0.55, 1, 0.9)
-      mitTeil(hand, TEIL.haut)
-      const richtung = new THREE.Vector3(...s.handL).sub(new THREE.Vector3(...s.ellbogenL)).normalize()
-      hand.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), richtung))
-      hand.translate(s.handL[0] + richtung.x * 0.06, s.handL[1] + richtung.y * 0.06, s.handL[2] + richtung.z * 0.06)
-      teile.push(hand)
-    }
+    teile.push(glied(s.hueftL, s.knieL, 0.072, AUF, TEIL.unten))
+    teile.push(glied(s.knieL, s.knoechelL, 0.055, AUF, TEIL.unten))
+    teile.push(glied(s.knoechelL, s.zehL, 0.042, AUF, TEIL.schuh))
+    teile.push(glied(s.schulterL, s.ellbogenL, 0.05, AUF, TEIL.oben))
+    teile.push(glied(s.ellbogenL, s.handL, 0.04, AUF, TEIL.unterarm))
   }
   const g = mergeGeometries(teile, false)
   teile.forEach((t) => t.dispose())
   if (!g) throw new Error('Menschen-Geometrie liess sich nicht zusammenfuegen.')
   g.computeBoundingBox()
   g.computeBoundingSphere()
+  return g
+}
+
+/**
+ * Geometrie eines Menschen in Normgroesse (1,75 m) mit Attribut `teil`.
+ * 'niedrig': Kapselfigur fuers Publikum (TEIL); 'hoch': detaillierter
+ * Koerper in Standard-Gestalt (TEIL_DETAIL, dazu `atem` und `tangent`).
+ * Gecacht je Pose und Detail — nicht veraendern, sondern skalieren.
+ */
+export function menschGeometrie(pose: Pose, detail: Detail = 'niedrig'): THREE.BufferGeometry {
+  const schluessel = `${pose}|${detail}`
+  const fertig = CACHE.get(schluessel)
+  if (fertig) return fertig
+  const g = detail === 'hoch' ? koerperGeometrie(pose) : kapselGeometrie(pose)
   CACHE.set(schluessel, g)
   return g
 }
@@ -234,32 +202,60 @@ export interface MenschFarben {
   haut: THREE.ColorRepresentation
   haar: THREE.ColorRepresentation
   schuh?: THREE.ColorRepresentation
-  /** Lange Aermel: Unterarm in der Farbe des Oberteils. */
+  /** Lange Aermel: ohne `gestalt.oberteil` wird daraus ein Hemd statt T-Shirt. */
   langarm?: boolean
+  /** Sakko; ohne Angabe ein dunkles Grau. */
+  jacke?: THREE.ColorRepresentation
+  augen?: THREE.ColorRepresentation
 }
 
-/** Einzelner Mensch (Buehne, Referenzperson) mit festen Farben. */
-export function erzeugeMensch(pose: Pose, farben: MenschFarben, groesseM = 1.75): THREE.Mesh {
-  const g = menschGeometrie(pose, 'hoch').clone()
+export interface MenschGestalt extends Gestalt {
+  /** Ruhebewegung (Atmen, Gewicht verlagern) aus der Szenenzeit; 0 = still. */
+  ruhe?: number
+  /** 0..1, damit nebeneinander Stehende nicht im Gleichtakt atmen. */
+  phase?: number
+}
+
+const SOHLE: Record<string, string> = { sneaker: '#e9e7e2', halbschuh: '#17120e', stiefel: '#1b1714' }
+
+/**
+ * Einzelner Mensch (Buehne, Referenzperson) mit festen Farben, detailliert.
+ * Ein Mesh mit einem Material; Geometrie gehoert dem Aufrufer.
+ */
+export function erzeugeMensch(pose: Pose, farben: MenschFarben, groesseM = 1.75, gestalt: MenschGestalt = {}): THREE.Mesh {
+  const voll = vollstaendig({ oberteil: farben.langarm ? 'hemd' : 'tshirt', ...stripUndefined(gestalt) })
+  const standard = Object.keys(stripUndefined(gestalt)).every((k) => k === 'ruhe' || k === 'phase') && voll.oberteil === 'tshirt'
+  const g = standard ? menschGeometrie(pose, 'hoch').clone() : koerperGeometrie(pose, voll)
   const teil = g.getAttribute('teil')
-  const c = {
-    haut: new THREE.Color(farben.haut),
-    oben: new THREE.Color(farben.oben),
-    unten: new THREE.Color(farben.unten),
-    haar: new THREE.Color(farben.haar),
-    schuh: new THREE.Color(farben.schuh ?? '#16171a'),
-  }
+  const haut = new THREE.Color(farben.haut)
+  const tabelle: THREE.Color[] = []
+  tabelle[TEIL_DETAIL.haut] = haut
+  tabelle[TEIL_DETAIL.oben] = new THREE.Color(farben.oben)
+  tabelle[TEIL_DETAIL.unten] = new THREE.Color(farben.unten)
+  tabelle[TEIL_DETAIL.haar] = new THREE.Color(farben.haar)
+  tabelle[TEIL_DETAIL.schuh] = new THREE.Color(farben.schuh ?? '#16171a')
+  tabelle[TEIL_DETAIL.unterarm] = farben.langarm ? tabelle[TEIL_DETAIL.oben] : haut
+  tabelle[TEIL_DETAIL.jacke] = new THREE.Color(farben.jacke ?? '#2b2d33')
+  tabelle[TEIL_DETAIL.auge] = new THREE.Color('#bdb6ab')
+  tabelle[TEIL_DETAIL.iris] = new THREE.Color(farben.augen ?? '#3b2a1e')
+  tabelle[TEIL_DETAIL.lippe] = haut.clone().multiply(new THREE.Color(0.9, 0.7, 0.68))
+  tabelle[TEIL_DETAIL.sohle] = new THREE.Color(SOHLE[voll.schuhe])
+  tabelle[TEIL_DETAIL.requisit] = new THREE.Color('#1c1d20')
   const farbe = new Float32Array(teil.count * 3)
   for (let i = 0; i < teil.count; i++) {
-    const t = teil.getX(i)
-    const f = t === TEIL.haut ? c.haut : t === TEIL.oben ? c.oben : t === TEIL.unten ? c.unten : t === TEIL.haar ? c.haar : t === TEIL.schuh ? c.schuh : farben.langarm ? c.oben : c.haut
+    const f = tabelle[Math.round(teil.getX(i))] ?? haut
     farbe.set([f.r, f.g, f.b], i * 3)
   }
   g.setAttribute('color', new THREE.BufferAttribute(farbe, 3))
   const s = groesseM / 1.75
   g.scale(s, s, s)
-  const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.72, metalness: 0 }))
+  const mat = menschMaterial({ ruhe: gestalt.ruhe ?? 0, phase: gestalt.phase ?? 0, basis: istSitzend(pose) ? 0.45 * s : 0 })
+  const mesh = new THREE.Mesh(g, mat)
   mesh.castShadow = true
   mesh.receiveShadow = true
   return mesh
+}
+
+function stripUndefined<T extends object>(o: T): Partial<T> {
+  return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as Partial<T>
 }

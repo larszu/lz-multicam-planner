@@ -207,9 +207,12 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 - **Tally** from the Multiview: Program camera red, Preview green — on the camera in 3D and in the list
 - **Photoreal by default:** dark arena with haze, trusses with fixtures whose beams stand in the haze, warm front light on the stage with real shadows, LED walls that glow and light the stage, floodlights over pitches, a night sky outdoors. Ambient occlusion, bloom, AgX tone mapping. One **Quality** switch: *Auto* (starts high, lowers once if the frame rate stays low), *High*, *Low*, and *Simple* — a light 3D view without lighting effects, shadows or post-processing for slow computers. A spinner covers the view until the scene has drawn its first frame
 - **Audience** from the room's audience areas — seated on seats and stands, standing with some hands raised — or, without areas, filling the free floor (centre aisle, clearance around stages, cameras, people and walls). Thousands of people with varied clothing, size and posture, instanced so they stay smooth. Space is kept free around cameras and people. Scenery only: Preview and sight lines do not take it into account; place a person if a head in the shot matters
-- **People on stage** appear as detailed people (standing or seated) in every view, facing the cameras
+- **Cameras look like the real thing:** body, lens and mount are built from the catalogue and the rig — no extra input. PTZ → PTZ head (on a tripod, or with *Fixed mount* on the wall, under the ceiling from 2.5 m or close to it); broadcast camera with a box lens → studio camera with box lens, with a B4 handheld lens → shoulder-camera look; cinema → cinema body with cine prime or cine zoom (matte box on *High*); FX3 class and mirrorless → small body with cage. Tripod, pedestal, jib/Technocrane (arm length from the rig), dolly and slider (laid track, the cart follows the track offset) and shoulder rig are modelled; other rigs (cable cam, drone, scissor lift …) keep the drawn rig with the camera on top. The FOV pyramid starts at the front of the lens. With many cameras the planning view uses simpler models
+- **Camera operators** (toggle, off by default) stand at tripods, pedestals and dollies and carry shoulder cameras
+- **People on stage** appear as detailed people in every view, facing the cameras. Pose and clothing follow the object and its name: *Moderation*/*Host* speaks in a jacket or dress, *Vocal* sings into a mic, guitar and seated objects get their pose, others stand in varied poses — always the same look for the same person
+- **Light: Hall · Daylight** (with show light): *Daylight* puts the venue under the open sky — sun, sky, moon and stars from date, time, place (German cities or coordinates), the floor plan's north direction and weather (clear, partly cloudy, overcast, haze). The time slider marks sunrise, sunset, golden hour and blue hour. Stage lights stay visible by day; at night the exposure matches the hall look. Applies to the rendered camera pictures too. Times are in the computer's time zone
 - **Camera view like the camera's picture:** sensor and focal length set the angle, planning overlays (coverage, labels) disappear, and on *High* the depth of field follows focal length, aperture and focus distance
-- **Show light** off = evenly lit planning view with grid. **Video wall** draws one wall per stage when the room has none; **Labels** and **Floor plan** can be toggled; all toggles are remembered
+- **Show light** off = evenly lit planning view with grid. **Video wall** draws one wall per stage when the room has none; **Camera operators**, **Labels** and **Floor plan** can be toggled; all toggles are remembered
 - Rendering building blocks come from `@avplan/scene3d` (see *Shared suite packages*)
 - Drag to look around — the picture follows the mouse like in 3D and map apps (drag right, the scene moves right); WASD to move, Space/Shift up/down, Ctrl sprint, scroll to dolly
 - **Touch: one finger looks around (the picture follows the finger), two fingers pinch to move forward/back and drag to slide sideways and up/down** — no keyboard needed on a phone or tablet
@@ -423,7 +426,8 @@ drag & drop handlers), the `venue-exchange` schema (including the optional room
 fields and the seat layout of audience areas), which
 `src/utils/venueExchange.ts` re-exports next to MultiCam's own conversion; and
 `@avplan/scene3d`: the render pipeline, haze beams, surfaces, people, crowd,
-stands and LED walls behind the 3D view.
+stands, LED walls, sky and sun position (needs `suncalc`) and the camera
+bodies, lenses and mounts behind the 3D view.
 **Never edit these folders here** — change the package in the suite and run
 `npm run pakete:verteilen` there. `src/__tests__/avplanKopien.test.ts` hashes
 every file against its manifest and fails on changed or unlisted files.

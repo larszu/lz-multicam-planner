@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { loadJSON, saveJSON } from '../../utils/storage';
 import type { Qualitaet } from '../../avplan/scene3d';
+import { HIMMEL_STANDARD, type HimmelPrefs } from '../../utils/tageslicht';
 
 /** Was die 3D-Ansicht zeigt. Gilt fuer alle Projekte, nicht je Plan. */
 export interface View3DPrefs {
@@ -9,9 +10,14 @@ export interface View3DPrefs {
   audience: boolean;
   /** Showlicht: Scheinwerfer, Lichtkegel, Dunst. Aus = gleichmaessig hell zum Planen. */
   showLight: boolean;
+  /** Showlicht unter freiem Himmel statt in der Halle: Sonne, Himmel, Wetter. */
+  daylight: boolean;
+  sky: HimmelPrefs;
   videoBoard: boolean;
   /** Grundriss-Bild auf dem Boden (nur wenn eines geladen ist). */
   floorPlan: boolean;
+  /** Kamerafrau bzw. Kameramann an Stativ, Pedestal, Dolly und Schulterkamera. */
+  operators: boolean;
   /** Kameraliste rechts ein- oder ausgeklappt. */
   listOpen: boolean;
   /**
@@ -31,8 +37,11 @@ export const DEFAULT_VIEW3D_PREFS: View3DPrefs = {
   labels: true,
   audience: true,
   showLight: true,
+  daylight: false,
+  sky: HIMMEL_STANDARD,
   videoBoard: false,
   floorPlan: true,
+  operators: false,
   listOpen: true,
   quality: 'auto',
 };
@@ -43,7 +52,8 @@ let stand: View3DPrefs | null = null;
 const hoerer = new Set<() => void>();
 
 function laden(): View3DPrefs {
-  const p = { ...DEFAULT_VIEW3D_PREFS, ...loadJSON<Partial<View3DPrefs>>(KEY, {}) };
+  const roh = loadJSON<Partial<View3DPrefs>>(KEY, {});
+  const p = { ...DEFAULT_VIEW3D_PREFS, ...roh, sky: { ...HIMMEL_STANDARD, ...roh.sky } };
   return ['auto', 'high', 'low', 'simple'].includes(p.quality) ? p : { ...p, quality: 'auto' };
 }
 

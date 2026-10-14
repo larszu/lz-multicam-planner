@@ -48,9 +48,11 @@ function useEntsorgen(obj: THREE.Object3D | null): void {
 }
 
 /* ── Pipeline: rendert statt react-three-fiber (useFrame mit Prioritaet 1) ── */
-export function ScenePipeline({ quality, show, dof, onWerte }: {
+export function ScenePipeline({ quality, show, dof, onWerte, belichtung }: {
   quality: Qualitaet;
   show: boolean;
+  /** Vorgegebene Belichtung (Tageslicht); sonst die des Looks. */
+  belichtung?: number;
   dof: Tiefenschaerfe | null;
   onWerte: (w: StufenWerte, stufe: Stufe) => void;
 }) {
@@ -82,9 +84,12 @@ export function ScenePipeline({ quality, show, dof, onWerte }: {
     const p = ref.current;
     if (!p) return;
     p.setTonemapping(show ? 'agx' : 'neutral');
-    p.setBelichtung(show ? 1.05 : 1);
-    p.setBloom(show ? 0.6 : 0.15, 1.3);
-  }, [show]);
+    p.setBelichtung(belichtung ?? (show ? 1.05 : 1));
+    // Tageslicht: die Schwelle gilt vor dem Tonemapping, die Szene liegt um
+    // den Kehrwert der Belichtung hoeher. Tags bleibt Bloom fast aus — der
+    // Schein um jede besonnte Flaeche sah aus wie Nebel.
+    p.setBloom(belichtung !== undefined ? 0.6 * Math.min(1, belichtung) ** 2 : show ? 0.6 : 0.15, 1.3 / Math.min(1, belichtung ?? 1));
+  }, [show, belichtung]);
   useFrame((state, dt) => {
     SZENEN_ZEIT.value = state.clock.elapsedTime;
     ref.current?.render(dt);
@@ -113,11 +118,12 @@ export function Atmosphere({ look, diagM, domeRadius, hintergrund }: { look: Hin
 }
 
 /* ── Halle: Boden, Waende, Decke ── */
-export function Arena({ venue, show, planungsBoden = PLANUNGS_BODEN.dunkel }: { venue: Venue; show: boolean; planungsBoden?: string }) {
+export function Arena({ venue, show, offen = false, planungsBoden = PLANUNGS_BODEN.dunkel }: { venue: Venue; show: boolean; offen?: boolean; planungsBoden?: string }) {
   const boden: RaumBoden = venue.floorMaterial ?? 'concrete';
   const w = venue.widthM;
   const d = venue.heightM;
-  const decke = venue.ceilingHeightM;
+  // Unter freiem Himmel stehen keine Hallenwaende und keine Decke.
+  const decke = offen ? undefined : venue.ceilingHeightM;
   const wandArt = venue.wallMaterial;
   const obj = useMemo(() => {
     const g = new THREE.Group();
