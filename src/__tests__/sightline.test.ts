@@ -229,6 +229,6 @@ describe('Erreichbarkeit', () => {
   it('rechnet gegen den GESAMTEN Aufbau, nicht nur gegen Wände', () => {
     // Der Befund nennt Pult, Monitor, Traverse und Lautsprecherstapel -- nur
     // Waende zu pruefen liesse genau die Faelle liegen, die er aufzaehlt.
-    expect(sidebarQuelle).toContain('{ cameras: [cam], walls, persons, stages: venue.stages }');
+    expect(sidebarQuelle).toContain('{ cameras: [cam], walls, persons, stages: venue.stages, defaultWallHeightM: venue.defaultWallHeightM }');
   });
 });

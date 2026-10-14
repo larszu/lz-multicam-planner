@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../../store/useStore';
+import { defaultWallHeight, resolveWallHeights } from '../../utils/wallHeight';
 import { effectiveCameraPos } from '../../utils/camera';
 import { autoVideoWalls, hatSpielfeld } from '../../utils/showRig';
 
@@ -11,7 +12,8 @@ export function useKulissenDaten(videoBoard: boolean) {
   const venue = useStore((s) => s.venue);
   const cameras = useStore((s) => s.cameras);
   const persons = useStore((s) => s.persons);
-  const walls = useStore((s) => s.walls);
+  const rohWalls = useStore((s) => s.walls);
+  const walls = useMemo(() => resolveWallHeights(rohWalls, defaultWallHeight(venue)), [rohWalls, venue]);
 
   const diag = Math.hypot(venue.widthM, venue.heightM);
   // Nur die STANDORTE, als Zeichenkette verglichen: ein Schwenk, ein Zoom

@@ -16,7 +16,7 @@ import type { Wall } from '../types';
 // statt an der Wand. Diese Tests halten fest, dass die Anzahl jetzt an der
 // Wand haengt.
 
-const wall = (over: Partial<Wall> = {}): Wall => ({
+const wall = (over: Partial<Wall> = {}): Wall & { height: number } => ({
   id: 'wall-1',
   x1: 0,
   y1: 0,

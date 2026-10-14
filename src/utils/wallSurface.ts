@@ -18,6 +18,7 @@
 //
 // Reines Modul bis auf die Canvas-2D-Nutzung — kein Store, kein React.
 import type { Wall, WallFit, WallPattern } from '../types';
+import type { ResolvedWall } from './wallHeight';
 
 /** Default-Wiederholungen ueber die Wandhoehe. */
 export const DEFAULT_PATTERN_ROWS = 6;
@@ -100,7 +101,7 @@ export function textureSize(wallLengthM: number, wallHeightM: number): { w: numb
 }
 
 /** Schluessel, der sich genau dann aendert, wenn die Textur neu gemalt werden muss. */
-export function surfaceKey(wall: Wall, lengthM: number): string {
+export function surfaceKey(wall: ResolvedWall, lengthM: number): string {
   return [
     wall.pattern ?? 'solid',
     wall.patternFit ?? 'tile',

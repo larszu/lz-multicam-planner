@@ -219,7 +219,11 @@ export interface Wall {
   id: string;
   x1: number; y1: number; // start point in metres
   x2: number; y2: number; // end point in metres
-  height: number; // metres
+  /**
+   * Own height in metres (#198). Unset = the venue's standard wall height
+   * (`Venue.defaultWallHeightM`); read it through `wallHeight()`.
+   */
+  height?: number;
   label: string;
   /** Base surface colour (hex). Falls back to a neutral grey when unset. */
   color?: string;
@@ -755,6 +759,8 @@ export interface Venue extends RaumErweiterung {
   widthM: number;
   heightM: number; // depth
   stages: Stage[];
+  /** Standard wall height in metres for walls without their own (#198). */
+  defaultWallHeightM?: number;
 }
 
 // ── Template ──

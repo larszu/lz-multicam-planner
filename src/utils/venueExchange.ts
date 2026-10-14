@@ -11,6 +11,7 @@
 // Umrechnung. Reine Daten, keine DOM-/Store-Abhaengigkeit → headless testbar.
 // ───────────────────────────────────────────────────────────────────────────
 import type { Venue, ReferencePerson, Wall, BackgroundPlan, StageObjectType } from '../types';
+import { defaultWallHeight, wallHeight } from './wallHeight';
 // ADR-015 — das Schema (Typen, Konstanten, `parseVenueExchange`) stand bis
 // 2026-09-28 hier im Original und in light-planner als Parallelfassung. Es
 // lebt jetzt in `@avplan/floorplan` (av-planner-suite/packages/floorplan),
@@ -193,7 +194,7 @@ export function toVenueExchange(input: MultiCamVenueInput): VenueExchange {
         // gibt sie unveraendert weiter.
         const f = wallForeign[w.id];
         return {
-          id: w.id, x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2, height: w.height, label: w.label,
+          id: w.id, x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2, height: wallHeight(w, defaultWallHeight(venue)), label: w.label,
           ...(w.color !== undefined ? { color: w.color } : {}),
           ...(f?.cx !== undefined ? { cx: f.cx } : {}),
           ...(f?.cy !== undefined ? { cy: f.cy } : {}),

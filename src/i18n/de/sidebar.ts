@@ -242,6 +242,8 @@ export const sidebar: Record<string, string> = {
   'sidebar.drawWalls': 'Wände zeichnen',
   'sidebar.wallDrawHelp': 'Einmal klicken setzt den Startpunkt, nochmal klicken beendet die Wand. Shift rastet den Winkel. Rechtsklick auf eine Wand löscht sie.',
   'sidebar.snapEndpoints': 'Wandenden aneinander einrasten',
+  'sidebar.wallDefaultHeight': 'Standardhöhe (m)',
+  'sidebar.wallOwnHeight': 'Eigene Höhe (m) – leer heißt Standardhöhe',
   'sidebar.wallColour': 'Wandfarbe',
   'sidebar.patternSolid': 'Einfarbig',
   'sidebar.patternGrid': 'Raster',

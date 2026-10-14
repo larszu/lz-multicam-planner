@@ -13,6 +13,7 @@
 // keiner braucht den anderen.
 // ───────────────────────────────────────────────────────────────────────────
 import { useStore } from '../../store/useStore';
+import { defaultWallHeight, resolveWallHeights, type ResolvedWall } from '../../utils/wallHeight';
 import { getCameraById, getEffectiveSensor } from '../../data/cameras';
 import { getLensById } from '../../data/lenses';
 import { computeFov } from '../../utils/fov';
@@ -78,7 +79,7 @@ export class WallSurfaces {
     return null;
   }
 
-  texture(wall: Wall, lengthM: number): HTMLCanvasElement | null {
+  texture(wall: ResolvedWall, lengthM: number): HTMLCanvasElement | null {
     const pattern = wall.pattern ?? 'solid';
     if (pattern === 'solid') return null;
     const img = pattern === 'image' && wall.patternImage ? this.image(wall.patternImage) : null;
@@ -137,7 +138,8 @@ export interface DrawCameraViewArgs {
  */
 export function drawCameraView(args: DrawCameraViewArgs): ProjectedPerson[] | undefined {
   const { canvas, cssW, dpr, cam, bare, t } = args;
-  const { venue, persons, walls, cameras, customCameras, customLenses } = args.scene;
+  const { venue, persons, cameras, customCameras, customLenses } = args.scene;
+  const walls = resolveWallHeights(args.scene.walls, defaultWallHeight(venue));
   const { grid: showGrid, safeAreas: showSafeAreas, thirds: showThirds, crosshair: showCrosshair } = args.overlays;
   const surfaces = args.surfaces ?? wallSurfaces;
   const ctx = canvas.getContext('2d');
@@ -376,7 +378,7 @@ export function drawCameraView(args: DrawCameraViewArgs): ProjectedPerson[] | un
   // (x1,y1) to (x2,y2) at z=0, top edge at z=height. Built in camera space and
   // near-plane clipped like the stages so corners behind the camera don't
   // collapse the quad.
-  const drawWall = (wall: Wall, dist: number) => {
+  const drawWall = (wall: ResolvedWall, dist: number) => {
     const camCorners = [
       worldToCamera(wall.x1, wall.y1, 0),
       worldToCamera(wall.x2, wall.y2, 0),

@@ -30,6 +30,7 @@ import { pickProjectLibrary, mergeProjectLibrary, readCarriedLibrary } from '../
 import { libraryCameras, libraryLenses, setProjectLibraryEntries } from '../library/registry';
 import { translate } from '../i18n';
 import type { VenueSeatingBlock, VenueVideoWall } from '../avplan/floorplan';
+import { defaultWallHeight, migrateWallHeights } from '../utils/wallHeight';
 import { neueSitzflaeche, neueVideowand, platzFuerPerson, venueAusDatei } from '../utils/raum';
 
 // Injected by Vite from package.json. In a release build that came through
@@ -899,7 +900,7 @@ export const useStore = create<AppState>((set, get) => ({
         y1: wall?.y1 ?? s.venue.heightM / 2,
         x2: wall?.x2 ?? s.venue.widthM,
         y2: wall?.y2 ?? s.venue.heightM / 2,
-        height: wall?.height ?? 3,
+        ...(wall?.height !== undefined ? { height: wall.height } : {}),
         label: wall?.label ?? `Wall ${s.walls.length + 1}`,
       };
       return { walls: [...s.walls, w], projectVersion: s.projectVersion + 1 };
@@ -1252,7 +1253,9 @@ export const useStore = create<AppState>((set, get) => ({
       objectType: p.objectType ?? 'person',
       width: p.width ?? 0.5,
     }));
-    const loadedWalls = project.walls ?? [];
+    // #198 — Dateien vor der Standardhoehe tragen an jeder Wand eine Hoehe.
+    const wandHoehen = migrateWallHeights(project.walls ?? [], project.venue?.defaultWallHeightM);
+    const loadedWalls = wandHoehen.walls;
     const loadedStages = project.venue?.stages ?? [];
 
     // Zaehler zuerst hochsetzen, damit die Reparatur unten garantiert freie
@@ -1326,7 +1329,7 @@ export const useStore = create<AppState>((set, get) => ({
       bgPlan = { ...rest, scaleX: s, scaleY: s };
     }
     set({
-      venue: venueAusDatei(project.venue, stagesFixed.items),
+      venue: { ...venueAusDatei(project.venue, stagesFixed.items), defaultWallHeightM: wandHoehen.defaultWallHeightM },
       cameras,
       persons: personsFixed.items,
       backgroundPlan: bgPlan,
@@ -1392,10 +1395,14 @@ export const useStore = create<AppState>((set, get) => ({
     nextId = Math.max(nextId, maxIdSuffix(r.walls.map((w) => w.id)) + 1);
     personId = Math.max(personId, maxIdSuffix(r.persons.map((p) => p.id)) + 1);
     stageId = Math.max(stageId, maxIdSuffix((r.venue.stages ?? []).map((st) => st.id)) + 1);
+    // #198 — der Austausch kennt nur absolute Hoehen; Wände auf der
+    // Standardhoehe des Projekts folgen ihr danach weiter.
+    const standard = defaultWallHeight(get().venue);
+    const importWalls = migrateWallHeights(r.walls, standard).walls;
     set((s) => ({
-      venue: r.venue,
+      venue: { ...r.venue, defaultWallHeightM: standard },
       persons: r.persons,
-      walls: r.walls,
+      walls: importWalls,
       backgroundPlan: r.backgroundPlan,
       stageForeign: r.stageForeign,
       floorPlanForeign: r.floorPlanForeign,

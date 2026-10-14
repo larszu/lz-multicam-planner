@@ -30,6 +30,8 @@ import type { StageObjectType, Camera, CameraMountType, VenueCamera, WallFit, Wa
 import { rigsForType, trackSectionPlan } from '../../data/rigs';
 import { clampHeight, clampTrack, rigLimits } from '../../utils/rigLimits';
 import { rigYaw } from '../../utils/camera';
+import { defaultWallHeight } from '../../utils/wallHeight';
+import { WallHeightField } from './WallHeightField';
 import { DEFAULT_PATTERN_ROWS, PATTERN_ROWS_MAX, PATTERN_ROWS_MIN } from '../../utils/wallSurface';
 import { FieldRow, Group, Note, Readout, ValueSlider } from './fields';
 // Derselbe Objektiv-Regler wie im Preview-Tab: logarithmische Bahn, Rastung,
@@ -273,7 +275,7 @@ function CameraCard({
   // Kamera, und eine Warnung, die man erst suchen muss, wird in der Probe
   // gefunden statt in der Planung -- genau das, was der Bedarf beklagt.
   const sichtKonflikte = conflictsForCamera(
-    { cameras: [cam], walls, persons, stages: venue.stages },
+    { cameras: [cam], walls, persons, stages: venue.stages, defaultWallHeightM: venue.defaultWallHeightM },
     cam.id,
   );
 
@@ -2546,6 +2548,17 @@ export default function Sidebar() {
         />
         {wallsOpen && (
           <div className="space-y-2 text-xs" style={{ padding: '0 14px 12px' }}>
+            {/* #198 — Standardhoehe; Waende ohne eigene Hoehe folgen ihr. */}
+            <label className="flex items-center gap-2 text-[11px] text-bc-text">
+              <span className="flex-1">{t('sidebar.wallDefaultHeight', 'Standard height (m)')}</span>
+              <WallHeightField
+                className="w-16"
+                allowEmpty={false}
+                label={t('sidebar.wallDefaultHeight', 'Standard height (m)')}
+                value={defaultWallHeight(venue)}
+                onChange={(v) => v !== undefined && setVenue({ ...venue, defaultWallHeightM: v })}
+              />
+            </label>
             <button
               onClick={() => setWallDrawMode((active) => !active)}
               className={`flex items-center gap-1 px-2 py-1 text-xs w-full justify-center ${wallDrawMode ? 'bg-bc-yellow/20 text-bc-yellow-text hover:bg-bc-yellow/30' : 'bg-bc-dark text-bc-text hover:text-bc-text-bright border border-bc-border'}`}
@@ -2575,7 +2588,14 @@ export default function Sidebar() {
                     value={w.label}
                     onChange={(e) => updateWall(w.id, { label: e.target.value })}
                   />
-                  <span className="text-bc-dim text-[10px]">{w.height}m h</span>
+                  <WallHeightField
+                    className="w-14"
+                    label={t('sidebar.wallOwnHeight', 'Own height (m) — empty uses the standard height')}
+                    placeholder={String(defaultWallHeight(venue))}
+                    value={w.height}
+                    onChange={(v) => updateWall(w.id, { height: v })}
+                  />
+                  <span className="text-bc-dim text-[10px]">m</span>
                   <button onClick={() => removeWall(w.id)} className="ml-auto p-0.5 hover:text-bc-red-text"><FiTrash2 size={11} /></button>
                 </div>
                 {/* Surface pattern for blur-checking in the preview (issue #45) */}

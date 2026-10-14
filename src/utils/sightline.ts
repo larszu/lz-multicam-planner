@@ -33,6 +33,7 @@
 // REIN: keine Uhr, kein Store, kein IO.
 // ───────────────────────────────────────────────────────────────────────────
 import type { ReferencePerson, Stage, VenueCamera, Wall } from '../types';
+import { defaultWallHeight, resolveWallHeights } from './wallHeight';
 import { effectiveCameraPos } from './camera';
 
 /** Ein Punkt im Raum (Meter). */
@@ -127,6 +128,8 @@ export interface SightlineInput {
   walls: Wall[];
   persons: ReferencePerson[];
   stages: Stage[];
+  /** Standard height for walls without their own (#198). */
+  defaultWallHeightM?: number;
 }
 
 /**
@@ -144,7 +147,7 @@ export const sightlineConflicts = (input: SightlineInput): SightlineConflict[] =
     if (laenge < 1e-6) continue; // Kamera schaut senkrecht — keine Grundriss-Linie.
 
     // ── Waende ──
-    for (const w of input.walls) {
+    for (const w of resolveWallHeights(input.walls, defaultWallHeight({ defaultWallHeightM: input.defaultWallHeightM }))) {
       const t = streckenSchnitt(from.x, from.y, to.x, to.y, w.x1, w.y1, w.x2, w.y2);
       if (t === null) continue;
       const linie = hoeheBei(from, to, t);

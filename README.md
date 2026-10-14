@@ -78,7 +78,7 @@ before the first rehearsal.
 - **Camera and lens catalogue:** 377 cameras from 36 brands, 835 lenses from 37 brands, 49 camera rigs — almost all with a link to the manufacturer's datasheet. Adapters, extenders and your own devices included.
 - **AI floor-plan analysis:** reads walls, stages and scale from an uploaded plan, with Claude, ChatGPT, Gemini, Mistral or Grok and your own API key.
 - **Daylight and real camera bodies in 3D:** sun, sky and weather from date, time and place; each camera drawn as its body, lens and rig.
-- **Audience and room:** seated and standing areas, video walls, ceiling height, floor and wall materials.
+- **Audience and room:** seated and standing areas, video walls, ceiling height, floor and wall materials. Walls take a standard height for the whole room; any wall can have its own, an empty field uses the standard.
 - **Shotlist and rig:** capture shots, set transitions, play the sequence, export a storyboard; record and replay camera moves within the rig's real limits.
 - **Templates:** football stadium, stadium event, small and large concert, church, conference — or save your own.
 - **Hands over to the Cable Planner:** cameras, lenses and positions travel in the `.avplan` exchange file.
