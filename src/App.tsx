@@ -1,7 +1,7 @@
 import { useStore } from './store/useStore';
 import Header from './components/Layout/Header';
 import { TABS } from './components/Layout/tabs';
-import StartupAssistant from './components/Layout/StartupAssistant';
+import FirstSteps from './components/Layout/FirstSteps';
 import StatusBar from './components/Layout/StatusBar';
 import CommandPalette, { type Command } from './components/Layout/CommandPalette';
 import Sidebar from './components/Sidebar/Sidebar';
@@ -550,6 +550,7 @@ export default function App() {
       )}
       <Header
         onSelectTab={handleSelectTab}
+        activeTabId={layoutMode === 'focus' ? focusTabId : null}
         onSetLayoutMode={handleSetLayoutMode}
         onApplyPreset={handleApplyPreset}
         onSaveLayoutPreset={handleSaveLayoutPreset}
@@ -664,7 +665,7 @@ export default function App() {
       <StatusBar />
 
       <ExportPanel />
-      <StartupAssistant />
+      <FirstSteps activeTabId={layoutMode === 'focus' ? focusTabId : 'tab-preview'} onSelectTab={handleSelectTab} />
       <CommandPalette commands={commands} />
 
       {/* Lager / Bestand — projektübergreifend, App-kompatibel via avplan-inventory.

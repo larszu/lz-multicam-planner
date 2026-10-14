@@ -101,28 +101,8 @@ export const header: Record<string, string> = {
   'header.inventory.title': 'Lager / Bestand',
 
   // ── StartupAssistant: Wizard ──
-  'header.wizard.step1.title': '1 · Grundriss',
-  'header.wizard.step1.hint': 'Ein Planbild/PDF hochladen, den Maßstab festlegen und die Wände zeichnen.',
-  'header.wizard.step2.title': '2 · Bühnen',
-  'header.wizard.step2.hint': 'Bühnen hinzufügen und dimensionieren. Alles andere ist vorerst gesperrt.',
-  'header.wizard.step3.title': '3 · Objekte & Personen',
-  'header.wizard.step3.hint': 'Darsteller, Instrumente und Requisiten auf der Bühne platzieren.',
-  'header.wizard.step4.title': '4 · Kameras',
-  'header.wizard.step4.hint': 'Die Kameras positionieren und auf das Geschehen ausrichten.',
-  'header.wizard.exit': 'Assistent beenden (alles entsperren)',
-  'header.wizard.finish': 'Fertig',
-  'header.wizard.next': 'Weiter',
 
   // ── StartupAssistant: Welcome-Dialog ──
-  'header.welcome.close': 'Schließen',
-  'header.welcome.title': 'Willkommen beim LZ Multicam Planner',
-  'header.welcome.intro': 'Wie möchten Sie beginnen?',
-  'header.welcome.continue.title': 'Letztes Projekt fortsetzen',
-  'header.welcome.continue.desc': 'Das zuletzt bearbeitete Projekt, aus der automatischen Sicherung wiederhergestellt',
-  'header.welcome.load.title': 'Plan laden',
-  'header.welcome.load.desc': 'Eine bestehende .mcplan-Datei öffnen und direkt zur Kamerabearbeitung springen',
-  'header.welcome.new.title': 'Neuer Plan',
-  'header.welcome.new.desc': 'Schritt für Schritt: Grundriss → Bühnen → Objekte → Kameras',
 
   // ── TemplateSelector ──
   'header.templates.category.sport': 'Sport',

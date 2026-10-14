@@ -6,6 +6,7 @@ import { sidebar } from './de/sidebar';
 import { header } from './de/header';
 import { preview } from './de/preview';
 import { multiview } from './de/multiview';
+import { firstSteps } from './de/firstSteps';
 import { venue } from './de/venue';
 import { inventory } from './de/inventory';
 import { rig } from './de/rig';
@@ -21,6 +22,7 @@ export const de: Record<string, string> = {
   ...header,
   ...preview,
   ...multiview,
+  ...firstSteps,
   ...venue,
   ...inventory,
   ...rig,

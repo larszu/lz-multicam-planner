@@ -1,5 +1,10 @@
-// Waechter fuer die Oberflaechen-Regeln (ADR-007 der av-planner-suite).
-// Lauf: `npm run brand:check`
+// Waechter fuer die Oberflaechen-Regeln (lzm-web, Oktober 2026; davor ADR-007
+// der av-planner-suite). Lauf: `npm run brand:check`
+//
+// Seit 2026-10-13: Flaechen und Text sind neutral (Dunkel = Anthrazit), die
+// Marke steckt im Akzent, im Signal und im Logo. Geprueft wird deshalb, dass
+// Akzent, Signal und Status die Markenwerte tragen und die Flaechen nicht in
+// Navy oder Near-Black zurueckfallen.
 //
 // ─── WARUM EIN SKRIPT UND KEIN VITEST-TEST ─────────────────────────────────
 //
@@ -33,13 +38,18 @@ const token = (name) => {
   return m ? m[1].trim() : '';
 };
 
-// ── 1. Die Palette ist die der Marke ──────────────────────────────────────
-assert.equal(token('--color-bc-dark'), '#132040', 'Grund ist Deep Navy');
-assert.equal(token('--color-bc-panel'), '#1D324F', 'Panel ist Zumpe Navy');
-assert.equal(token('--color-bc-text'), '#E1ECEF', 'Fliesstext ist Eisblau');
-assert.equal(token('--color-bc-accent'), '#F6F5F0', 'Aktionsflaeche ist Off-White');
-assert.equal(token('--color-bc-accent-text'), '#132040', 'darauf steht Navy');
-assert.equal(token('--color-bc-muted'), '#8C9CB3', 'Gedaempft ist Stahlblau');
+// ── 1. Neutral traegt, Markenblau akzentuiert ─────────────────────────────
+assert.equal(token('--color-bc-dark'), '#1E1F23', 'Grund ist Anthrazit');
+assert.equal(token('--color-bc-panel'), '#28292E', 'Panel ist Anthrazit, eine Stufe heller');
+assert.equal(token('--color-bc-accent'), '#B9C7D8', 'Akzent auf Dunkel ist helles Markenblau');
+assert.equal(token('--color-bc-accent-text'), '#132040', 'darauf steht Deep Navy');
+assert.match(css, /--color-bc-accent:\s*#1D324F;/, 'Akzent auf Hell ist Zumpe Navy');
+for (const navy of ['#132040', '#1D324F']) {
+  assert.ok(
+    !new RegExp(`--color-bc-(?:dark|panel|sunken|panel-raised):\\s*${navy}`, 'i').test(css),
+    `Flaeche in Navy ${navy} — Blau ist nur Akzent`,
+  );
+}
 
 // ── 2. Status ist nicht Signal ────────────────────────────────────────────
 assert.equal(token('--color-bc-green'), '#2F7D5C');
@@ -62,14 +72,15 @@ assert.ok(
 assert.ok(css.includes('outline: 2px solid var(--color-bc-signal)'), 'Fokusring fehlt');
 assert.ok(css.includes('outline-offset: 3px'), 'Fokus-Abstand fehlt');
 
-// ── 5. Keine Rundungen, keine Verlaeufe, keine Fremd-Palette ─────────────
-assert.ok(!/border-radius:\s*(50%|[1-9])/.test(css), 'harter Radius gefunden');
-assert.ok(!/linear-gradient|radial-gradient/.test(css), 'Verlauf gefunden');
-for (const alt of ['#0f1117', '#1a1d27', '#2a2d3a', '#3b82f6']) {
+// ── 5. Formen nur ueber Token, keine Fremd-Palette ───────────────────────
+for (const t of ['--radius-bc-control', '--radius-bc-card', '--radius-bc-modal', '--shadow-bc-1']) {
+  assert.ok(token(t), `Token ${t} fehlt`);
+}
+for (const alt of ['#0f1117', '#1a1d27', '#2a2d3a', '#3b82f6', '#12141c', '#1e2030']) {
   assert.ok(!css.toLowerCase().includes(alt), `alter Near-Black-Wert ${alt} steht noch da`);
 }
 
-// ── 6. Der Rahmen: Kopfzeile 40 px, Kopflinie in der Akzentfarbe ─────────
+// ── 6. Der Rahmen: Kopfzeile 40 px ────────────────────────────────────────
 //
 // ADR-007 Abschnitt 6 nennt Zahlen, und Zahlen kann man messen. Vorher stand
 // hier `h-14` am Element — 56 px, eine Tailwind-Stufe, die niemand
@@ -82,11 +93,6 @@ const regel = (klasse) => {
 };
 assert.match(regel('bc-topbar'), /height:\s*40px/, 'Kopfzeile ist 40 px');
 assert.match(regel('bc-topbar'), /flex:\s*none/, 'Kopfzeile schrumpft nicht mit');
-assert.match(
-  regel('bc-panel-head'),
-  /border-bottom:\s*1px solid var\(--color-bc-accent\)/,
-  'Kopflinie ist der Akzent',
-);
 
 // Eine Regel, die niemand anwendet, ist Dekoration in einer CSS-Datei.
 const header = readFileSync(resolve(hier, '..', 'src/components/Layout/Header.tsx'), 'utf8');
@@ -105,4 +111,4 @@ const app = readFileSync(resolve(hier, '..', 'src/App.tsx'), 'utf8');
 assert.match(app, /\.\.\.TABS\.map/, 'Palette baut die Ansichten nicht aus TABS');
 assert.ok(app.includes('<CommandPalette commands={commands} />'), 'Palette ist nicht gemountet');
 
-console.log('brand:check ok — Oberflaechen-Regeln (ADR-007) eingehalten');
+console.log('brand:check ok — Oberflaechen-Regeln (lzm-web) eingehalten');

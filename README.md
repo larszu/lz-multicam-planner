@@ -27,6 +27,9 @@ Measured 2026-09-09: **published** — the `deploy` job ran and succeeded.
 
 LZ Multicam Planner is designed for quick, intuitive camera planning with essential features for real-world broadcast productions. Its streamlined workflow and simple interface make it perfect for fast setups and clear projects—without the complexity and feature overload of traditional CAD or architecture applications.
 
+- **Start right away:** the app opens on your last project. A small *First steps* card (draw a camera, place a person, adjust the focal length, check the preview) ticks itself off as you work; hide it anytime, *Help → First steps* brings it back.
+- **Modern, calm interface:** neutral surfaces, brand blue only as accent, soft rounded panels, light and dark (anthracite) theme — switch *System · Light · Dark* in Settings.
+
 ---
 
 ## 🚀 Features

@@ -20,6 +20,7 @@ type TFn = (key: string, en: string) => string;
 import { buildShiftReport, printShiftReport } from '../../utils/shiftReport';
 import { shiftReportFingerprint } from '../../utils/documentContent';
 import { buildStamp } from '../../utils/documentStamp';
+import { openFirstSteps } from './firstStepsEvent';
 
 
 // Edit-mode slider options (issue #43). Each mode locks everything except its
@@ -34,6 +35,8 @@ const getEditModes = (t: TFn): { id: EditMode; label: string; title: string }[] 
 
 type HeaderProps = {
   onSelectTab: (tabId: string) => void;
+  /** Reiter der Fokusansicht; im Grid gibt es keinen einzelnen aktiven. */
+  activeTabId: string | null;
   onSetLayoutMode: (mode: 'focus' | 'grid') => void;
   onApplyPreset: (presetId: string) => void;
   onSaveLayoutPreset: (name: string) => void;
@@ -47,6 +50,7 @@ type HeaderProps = {
 
 export default function Header({
   onSelectTab,
+  activeTabId,
   onSetLayoutMode,
   onApplyPreset,
   onSaveLayoutPreset,
@@ -522,9 +526,14 @@ export default function Header({
         {/* ── Help ── */}
         <Menu label={t('app.menu.help', 'Help')}>
           {(close) => (
-            <MenuItem onClick={() => { close(); setSettingsOpen('general'); }}>
-              {t('header.about', 'About LZ Multicam Planner…')}
-            </MenuItem>
+            <>
+              <MenuItem onClick={() => { close(); openFirstSteps(); }}>
+                {t('firstSteps.title', 'First steps')}
+              </MenuItem>
+              <MenuItem onClick={() => { close(); setSettingsOpen('general'); }}>
+                {t('header.about', 'About LZ Multicam Planner…')}
+              </MenuItem>
+            </>
           )}
         </Menu>
         </div>
@@ -559,11 +568,16 @@ export default function Header({
           <button
             key={tab.id}
             onClick={() => onSelectTab(tab.id)}
+            aria-current={tab.id === activeTabId ? 'page' : undefined}
             draggable={layoutMode === 'grid'}
             onDragStart={(e) => {
               onDragNewPanel(tab.id, e.nativeEvent);
             }}
-            className={`flex items-center gap-1.5 border border-transparent px-2 py-1 text-xs font-medium text-bc-text transition-colors hover:border-bc-border hover:bg-bc-panel-raised hover:text-bc-text-bright sm:px-3 ${
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors sm:px-3.5 ${
+              tab.id === activeTabId
+                ? 'bg-bc-accent/15 font-semibold text-bc-text-bright'
+                : 'text-bc-muted hover:bg-bc-hover hover:text-bc-text-bright'
+            } ${
               layoutMode === 'grid' ? 'cursor-grab active:cursor-grabbing' : ''
             }`}
             title={layoutMode === 'grid' ? format(t('header.tab.dragTitle', 'Drag {label} into the grid'), { label: beschriftung(tab) }) : format(t('header.tab.focusTitle', '{label} in focus view'), { label: beschriftung(tab) })}

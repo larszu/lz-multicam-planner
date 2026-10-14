@@ -1,100 +1,51 @@
 @import "tailwindcss";
 
-/* Tailwind v4 CSS-first config: Custom-Farben frueher in tailwind.config.js.
-   Als CSS-Variablen erzeugt v4 automatisch die bc-* Utilities (bg-bc-dark, ...). */
-/* ADR-007 (av-planner-suite) — die bc-*-Tokens zeigen auf die Marken-Palette
- * der Suite statt auf eine eigene Near-Black-Welt. Die Utilities
- * (bg-bc-panel, border-bc-border, text-bc-accent …) bleiben unveraendert;
- * die Umstellung einer ganzen App ist dieser Block.
+/* Tokens nach lzm-web (Oktober 2026): Flaechen und Text neutral, Markenblau
+ * nur als Akzent, Dunkel ist Anthrazit statt Navy. Die bc-*-Namen bleiben,
+ * damit kein Aufrufer umgebaut werden muss; getauscht werden nur Werte.
  *
- * Werte und Rollen: `@avplan/ui`, `src/brand.ts` (aus dem Brand Guide 2.0).
- * `bc-panel-raised` und `bc-sunken` sind aus der Navy-Rampe ABGELEITET —
- * ein Control-Surface braucht mehr Flaechen, als ein Marken-Handbuch
- * vorsieht. */
+ * Textstufen: text-bright (Ueberschriften) · text (Fliesstext) · muted/dim/
+ * faint (Meta). Die drei Meta-Namen tragen denselben Wert — eine Stufe
+ * darunter laege unter 4.5:1 (`kontrast:check`). */
 @theme {
-  --color-bc-dark: #132040;          /* Deep Navy — Grund */
-  --color-bc-panel: #1D324F;         /* Zumpe Navy — Panels, Karten */
-  --color-bc-sunken: #0E1930;        /* abgeleitet — Leisten, Eingaben */
-  --color-bc-panel-raised: #24405F;  /* abgeleitet — Chips, Hover */
-  --color-bc-border: rgba(246, 245, 240, 0.14);
-  /* Aktionsflaeche der Marke: Off-White, darauf Navy — 13:1 statt 4:1. */
-  --color-bc-accent: #F6F5F0;
+  --color-bc-dark: #1E1F23;          /* Grund */
+  --color-bc-panel: #28292E;         /* Panels, Karten */
+  --color-bc-sunken: #232428;        /* Leisten */
+  --color-bc-panel-raised: #33343A;  /* Eingaben, Chips, Hover */
+  --color-bc-border: rgba(246, 245, 240, 0.12);
+  /* Akzent: helles Markenblau (Stahlblau + Eisblau), darauf Deep Navy. */
+  --color-bc-accent: #B9C7D8;
   --color-bc-accent-text: #132040;
-  /* VIER TEXTSTUFEN, und das sind nicht drei plus eine Laune.
-   *
-   * Die Oberflaeche fuehrte bis 2026-09-11 rohe Tailwind-Graustufen —
-   * `text-white`, `text-gray-200/300/400/500/600` — und benutzte davon
-   * fuenf Abstufungen an 406 Stellen. Sie auf die drei vorhandenen Token zu
-   * quetschen haette die Hierarchie zerstoert: der Hinweis unter einem Feld
-   * saehe aus wie sein Wert. Also bekommt die Rampe zwei weitere Stufen,
-   * abgeleitet aus dem Stahlblau, und jede Stufe hat eine Rolle:
-   *
-   *   text-bright  Ueberschriften, aktive Zustaende      (war text-white)
-   *   text         Fliesstext                            (war gray-100..300)
-   *   muted        Meta, Platzhalter, inaktive Knoepfe   (war gray-400)
-   *   dim          Beschriftungen neben Werten           (war gray-500)
-   *   faint        Hinweise, Einheiten, Zaehlungen       (war gray-600)
-   */
-  --color-bc-text: #E1ECEF;          /* Eisblau — Fliesstext auf Dunkel */
+  --color-bc-text: #E4E4E1;
   --color-bc-text-bright: #F6F5F0;
-  /* ── Die drei Meta-Toene, 2026-09-12 nachgemessen ─────────────────────
-   *
-   * NUTZER-MELDUNG: „man kann manche texte nicht lesen."
-   *
-   * Nachgemessen (WCAG-Kontrast gegen `bc-panel` #1D324F, den Grund, auf dem
-   * diese Toene ueberwiegend stehen):
-   *
-   *   muted   4.64   knapp ueber der Grenze
-   *   dim     3.17   darunter
-   *   faint   2.19   weit darunter — kaum sichtbar
-   *
-   * 2.19:1 ist kein blasser Ton. Und genau dieser stand an achtzehn Stellen
-   * unter `text-[9px]`, an Hinweisen, die etwas erklaeren sollten: zu klein
-   * UND zu blass, zwei Fehler, die sich gegenseitig verstaerken.
-   *
-   * DIE RAMPE UNTER `muted` GIBT ES HIER NICHT MEHR, und das ist kein
-   * Verlust, sondern die Rechnung: Stahlblau #8C9CB3 ist die MARKENFARBE
-   * fuer gedaempften Text (`brand:check` haelt sie fest) und liegt bei 4.64.
-   * Auf dunklem Grund heisst „noch gedaempfter" aber DUNKLER, also
-   * kontrastaermer — unterhalb von 4.64 ist kein Platz mehr.
-   *
-   * Der erste Anlauf hob deshalb alle drei an und brach damit die
-   * Markenfarbe. `brand:check` hat es sofort gemeldet, und er hatte recht:
-   * die Marke ist eine Entscheidung des Eigentuemers, die Lesbarkeit eine
-   * Rechnung. Wo beide sich widersprechen, gibt die RAMPE nach, nicht die
-   * Marke.
-   *
-   * `dim` und `faint` tragen deshalb denselben Wert. Die NAMEN bleiben — sie
-   * sagen, was gemeint ist, und mit einer helleren Panel-Flaeche geht die
-   * Rampe wieder auf. Was nicht bleibt, ist die Behauptung einer Hierarchie,
-   * die aus zwei unlesbaren Stufen bestand.
-   *
-   * Auf `--color-bc-panel-raised` (#24405F) liegt Stahlblau bei 3.81. Dort
-   * gehoert es an eine Trennlinie und nicht an Text; `kontrast:check` fuehrt
-   * diesen Grund deshalb nur bei den beiden hellen Toenen. */
-  --color-bc-muted: #8C9CB3;         /* Stahlblau — Meta, Platzhalter (Marke) */
-  --color-bc-dim: #8C9CB3;           /* = Stahlblau, siehe oben */
-  --color-bc-faint: #8C9CB3;         /* = Stahlblau, siehe oben */
-  /* Flaechen, die keine Farbe sind, sondern ein Zustand oder ein Grund.
-   * Als Token, weil `bg-white/[0.06]` im Hell-Thema unsichtbar waere und
-   * `bg-black/60` dort zu einem schwarzen Balken wuerde. */
+  --color-bc-muted: #A9ACB4;
+  --color-bc-dim: #A9ACB4;
+  --color-bc-faint: #A9ACB4;
+  /* Zustand und Grund, keine Farbe: `bg-white/[0.06]` waere im Hell-Thema
+   * unsichtbar, `bg-black/60` dort ein schwarzer Balken. */
   --color-bc-hover: rgba(246, 245, 240, 0.06);
-  --color-bc-hover-soft: rgba(246, 245, 240, 0.015);
+  --color-bc-hover-soft: rgba(246, 245, 240, 0.02);
   --color-bc-scrim: rgba(0, 0, 0, 0.6);
-  /* Der Letterbox-Grund hinter einem Framegrab. Schwarz in JEDEM Thema:
-   * das ist kein Oberflaechenton, sondern die Abwesenheit von Bild. */
+  /* Grund hinter einem Kamerabild: schwarz in jedem Thema. */
   --color-bc-media: #000000;
-  /* Schrift AUF dem Bild (Multiview-Beschriftung, Tally-Leisten): hell in
-   * jedem Thema, weil der Grund immer Bild oder Schleier ist. */
+  /* Schrift auf dem Bild (Multiview, Tally-Leisten): hell in jedem Thema. */
   --color-bc-on-media: #F6F5F0;
   /* Status: nur Meldungen. */
   --color-bc-green: #2F7D5C;
   --color-bc-red: #B04A3F;
   --color-bc-yellow: #C8892B;
-  /* Das Aufnahmelicht. Tally, Record, Live, Fokusring — nie Flaeche, nie
-   * Text, nie zweimal in einem Sichtfeld. In einem Kamera-Planer hat es
-   * seine woertliche Bedeutung. */
+  /* Das Aufnahmelicht: Tally, Live, Fokusring — nie Flaeche, nie Text. */
   --color-bc-signal: #D6402E;
+
+  /* Formen und Tiefe: weiche Rundungen, sehr weiche Schatten.
+   * Logo und Tally-Punkt bleiben eckig. */
+  --radius-bc-chip: 6px;
+  --radius-bc-control: 10px;
+  --radius-bc-card: 20px;
+  --radius-bc-modal: 24px;
+  --shadow-bc-1: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-bc-2: 0 4px 16px rgb(0 0 0 / 0.4);
+  --shadow-bc-3: 0 16px 48px rgb(0 0 0 / 0.55);
 }
 
 /* ─── DAS HELL-THEMA (B-70) ────────────────────────────────────────────────
@@ -125,30 +76,21 @@
  *   auf Kontrast geprueft.
  */
 :root[data-theme='light'] {
-  --color-bc-dark: #F6F5F0;          /* Off-White — Grund */
+  --color-bc-dark: #FAFAF8;          /* warmes Fast-Weiss — Grund */
   --color-bc-panel: #FFFFFF;         /* Panels, Karten */
-  --color-bc-sunken: #E8E9E4;        /* Leisten, Eingaben */
-  --color-bc-panel-raised: #FDFDFB;  /* Chips, Hover */
-  --color-bc-border: rgba(19, 32, 64, 0.16);
-  /* Die Aktionsflaeche dreht sich MIT: auf Hell ist Navy die Flaeche und
-   * Off-White die Schrift darauf. Bliebe sie Off-White auf Off-White,
-   * verschwaende der einzige Knopf, den der Nutzer sucht. */
-  --color-bc-accent: #132040;
+  --color-bc-sunken: #F1F1EE;        /* Leisten, Eingaben */
+  --color-bc-panel-raised: #F6F6F3;  /* Chips, Hover */
+  --color-bc-border: rgba(22, 24, 29, 0.12);
+  /* Auf Hell ist Navy die Aktionsflaeche, Off-White die Schrift darauf. */
+  --color-bc-accent: #1D324F;
   --color-bc-accent-text: #F6F5F0;
-  --color-bc-text: #1B2B45;
-  --color-bc-text-bright: #0B1729;
-  /* Im HELL-Thema bleibt eine Stufe unter `muted` uebrig — dort heisst
-     „gedaempfter" DUNKLER, und dunkler ist auf hellem Grund
-     kontrastREICHER. Gerechnet gegen den dunkelsten hellen Grund
-     (#F6F5F0), nicht gegen Weiss: `muted` #4E6180 = 5.75, darunter
-     #5A7094 = 4.60. Gegen Weiss gerechnet lag dieselbe Farbe bei 4.22 —
-     der Lauf hat es gemeldet, bevor es jemand sehen konnte. `faint`
-     stand vorher auf #7C8AA1 = 3.50. */
-  --color-bc-muted: #4E6180;
-  --color-bc-dim: #5A7094;
-  --color-bc-faint: #5A7094;
-  --color-bc-hover: rgba(19, 32, 64, 0.06);
-  --color-bc-hover-soft: rgba(19, 32, 64, 0.02);
+  --color-bc-text: #2B2E35;
+  --color-bc-text-bright: #16181D;
+  --color-bc-muted: #5F636B;
+  --color-bc-dim: #5F636B;
+  --color-bc-faint: #5F636B;
+  --color-bc-hover: rgba(22, 24, 29, 0.06);
+  --color-bc-hover-soft: rgba(22, 24, 29, 0.02);
   /* Der Schleier bleibt dunkel — er trennt nach UNTEN, und das tut er auf
    * hellem Grund genauso. */
   --color-bc-scrim: rgba(0, 0, 0, 0.45);
@@ -164,27 +106,20 @@
  * hat, bekommt dunkel, auch auf einem hell eingestellten Rechner. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme='dark']) {
-    --color-bc-dark: #F6F5F0;
+    --color-bc-dark: #FAFAF8;
     --color-bc-panel: #FFFFFF;
-    --color-bc-sunken: #E8E9E4;
-    --color-bc-panel-raised: #FDFDFB;
-    --color-bc-border: rgba(19, 32, 64, 0.16);
-    --color-bc-accent: #132040;
+    --color-bc-sunken: #F1F1EE;
+    --color-bc-panel-raised: #F6F6F3;
+    --color-bc-border: rgba(22, 24, 29, 0.12);
+    --color-bc-accent: #1D324F;
     --color-bc-accent-text: #F6F5F0;
-    --color-bc-text: #1B2B45;
-    --color-bc-text-bright: #0B1729;
-    /* Im HELL-Thema bleibt eine Stufe unter `muted` uebrig — dort heisst
-       „gedaempfter" DUNKLER, und dunkler ist auf hellem Grund
-       kontrastREICHER. Gerechnet gegen den dunkelsten hellen Grund
-       (#F6F5F0), nicht gegen Weiss: `muted` #4E6180 = 5.75, darunter
-       #5A7094 = 4.60. Gegen Weiss gerechnet lag dieselbe Farbe bei 4.22 —
-       der Lauf hat es gemeldet, bevor es jemand sehen konnte. `faint`
-       stand vorher auf #7C8AA1 = 3.50. */
-    --color-bc-muted: #4E6180;
-    --color-bc-dim: #5A7094;
-    --color-bc-faint: #5A7094;
-    --color-bc-hover: rgba(19, 32, 64, 0.06);
-    --color-bc-hover-soft: rgba(19, 32, 64, 0.02);
+    --color-bc-text: #2B2E35;
+    --color-bc-text-bright: #16181D;
+    --color-bc-muted: #5F636B;
+    --color-bc-dim: #5F636B;
+    --color-bc-faint: #5F636B;
+    --color-bc-hover: rgba(22, 24, 29, 0.06);
+    --color-bc-hover-soft: rgba(22, 24, 29, 0.02);
     --color-bc-scrim: rgba(0, 0, 0, 0.45);
     --color-bc-media: #000000;
   /* Schrift AUF dem Bild (Multiview-Beschriftung, Tally-Leisten): hell in
@@ -216,10 +151,14 @@ textarea:focus-visible,
   outline-offset: 3px;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* Im Base-Layer, nicht frei: ausserhalb der Layer schlug diese Regel jede
+ * Tailwind-Utility (`p-4`, `px-3` …), und Abstaende im JSX blieben wirkungslos. */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 }
 
 /* Tailwind v4 Preflight entfernt den Default `cursor: pointer` auf Buttons
@@ -248,10 +187,10 @@ html, body, #root {
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--color-bc-panel); }
-::-webkit-scrollbar-thumb { background: var(--color-bc-sunken); border-radius: 0; }
-::-webkit-scrollbar-thumb:hover { background: var(--color-bc-accent); }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-bc-border); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-bc-muted); }
 
 /* ── Schieberegler ─────────────────────────────────────────────────────────
  *
@@ -271,14 +210,7 @@ html, body, #root {
  *     restlichen 18 px sind unsichtbare Trefferflaeche. Ein dicker Balken
  *     waere die naheliegende und falsche Loesung: er wuerde jede Zeile
  *     sprengen, in der ein Regler neben einer Beschriftung sitzt.
- *  2. Der Griff wird 18 px — und bleibt EckIG. Der erste Anlauf machte ihn
- *     rund, mit dem Argument, ein Kreis sei an jeder Stelle gleich breit.
- *     `brand:check` hat ihn zurueckgewiesen, und zu Recht: ADR-007 legt
- *     dieses Aussehen fest („keine Rundungen, keine Verlaeufe"), und ein
- *     einzelner runder Griff mitten in einer eckigen Oberflaeche ist kein
- *     Gewinn an Bedienbarkeit, sondern ein Fremdkoerper. Das
- *     Kreis-Argument gilt ausserdem gegen KLEINE Quadrate; bei 18 x 18 px
- *     findet der Daumen auch die Ecken.
+ *  2. Der Griff wird 18 px und rund (lzm-web, Oktober 2026).
  *  3. `touch-action: manipulation` nimmt die 300-ms-Wartezeit auf
  *     Doppeltipp weg. Ohne sie fuehlt sich jeder Regler auf dem Tablet
  *     traege an, und zwar unabhaengig von seiner Groesse.
@@ -301,6 +233,7 @@ input[type="range"]::-webkit-slider-runnable-track {
   height: 6px;
   background: var(--color-bc-sunken);
   border: 1px solid var(--color-bc-border);
+  border-radius: 999px;
 }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -308,7 +241,9 @@ input[type="range"]::-webkit-slider-thumb {
   width: 18px;
   height: 18px;
   background: var(--color-bc-accent);
-  border: 2px solid var(--color-bc-sunken);
+  border: 2px solid var(--color-bc-panel);
+  border-radius: 999px;
+  box-shadow: var(--shadow-bc-1);
   /* Der Griff sitzt auf der Bahn, nicht daneben: (6 px Bahn - 18 px Griff)
      / 2 = -6 px, plus 1 px Rahmen der Bahn. */
   margin-top: -7px;
@@ -318,12 +253,15 @@ input[type="range"]::-moz-range-track {
   height: 6px;
   background: var(--color-bc-sunken);
   border: 1px solid var(--color-bc-border);
+  border-radius: 999px;
 }
 input[type="range"]::-moz-range-thumb {
   width: 18px;
   height: 18px;
   background: var(--color-bc-accent);
-  border: 2px solid var(--color-bc-sunken);
+  border: 2px solid var(--color-bc-panel);
+  border-radius: 999px;
+  box-shadow: var(--shadow-bc-1);
   cursor: pointer;
 }
 input[type="range"]:focus-visible::-webkit-slider-thumb {
@@ -343,7 +281,10 @@ select {
   cursor: pointer;
 }
 
-/* ── FlexLayout modern dark theme ── */
+/* ── FlexLayout: schwebende Panels ─────────────────────────────────────────
+ * Jedes Panel ist eine gerundete Karte auf dem Grund; die Splitter sind der
+ * sichtbare Abstand dazwischen. Tabs sind Pills, der aktive traegt die
+ * Akzentflaeche. */
 .flexlayout__layout {
   --color-text: var(--color-bc-text);
   --color-background: var(--color-bc-dark);
@@ -354,141 +295,117 @@ select {
   --color-4: var(--color-bc-accent);
   --color-5: var(--color-bc-muted);
   --color-6: var(--color-bc-accent);
-  --color-drag1: rgba(246,245,240,0.15);
-  --color-drag2: rgba(246,245,240,0.30);
-  --color-drag1-background: rgba(246,245,240,0.10);
-  --color-drag2-background: rgba(246,245,240,0.20);
+  --color-drag1: color-mix(in oklab, var(--color-bc-accent) 30%, transparent);
+  --color-drag2: color-mix(in oklab, var(--color-bc-accent) 50%, transparent);
+  --color-drag1-background: color-mix(in oklab, var(--color-bc-accent) 12%, transparent);
+  --color-drag2-background: color-mix(in oklab, var(--color-bc-accent) 22%, transparent);
   --font-size: 12px;
   --font-family: 'Public Sans', system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
   background-color: var(--color-bc-dark) !important;
 }
 
-/* Tab content area */
 .flexlayout__tab {
-  background-color: var(--color-bc-dark);
+  background-color: var(--color-bc-panel);
   overflow: hidden;
 }
 
-/* Tabset (tab bar container) */
 .flexlayout__tabset {
-  background-color: var(--color-bc-dark);
-  border-radius: 0;
+  background-color: var(--color-bc-panel);
+  border-radius: var(--radius-bc-card);
+  box-shadow: var(--shadow-bc-1) !important;
   overflow: hidden;
 }
+.flexlayout__tab:has(> *) {
+  border-bottom-left-radius: var(--radius-bc-card);
+  border-bottom-right-radius: var(--radius-bc-card);
+}
 
-/* Tab strip header bar */
+.flexlayout__tabset_header,
+.flexlayout__tabset-selected .flexlayout__tabset_header,
+.flexlayout__tabset_tabbar_outer {
+  background: var(--color-bc-panel) !important;
+  border-bottom: 1px solid var(--color-bc-border) !important;
+}
 .flexlayout__tabset_header,
 .flexlayout__tabset-selected .flexlayout__tabset_header {
-  background: #12141c !important;
-  border-bottom: 1px solid #1e2030 !important;
-  min-height: 32px;
-  padding: 0 2px;
+  min-height: 36px;
+  padding: 0 6px;
 }
 .flexlayout__tabset_header_content {
   padding: 0;
 }
-
-/* Tab strip area (where tab buttons sit) */
-.flexlayout__tabset_tabbar_outer {
-  background: #12141c !important;
-  border-bottom: 1px solid #1e2030 !important;
-}
 .flexlayout__tabset_tabbar_inner {
-  padding: 0 2px;
+  padding: 0 6px;
 }
 
-/* Individual tab buttons */
 .flexlayout__tab_button {
   background: transparent !important;
   border: none !important;
-  border-radius: 0 !important;
-  padding: 6px 14px !important;
-  margin: 0 !important;
-  font-size: 11px !important;
+  border-radius: 999px !important;
+  padding: 5px 14px !important;
+  margin: 4px 2px !important;
+  font-size: 12px !important;
   font-weight: 500;
   color: var(--color-bc-muted) !important;
-  border-bottom: 2px solid transparent !important;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 120ms, background-color 120ms;
   box-shadow: none !important;
   outline: none !important;
 }
 .flexlayout__tab_button:hover {
-  color: #9ca3af !important;
-  background: transparent !important;
+  color: var(--color-bc-text) !important;
+  background: var(--color-bc-hover) !important;
 }
 .flexlayout__tab_button--selected {
-  color: var(--color-bc-text) !important;
-  background: transparent !important;
-  border-bottom: 2px solid var(--color-bc-accent) !important;
+  color: var(--color-bc-text-bright) !important;
+  background: color-mix(in oklab, var(--color-bc-accent) 14%, transparent) !important;
+  font-weight: 600;
 }
 .flexlayout__tab_button_leading,
 .flexlayout__tab_button_trailing {
-  display: none; /* hide close X and drag handle for cleaner look */
+  display: none;
 }
 
-/* Toolbar buttons (maximize, etc) in tab strip.
- * 24 px standen hier bis B-77; die Zahl ist jetzt `--ziel` und steht an
- * einer Stelle statt an dreien. */
-.flexlayout__tab_toolbar_button {
-  color: #4b5563 !important;
-  border-radius: 0;
-  width: var(--ziel);
-  height: var(--ziel);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.15s, background 0.15s;
-}
-.flexlayout__tab_toolbar_button:hover {
-  color: var(--color-bc-text) !important;
-  background-color: #1e2030 !important;
-}
-
+.flexlayout__tab_toolbar_button,
 .panel-toolbar-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: var(--ziel);
   height: var(--ziel);
-  margin-left: 4px;
-  border: 1px solid transparent;
-  border-radius: 0;
+  border: 0;
+  border-radius: var(--radius-bc-control);
   background: transparent;
-  color: var(--color-bc-muted);
+  color: var(--color-bc-muted) !important;
   cursor: pointer;
-  transition: color 0.15s, background-color 0.15s, border-color 0.15s;
+  transition: color 120ms, background-color 120ms;
 }
-
+.panel-toolbar-button {
+  margin-left: 4px;
+}
+.flexlayout__tab_toolbar_button:hover,
 .panel-toolbar-button:hover {
-  color: var(--color-bc-text);
-  background-color: #1e2030;
-  border-color: var(--color-bc-sunken);
+  color: var(--color-bc-text) !important;
+  background-color: var(--color-bc-hover) !important;
 }
-
 .panel-toolbar-button-danger:hover {
-  color: #fca5a5;
-  background-color: rgba(239, 68, 68, 0.12);
-  border-color: rgba(239, 68, 68, 0.28);
+  color: var(--color-bc-red) !important;
+  background-color: color-mix(in oklab, var(--color-bc-red) 14%, transparent) !important;
 }
 
 .panel-title-label {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
+  min-height: 36px;
   padding: 0 10px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  color: #cbd5e1;
-  text-transform: uppercase;
+  color: var(--color-bc-text-bright);
 }
 
 .layout-mode-grid .flexlayout__tabset_header,
 .layout-mode-grid .flexlayout__tabset-selected .flexlayout__tabset_header,
 .layout-mode-grid .flexlayout__tabset_tabbar_outer {
-  background: #12141c !important;
-  border-bottom: 1px solid #1e2030 !important;
-  min-height: 34px;
+  min-height: 38px;
 }
 
 .layout-mode-grid .flexlayout__tab_button,
@@ -509,83 +426,112 @@ select {
 .layout-mode-focus .flexlayout__tabset_tabbar_outer {
   display: none !important;
 }
+.layout-mode-focus .flexlayout__tab {
+  border-radius: var(--radius-bc-card);
+}
 
-/* Splitter between panels */
+/* Der Splitter ist der Abstand zwischen den Karten; erst beim Greifen
+ * zeigt er den Akzent. */
 .flexlayout__splitter {
   background-color: var(--color-bc-dark) !important;
+  box-shadow: none !important;
   opacity: 1;
 }
-.flexlayout__splitter:hover {
-  background-color: var(--color-bc-accent) !important;
-}
+.flexlayout__splitter:hover,
 .flexlayout__splitter_drag {
-  background-color: var(--color-bc-accent) !important;
+  background-color: color-mix(in oklab, var(--color-bc-accent) 40%, transparent) !important;
+  border-radius: 999px;
 }
 
-/* Border bar (edge docking zone) */
 .flexlayout__border_bar {
-  background-color: #12141c !important;
-  border-color: #1e2030 !important;
+  background-color: var(--color-bc-dark) !important;
+  border-color: var(--color-bc-border) !important;
+  box-shadow: none !important;
 }
 
-/* Drag/drop outline */
 .flexlayout__outline_rect {
   border: 2px solid var(--color-bc-accent) !important;
-  border-radius: 0;
+  border-radius: var(--radius-bc-card);
 }
 .flexlayout__outline_rect_inner {
   border: none !important;
 }
-
-/* Edge indicators */
 .flexlayout__edge_rect {
-  background-color: rgba(246,245,240,0.15) !important;
-  border: 1px solid rgba(246,245,240,0.4) !important;
-  border-radius: 0;
+  background-color: color-mix(in oklab, var(--color-bc-accent) 15%, transparent) !important;
+  border: 1px solid color-mix(in oklab, var(--color-bc-accent) 40%, transparent) !important;
+  border-radius: var(--radius-bc-control);
 }
 
-/* Popup menu (for overflow tabs)
- *
- * KEIN SCHLAGSCHATTEN (ADR-007 Abschnitt 3). Hier standen `0 12px 40px
- * rgba(0,0,0,0.5)` — die letzte Stelle im Stilblatt, an der eine Flaeche
- * ueber einer anderen zu schweben behauptete. Abgehoben ist das Menue auch
- * ohne: es traegt eine Linie in `--color-bc-sunken` und eine eigene
- * Flaechenfarbe. Struktur entsteht durch Linie und Weissraum. */
 .flexlayout__popup_menu {
   background: var(--color-bc-panel) !important;
-  border: 1px solid var(--color-bc-sunken) !important;
-  border-radius: 0;
-  box-shadow: none !important;
-  padding: 4px !important;
+  border: 1px solid var(--color-bc-border) !important;
+  border-radius: var(--radius-bc-card);
+  box-shadow: var(--shadow-bc-2) !important;
+  padding: 6px !important;
 }
 .flexlayout__popup_menu_item {
   color: var(--color-bc-text) !important;
-  padding: 6px 12px !important;
-  border-radius: 0;
-  font-size: 12px !important;
+  padding: 8px 12px !important;
+  border-radius: var(--radius-bc-control);
+  font-size: 13px !important;
 }
 .flexlayout__popup_menu_item:hover {
-  background: var(--color-bc-panel-raised) !important;
+  background: var(--color-bc-hover) !important;
 }
 
-/* Tab floating window */
 .flexlayout__floating_window_content {
-  background: var(--color-bc-dark) !important;
+  background: var(--color-bc-panel) !important;
 }
 
-/* Remove any remaining 3D borders / old-school effects */
-.flexlayout__tabset,
-.flexlayout__tab,
-.flexlayout__border_bar,
-.flexlayout__splitter {
-  box-shadow: none !important;
-}
-
-/* Maximize button overlay */
 .flexlayout__tab_toolbar_button-max svg,
 .flexlayout__tab_toolbar_button-float svg {
   width: 14px;
   height: 14px;
+}
+
+/* ── Bedienelemente: weiche Formen an einer Stelle ─────────────────────────
+ * Statt Rundungen in hunderte Klassenlisten zu schreiben, bekommen die
+ * Elemente sie nach Rolle. Wer eckig bleiben muss (Kamerabild, Logo,
+ * Tally-Punkt), setzt `rounded-none`. */
+@layer base {
+button,
+select,
+textarea,
+summary,
+[role='button'],
+input:not([type='checkbox']):not([type='radio']):not([type='range']) {
+  border-radius: var(--radius-bc-control);
+  transition: background-color 120ms, border-color 120ms, color 120ms, scale 120ms;
+}
+button:not(:disabled):active,
+[role='button']:active {
+  scale: 0.97;
+}
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--color-bc-accent);
+}
+[role='dialog'],
+[role='alertdialog'],
+dialog {
+  border-radius: var(--radius-bc-modal);
+  box-shadow: var(--shadow-bc-3);
+}
+[role='menu'],
+[role='listbox'],
+[popover] {
+  border-radius: var(--radius-bc-card);
+  box-shadow: var(--shadow-bc-2);
+}
+[role='menuitem'],
+[role='option'] {
+  border-radius: var(--radius-bc-control);
+}
+.lz-logo-dunkel,
+.lz-logo-hell,
+canvas {
+  border-radius: 0;
+}
 }
 
 /* ── ADR-007 Abschnitt 6: der Rahmen ────────────────────────────────────────
@@ -611,7 +557,8 @@ select {
   height: 40px;
   flex: none;
   padding: 0 12px;
-  background: var(--color-bc-panel);
+  background: color-mix(in oklab, var(--color-bc-panel) 82%, transparent);
+  backdrop-filter: blur(16px) saturate(1.4);
   border-bottom: 1px solid var(--color-bc-border);
 }
 
@@ -655,7 +602,7 @@ select {
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  border-bottom: 1px solid var(--color-bc-accent);
+  border-bottom: 1px solid var(--color-bc-border);
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
@@ -768,4 +715,17 @@ summary,
 /* Unter 640 px schiebt das Signet die Menues aus dem Bild (mobil:check in cable-planner). */
 @media (max-width: 639px) {
   .lz-logo-dunkel, .lz-logo-hell { display: none !important; }
+}
+
+/* Erfolgsmoment der Checkliste: der Haken springt ein (lzm-web 4). */
+@keyframes first-steps-pop {
+  0% { scale: 0.6; opacity: 0; }
+  60% { scale: 1.08; opacity: 1; }
+  100% { scale: 1; }
+}
+.first-steps-check.is-done {
+  animation: first-steps-pop 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .first-steps-check.is-done { animation: none; }
 }
