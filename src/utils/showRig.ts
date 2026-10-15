@@ -37,7 +37,7 @@ export function istSpielfeld(s: Stage): boolean {
 
 export const SHOW_LICHT_STANDARD: ShowLightSettings = {
   brightness: 1,
-  mood: 'worship',
+  mood: 'blueMagenta',
   color: '#3f5bff',
   haze: 0.5,
   fixtures: 'both',
@@ -45,7 +45,7 @@ export const SHOW_LICHT_STANDARD: ShowLightSettings = {
   aimAtStage: false,
 };
 
-const STIMMUNGEN: ShowLightMood[] = ['white', 'warm', 'worship', 'concert', 'custom'];
+const STIMMUNGEN: ShowLightMood[] = ['white', 'warm', 'blueMagenta', 'concert', 'custom'];
 const HEX = /^#[0-9a-f]{6}$/i;
 
 /** Gelesene Einstellung (Projektdatei, Eingabe) mit Standards fuer alles Fehlende oder Unbrauchbare. */
@@ -69,7 +69,7 @@ export function showLichtAus(roh: unknown): ShowLightSettings {
 const FARBEN: Record<Exclude<ShowLightMood, 'custom'>, { wash: string; beams: string[] }> = {
   white: { wash: '#f6f7ff', beams: ['#ffffff', '#eef2ff', '#ffffff', '#f4f6ff'] },
   warm: { wash: '#ffe6c7', beams: ['#ffb347', '#ffd9a8', '#ff9a3c', '#ffe2b8'] },
-  worship: { wash: '#fff0e2', beams: ['#3f5bff', '#b23cff', '#5b74ff', '#ff4fa3', '#3f5bff', '#e8eeff'] },
+  blueMagenta: { wash: '#fff0e2', beams: ['#3f5bff', '#b23cff', '#5b74ff', '#ff4fa3', '#3f5bff', '#e8eeff'] },
   concert: { wash: '#fff0e2', beams: ['#ff3b3b', '#3f5bff', '#2bd96b', '#ffae3a', '#ff4fa3', '#29d3ff'] },
 };
 

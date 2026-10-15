@@ -30,7 +30,7 @@ export default function ShowLichtEinstellung() {
   const stimmungen: [ShowLightMood, string][] = [
     ['white', t('venue.showLight.mood.white', 'White')],
     ['warm', t('venue.showLight.mood.warm', 'Warm')],
-    ['worship', t('venue.showLight.mood.worship', 'Worship blue')],
+    ['blueMagenta', t('venue.showLight.mood.blueMagenta', 'Blue / magenta')],
     ['concert', t('venue.showLight.mood.concert', 'Concert colours')],
     ['custom', t('venue.showLight.mood.custom', 'Own colour')],
   ];

@@ -82,7 +82,7 @@ export const venue: Record<string, string> = {
   'venue.showLight.mood': 'Farbe',
   'venue.showLight.mood.white': 'Weiß',
   'venue.showLight.mood.warm': 'Warm',
-  'venue.showLight.mood.worship': 'Lobpreis-Blau',
+  'venue.showLight.mood.blueMagenta': 'Blau-Magenta',
   'venue.showLight.mood.concert': 'Konzert bunt',
   'venue.showLight.mood.custom': 'Eigene Farbe',
   'venue.showLight.color': 'Farbe der Beams',

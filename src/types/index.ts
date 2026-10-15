@@ -766,7 +766,7 @@ export interface Venue extends RaumErweiterung {
 }
 
 /** Colour look of the show light. */
-export type ShowLightMood = 'white' | 'warm' | 'worship' | 'concert' | 'custom';
+export type ShowLightMood = 'white' | 'warm' | 'blueMagenta' | 'concert' | 'custom';
 
 /**
  * The show light is generated from the stages (utils/showRig) — these values
