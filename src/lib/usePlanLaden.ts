@@ -24,6 +24,7 @@ import {
   pdfjsRenderer,
   PlanDateiFehler,
   PLAN_BILD_MAX_BYTES,
+  PLAN_MAX_KANTE,
   istDxfDatei,
   istPdfDatei,
   vektorAlsPlan,
@@ -31,7 +32,7 @@ import {
   type PdfjsModul,
   type PdfSeitenRenderer,
 } from '../avplan/floorplan';
-import { setPlanQuelle } from './planQuelle';
+import { planQuelleFuer, setPlanQuelle, setPlanSeite } from './planQuelle';
 import { useStore } from '../store/useStore';
 import { useTranslation, format } from '../i18n';
 import type { BackgroundPlan } from '../types';
@@ -115,7 +116,7 @@ export function usePlanLaden() {
         const plan = dxf
           ? vektorAlsPlan(dxfLesen(dxfText(bytes!)), datei.name)
           : await ladePlanDatei(datei, { pdf: pdfRenderer() });
-        setPlanQuelle(bytes ? { art: dxf ? 'dxf' : 'pdf', name: datei.name, daten: bytes, seite: plan.seite, bild: plan.src } : null);
+        setPlanQuelle(bytes ? { art: dxf ? 'dxf' : 'pdf', name: datei.name, daten: bytes, seite: plan.seite, seiten: plan.seiten, bild: plan.src } : null);
         setBackgroundPlan(alsHintergrundPlan(plan, venueBreiteM));
       } catch (err) {
         if (err instanceof DxfFehler) {
@@ -149,6 +150,35 @@ export function usePlanLaden() {
     [meldeUngeeignet, setBackgroundPlan, t, venueBreiteM],
   );
 
-  return { lade, meldeUngeeignet };
+  /**
+   * Eine andere Seite desselben PDFs zeigen — bei diesen Plaenen ist das
+   * das andere Geschoss. Kalibrierung und Lage bleiben, solange die Seite
+   * gleich gross ist; sonst faengt der Plan wie ein neuer an.
+   */
+  const ladeSeite = useCallback(
+    async (seite: number) => {
+      const quelle = planQuelleFuer(useStore.getState().backgroundPlan?.dataUrl);
+      if (!quelle || quelle.art !== 'pdf' || seite < 0 || seite >= quelle.seiten || seite === quelle.seite) return;
+      try {
+        const r = await pdfRenderer()(quelle.daten, seite, PLAN_MAX_KANTE);
+        setPlanSeite(seite, r.dataUrl);
+        const alt = useStore.getState().backgroundPlan;
+        const gleich = alt && alt.widthPx === r.breite && alt.heightPx === r.hoehe;
+        setBackgroundPlan(
+          gleich
+            ? { ...alt, dataUrl: r.dataUrl }
+            : alsHintergrundPlan(
+                { src: r.dataUrl, name: quelle.name, naturalWidth: r.breite, naturalHeight: r.hoehe, art: 'pdf', seiten: r.seiten, seite },
+                venueBreiteM,
+              ),
+        );
+      } catch (err) {
+        alert(format(t('sidebar.pdfRenderFailed', 'Failed to render PDF: {msg}'), { msg: err instanceof Error ? err.message : String(err) }));
+      }
+    },
+    [setBackgroundPlan, t, venueBreiteM],
+  );
+
+  return { lade, ladeSeite, meldeUngeeignet };
 }
 

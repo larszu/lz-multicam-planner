@@ -196,6 +196,9 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
   instead (provider from **Settings → AI**) and the answer is snapped onto the
   drawn lines. Measured on five real architect's drawings:
   [`docs/plan-import.md`](plan-import.md)
+- **Several floors**: a PDF with one sheet per storey switches sheets right
+  there (*Sheet 2 of 4*). Calibration and position stay as long as the sheets
+  are the same size, so the floors sit on top of each other
 - Draw walls with 45° shift-snapping
 - **What can be edited** sits as a small switch bar in the top-left corner of the plan: Floor plan, Stage, Room, Objects, Cameras. Click a group to lock it (lock icon) and again to free it — e.g. lock everything but cameras while placing cameras. *Edit → Edit mode* offers the same as one-click presets
 - Place stage objects (person, guitarist, drums, keys, mic stand, custom) — new people land on the main stage, side by side

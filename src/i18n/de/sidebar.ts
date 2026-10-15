@@ -123,6 +123,7 @@ export const sidebar: Record<string, string> = {
   'plan.detect.openings': '{doors} Türen, {windows} Fenster',
   'plan.detect.scale': 'Maßstab 1:{n} ({src}, {hits} von {read} Maßen)',
   'plan.detect.snapped': '{n} von {all} KI-Teilen auf die Zeichnung eingerastet',
+  'plan.detect.page': 'Blatt {n} von {all}',
   'plan.detect.apply': 'Übernehmen',
   'plan.detect.discard': 'Verwerfen',
   'plan.detect.previewTitle': 'Vorschau',

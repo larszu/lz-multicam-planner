@@ -11,7 +11,10 @@ export interface PlanQuelle {
   art: PlanQuellArt;
   name: string;
   daten: Uint8Array;
+  /** Gezeigte Seite, ab 0. */
   seite: number;
+  /** Seiten der Datei; bei einem PDF je Geschoss ein Blatt. */
+  seiten: number;
   /** data:-URL des Planbilds, zu dem die Quelle gehoert. */
   bild: string;
 }
@@ -25,4 +28,9 @@ export function setPlanQuelle(q: PlanQuelle | null) {
 /** Die Quelle, wenn sie zum gezeigten Planbild gehoert. */
 export function planQuelleFuer(bild: string | undefined): PlanQuelle | null {
   return quelle && bild && quelle.bild === bild ? quelle : null;
+}
+
+/** Nach dem Seitenwechsel: dieselben Daten, neues Bild. */
+export function setPlanSeite(seite: number, bild: string) {
+  if (quelle) quelle = { ...quelle, seite, bild };
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FiCheck, FiCpu, FiCrop, FiLoader, FiSettings, FiX, FiZap } from 'react-icons/fi';
+import { FiCheck, FiChevronLeft, FiChevronRight, FiCpu, FiCrop, FiLoader, FiSettings, FiX, FiZap } from 'react-icons/fi';
 import { useStore } from '../../store/useStore';
 import { AiError } from '../../utils/aiProviders';
 import { useTranslation, format } from '../../i18n';
@@ -7,6 +7,7 @@ import { openSettings } from '../Settings/openSettings';
 import { useAiSettings } from '../Settings/useAiSettings';
 import { aiErrorHint } from '../Settings/aiErrorHint';
 import { planQuelleFuer } from '../../lib/planQuelle';
+import { usePlanLaden } from '../../lib/usePlanLaden';
 import { kiLauf, vorschauAusPlan, type PlanLaufBericht, type PlanLaufOptionen } from '../../lib/planLauf';
 import { planAusQuelle } from '../../lib/planLesen';
 import { vorschauImBereich } from '../../lib/planVorschau';
@@ -32,6 +33,7 @@ export default function PlanErkennungPanel() {
   const setPlanBereichModus = useStore((s) => s.setPlanBereichModus);
   const planUebernehmen = useStore((s) => s.planUebernehmen);
   const ai = useAiSettings();
+  const { ladeSeite } = usePlanLaden();
 
   const [zustand, setZustand] = useState<Zustand>('idle');
   const [fehler, setFehler] = useState<string | null>(null);
@@ -136,6 +138,34 @@ export default function PlanErkennungPanel() {
           ? t('plan.detect.introVector', 'The PDF/DXF carries the drawing itself — walls, openings and rooms come out to scale, no AI needed.')
           : t('plan.detect.introRaster', 'This plan is an image. An AI can trace it; the result snaps onto the drawn lines. Drop the PDF or DXF instead for exact geometry.')}
       </p>
+
+      {/* Mehrgeschossig: ein Blatt je Geschoss. Die Datei bleibt dieselbe,
+          nur die Seite wechselt — Kalibrierung und Lage bleiben stehen. */}
+      {quelle && quelle.seiten > 1 && (
+        <div className="flex items-center justify-between gap-1 text-[10px] text-bc-text">
+          <span className="text-bc-muted">
+            {format(t('plan.detect.page', 'Sheet {n} of {all}'), { n: quelle.seite + 1, all: quelle.seiten })}
+          </span>
+          <span className="flex gap-1">
+            <button
+              type="button"
+              disabled={quelle.seite === 0 || zustand === 'running'}
+              onClick={() => void ladeSeite(quelle.seite - 1)}
+              className="rounded-bc-s border border-bc-border px-1.5 py-0.5 text-bc-muted hover:text-bc-text disabled:opacity-40"
+            >
+              <FiChevronLeft size={11} />
+            </button>
+            <button
+              type="button"
+              disabled={quelle.seite + 1 >= quelle.seiten || zustand === 'running'}
+              onClick={() => void ladeSeite(quelle.seite + 1)}
+              className="rounded-bc-s border border-bc-border px-1.5 py-0.5 text-bc-muted hover:text-bc-text disabled:opacity-40"
+            >
+              <FiChevronRight size={11} />
+            </button>
+          </span>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2 text-[10px] text-bc-text">
         {(['walls', 'columns', 'stages'] as const).map((k) => (
