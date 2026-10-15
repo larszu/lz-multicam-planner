@@ -3,6 +3,7 @@ import { useStore } from '../../store/useStore';
 import { useTranslation } from '../../i18n';
 import type { ShowLightMood, ShowLightSettings } from '../../types';
 import { SHOW_LICHT_STANDARD, showLichtAus } from '../../utils/showRig';
+import Regler from '../ui/Regler';
 
 const chip = (an: boolean) =>
   `rounded-bc-full px-2.5 py-0.5 text-[11px] font-medium ${an ? 'bg-bc-accent-soft text-bc-text-bright' : 'bg-bc-panel-raised text-bc-muted hover:text-bc-text'}`;
@@ -33,7 +34,6 @@ export default function ShowLichtEinstellung() {
     ['concert', t('venue.showLight.mood.concert', 'Concert colours')],
     ['custom', t('venue.showLight.mood.custom', 'Own colour')],
   ];
-  const prozent = (v: number) => `${Math.round(v * 100)} %`;
 
   return (
     <details className="group px-3 pb-2 text-[11px]">
@@ -61,23 +61,34 @@ export default function ShowLichtEinstellung() {
           )}
         </div>
 
-        <label className="block">
-          <span className="flex items-baseline justify-between text-bc-muted">
-            <span>{t('venue.showLight.brightness', 'Brightness')}</span>
-            <span className="font-semibold text-bc-text-bright tabular-nums">{prozent(e.brightness)}</span>
-          </span>
-          <input type="range" min={0.25} max={2} step={0.05} value={e.brightness} className="w-full"
-            onChange={(ev) => setze({ brightness: Number(ev.target.value) })} aria-valuetext={prozent(e.brightness)} />
-        </label>
+        <Regler
+          label={t('venue.showLight.brightness', 'Brightness')}
+          value={Math.round(e.brightness * 100)}
+          min={25}
+          max={200}
+          schritt={5}
+          standard={100}
+          raster={[50, 100, 150]}
+          marken={[25, 100, 200]}
+          formatMarke={(v) => `${v}`}
+          format={(v) => `${v} %`}
+          einheit="%"
+          onChange={(v) => setze({ brightness: v / 100 })}
+        />
 
-        <label className="block">
-          <span className="flex items-baseline justify-between text-bc-muted">
-            <span>{t('venue.showLight.haze', 'Haze')}</span>
-            <span className="font-semibold text-bc-text-bright tabular-nums">{prozent(e.haze)}</span>
-          </span>
-          <input type="range" min={0} max={1} step={0.05} value={e.haze} className="w-full"
-            onChange={(ev) => setze({ haze: Number(ev.target.value) })} aria-valuetext={prozent(e.haze)} />
-        </label>
+        <Regler
+          label={t('venue.showLight.haze', 'Haze')}
+          value={Math.round(e.haze * 100)}
+          min={0}
+          max={100}
+          schritt={5}
+          standard={50}
+          marken={[0, 50, 100]}
+          formatMarke={(v) => `${v}`}
+          format={(v) => `${v} %`}
+          einheit="%"
+          onChange={(v) => setze({ haze: v / 100 })}
+        />
 
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-bc-muted">{t('venue.showLight.fixtures', 'Fixtures')}</span>
