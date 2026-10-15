@@ -104,8 +104,24 @@ function HostSzene() {
         kamera.aspect = f.aspect;
         kamera.updateProjectionMatrix();
 
-        const { w, h } = bildPixel(rolle, cssW, dpr, gesenkt ? 0.6 : 1);
-        const t0 = performance.now();
+        // Waehrend gezogen wird (Bilder dicht hintereinander), rechnet das
+        // grosse Bild kleiner und ohne Verdeckung/Tiefenunschaerfe; steht die
+        // Hand still, kommt einmal das volle Bild nach.
+        // Bewegung heisst: dieselbe Kamera steht anders als beim letzten Bild,
+        // und das ist keine 150 ms her. Ein zweites Bild derselben Stellung
+        // zaehlt nicht — sonst zoege jedes Nachziehen das naechste nach.
+        const jetzt = performance.now();
+        const schluessel = `${rolle}:${camId}`;
+        const stellung = [pos.x, pos.y, cam.z, cam.pan, cam.tilt, cam.focalLength, cam.focusDistance, cam.extenderActive].join('|');
+        const vorher = zuletzt.current.get(schluessel);
+        const inBewegung = !!vorher && vorher.stellung !== stellung && jetzt - vorher.t < 150;
+        if (!vorher || vorher.stellung !== stellung) zuletzt.current.set(schluessel, { t: jetzt, stellung });
+        if (inBewegung) {
+          window.clearTimeout(nachziehen.current);
+          nachziehen.current = window.setTimeout(szene3DGeaendert, 200);
+        }
+        const { w, h } = bildPixel(rolle, cssW, dpr, gesenkt ? 0.6 : inBewegung && rolle === 'gross' ? 0.7 : 1);
+        const t0 = jetzt;
         // Ohne laufende Schleife (frameloop="demand") setzt hier die Zeit fuer
         // Dunst und Videowand.
         SZENEN_ZEIT.value = t0 / 1000;
@@ -119,23 +135,7 @@ function HostSzene() {
         } else {
           // Kacheln (hoechstens 480 px) ohne Verdeckung und Tiefenunschaerfe:
           // in der Groesse sieht man beides nicht, die GPU zahlt es je Kachel.
-          // Licht, Tonemapping und Bloom sind dieselben.
-          // Waehrend gezogen wird (Bilder dicht hintereinander), rechnet auch
-          // das grosse Bild die schnelle Stufe; steht die Hand still, kommt
-          // einmal das volle Bild nach.
-          // Bewegung heisst: dieselbe Kamera steht anders als beim letzten
-          // Bild, und das ist keine 150 ms her. Ein zweites Bild derselben
-          // Stellung zaehlt nicht — sonst zoege jedes Nachziehen das naechste nach.
-          const jetzt = performance.now();
-          const schluessel = `${rolle}:${camId}`;
-          const stellung = [pos.x, pos.y, cam.z, cam.pan, cam.tilt, cam.focalLength, cam.focusDistance, cam.extenderActive].join('|');
-          const vorher = zuletzt.current.get(schluessel);
-          const inBewegung = !!vorher && vorher.stellung !== stellung && jetzt - vorher.t < 150;
-          if (!vorher || vorher.stellung !== stellung) zuletzt.current.set(schluessel, { t: jetzt, stellung });
-          if (inBewegung && stufe === 'high') {
-            window.clearTimeout(nachziehen.current);
-            nachziehen.current = window.setTimeout(szene3DGeaendert, 200);
-          }
+          // Licht, Tonemapping und Bloom sind ueberall dieselben.
           const q = rolle === 'kachel' || inBewegung ? 'low' : stufe;
           let z = ziele.current.get(rolle);
           if (!z) {
