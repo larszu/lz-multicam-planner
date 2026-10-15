@@ -72,18 +72,43 @@ interface Abbildung {
   dy: number;
 }
 
-function abbildung(plan: BackgroundPlan, breiteM: number, uebernehmen: boolean): { ab: Abbildung; neuerPlan?: BackgroundPlan } {
+/** Rand um das Gebaeude, wenn der Plan massstaeblich gelegt wird. */
+const RAND_M = 2;
+
+function abbildung(
+  plan: BackgroundPlan,
+  p: ErkannterPlan,
+  uebernehmen: boolean,
+): { ab: Abbildung; neuerPlan?: BackgroundPlan; venueGroesse?: { widthM: number; heightM: number } } {
   if (uebernehmen) {
-    const s = breiteM / plan.widthPx;
-    return { ab: { s: 1, dx: plan.offsetX, dy: plan.offsetY }, neuerPlan: { ...plan, scaleX: s, scaleY: s } };
+    const s = p.breiteM / plan.widthPx;
+    // Das Blatt ist nicht das Gebaeude: ein A0-Bogen 1:200 ist 238 m breit,
+    // das Haus darauf 60. Das Venue bekommt deshalb die Groesse des erkannten
+    // Gebaeudes, und der Plan wird so geschoben, dass es darin liegt.
+    const g = p.gebaeude;
+    const dx = g ? RAND_M - g.minX : plan.offsetX;
+    const dy = g ? RAND_M - g.minY : plan.offsetY;
+    return {
+      ab: { s: 1, dx, dy },
+      neuerPlan: { ...plan, scaleX: s, scaleY: s, offsetX: dx, offsetY: dy },
+      venueGroesse: g
+        ? { widthM: Math.ceil(g.maxX - g.minX + 2 * RAND_M), heightM: Math.ceil(g.maxY - g.minY + 2 * RAND_M) }
+        : { widthM: Math.ceil(p.breiteM), heightM: Math.ceil(p.tiefeM) },
+    };
   }
   // Ohne Uebernahme bleibt die Kalibrierung des Nutzers: die Zeichnung wird
   // auf die Breite gestaucht, die der Plan im Venue gerade einnimmt.
-  const s = (plan.widthPx * plan.scaleX) / breiteM;
+  const s = (plan.widthPx * plan.scaleX) / p.breiteM;
   return { ab: { s, dx: plan.offsetX, dy: plan.offsetY } };
 }
 
 const inWelt = (ab: Abbildung, x: number, y: number) => ({ x: ab.dx + x * ab.s, y: ab.dy + y * ab.s });
+const inRahmen = (ab: Abbildung, r: Rahmen): Rahmen => ({
+  minX: ab.dx + r.minX * ab.s,
+  minY: ab.dy + r.minY * ab.s,
+  maxX: ab.dx + r.maxX * ab.s,
+  maxY: ab.dy + r.maxY * ab.s,
+});
 const inZeichnung = (ab: Abbildung, r: Rahmen): Rahmen => ({
   minX: (r.minX - ab.dx) / ab.s,
   minY: (r.minY - ab.dy) / ab.s,
@@ -93,12 +118,17 @@ const inZeichnung = (ab: Abbildung, r: Rahmen): Rahmen => ({
 
 /** Erkannten Plan in die Vorschau umsetzen. */
 export function vorschauAusPlan(p: ErkannterPlan, plan: BackgroundPlan, o: PlanLaufOptionen, dauerMs: number): PlanLaufErgebnis {
-  const { ab, neuerPlan } = abbildung(plan, p.breiteM, o.applyScale);
+  const { ab, neuerPlan, venueGroesse } = abbildung(plan, p, o.applyScale);
+  // Den Ausschnitt hat der Nutzer ueber dem Plan aufgezogen, wie er LAG —
+  // also mit der alten Lage in die Zeichnung zurueckrechnen. Rueckt der Plan
+  // beim Uebernehmen des Massstabs, wandert der Ausschnitt mit ihm.
+  const abAlt = abbildung(plan, p, false).ab;
+  const bereichInZeichnung = o.bereich ? inZeichnung(abAlt, o.bereich) : undefined;
   const u = planUebernahme(p, {
     waende: o.walls,
     stuetzen: o.columns,
     buehnen: o.stages,
-    bereich: o.bereich ? inZeichnung(ab, o.bereich) : undefined,
+    bereich: bereichInZeichnung,
   });
   const waende: UebernahmeWand[] = u.waende.map((w) => ({
     ...w,
@@ -123,9 +153,14 @@ export function vorschauAusPlan(p: ErkannterPlan, plan: BackgroundPlan, o: PlanL
       label: [r.nummer, r.name].filter(Boolean).join(' ') || `${r.flaecheM2 ?? ''} m²`,
     }));
   return {
-    vorschau: { waende, buehnen, raeume, bereich: o.bereich },
+    vorschau: {
+      waende,
+      buehnen,
+      raeume,
+      bereich: bereichInZeichnung && inRahmen(ab, bereichInZeichnung),
+    },
     plan: neuerPlan,
-    venueGroesse: neuerPlan ? { widthM: Math.ceil(p.breiteM), heightM: Math.ceil(p.tiefeM) } : undefined,
+    venueGroesse,
     bericht: {
       quelle: 'vektor',
       massstab: {

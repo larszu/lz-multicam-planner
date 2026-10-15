@@ -127,8 +127,6 @@ export const sidebar: Record<string, string> = {
   'plan.detect.page': 'Blatt {n} von {all}',
   'plan.detect.apply': 'Übernehmen',
   'plan.detect.discard': 'Verwerfen',
-  'plan.detect.previewTitle': 'Vorschau',
-  'plan.detect.areaActive': 'Ausschnitt im 2D-Plan aufziehen',
 
   // ── CameraCard (sidebar.cam.*) ──
   'sidebar.cam.duplicate': 'Kamera duplizieren',

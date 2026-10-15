@@ -56,8 +56,19 @@ describe('DXF erkennen und in Welt-Meter legen', () => {
     const breiten = e.vorschau.waende.map((w) => Math.hypot(w.x2 - w.x1, w.y2 - w.y1));
     // Die längste Wand ist die Aussenlänge 6,48 m abzüglich nichts, Mittellinie 6,24 m
     expect(Math.max(...breiten)).toBeCloseTo(6.24, 2);
-    // Offset des Plans schlägt durch
-    expect(Math.min(...e.vorschau.waende.map((w) => Math.min(w.x1, w.x2)))).toBeGreaterThanOrEqual(2);
+  });
+
+  it('macht das Venue so gross wie das Gebäude, nicht wie das Blatt', () => {
+    const bild = planBild(1000, 700, 0.02);
+    const e = vorschauAusPlan(plan, bild, { walls: true, columns: true, stages: true, applyScale: true }, 0);
+    // Gebäude 6,24 × 4,24 m (Wandmittellinien) plus 2 m Rand auf jeder Seite
+    expect(e.venueGroesse).toEqual({ widthM: 11, heightM: 9 });
+    // Der Plan wird so geschoben, dass das Gebäude mit dem Rand darin liegt
+    expect(Math.min(...e.vorschau.waende.map((w) => Math.min(w.x1, w.x2)))).toBeCloseTo(2, 2);
+    expect(Math.min(...e.vorschau.waende.map((w) => Math.min(w.y1, w.y2)))).toBeCloseTo(2, 2);
+    // Der Plan selbst rueckt um den Rand abzueglich der Lage des Gebaeudes
+    // auf dem Blatt — die Wände landen damit genau auf dem Rand.
+    expect(e.plan!.offsetX).toBeCloseTo(2 - plan.gebaeude!.minX, 6);
   });
 
   it('staucht die Zeichnung auf die Kalibrierung, wenn der Maßstab nicht übernommen wird', () => {
@@ -66,6 +77,17 @@ describe('DXF erkennen und in Welt-Meter legen', () => {
     expect(e.plan).toBeUndefined();
     const faktor = 20 / (zeichnung.breite * 0.001);
     expect(Math.max(...e.vorschau.waende.map((w) => Math.hypot(w.x2 - w.x1, w.y2 - w.y1)))).toBeCloseTo(6.24 * faktor, 1);
+  });
+
+  it('schiebt den Ausschnitt mit, wenn der Plan maßstäblich gelegt wird', () => {
+    const bild = planBild(1000, 700, 0.02);
+    // Ausschnitt über der linken Hälfte des Plans, wie er gerade liegt
+    const bereich = { minX: bild.offsetX, minY: bild.offsetY, maxX: bild.offsetX + 10, maxY: bild.offsetY + 14 };
+    const e = vorschauAusPlan(plan, bild, { walls: true, columns: true, stages: true, applyScale: true, bereich }, 0);
+    // Der Plan rückt; der Ausschnitt deckt danach dieselbe Stelle der Zeichnung
+    const faktor = 1 / ((bild.widthPx * bild.scaleX) / (zeichnung.breite * 0.001));
+    expect(e.vorschau.bereich!.maxX - e.vorschau.bereich!.minX).toBeCloseTo(10 * faktor, 6);
+    expect(e.vorschau.bereich!.minX).toBeCloseTo(e.plan!.offsetX, 6);
   });
 
   it('nimmt nur, was im gewählten Ausschnitt liegt', () => {
