@@ -36,7 +36,7 @@ export function Kulisse({ daten, show, tageslicht = false, simple, werte, audien
               <directionalLight position={[boardLook.x, 18, boardLook.y - diag]} intensity={0.22} color="#7f93ff" />
             </>
           )}
-          <ShowRig venue={venue} look={boardLook} werte={werte} dunst={draussen || tageslicht ? 0.32 : 0.5} />
+          <ShowRig venue={venue} look={boardLook} werte={werte} draussen={draussen || tageslicht} />
         </>
       ) : (
         <>
@@ -76,7 +76,7 @@ export function Kulisse({ daten, show, tageslicht = false, simple, werte, audien
         return (
           <mesh key={w.id} position={[cx, w.height / 2, cy]} rotation={[0, -angle, 0]}>
             <boxGeometry args={[len, w.height, 0.15]} />
-            {show && venue.wallMaterial
+            {venue.wallMaterial
               ? <WallSurfaceMaterial art={venue.wallMaterial} laengeM={len} hoeheM={w.height} farbe={w.color} />
               : show
               ? <meshStandardMaterial color={w.color ?? '#3a3d42'} roughness={0.9} />

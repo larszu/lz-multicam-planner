@@ -4,6 +4,7 @@ import { useTranslation } from '../../i18n';
 import type { View3DPrefs, View3DQuality } from './view3dPrefs';
 import type { Stufe } from '../../avplan/scene3d';
 import TageslichtEinstellung from './TageslichtEinstellung';
+import ShowLichtEinstellung from './ShowLichtEinstellung';
 
 export interface CameraRow {
   cam: VenueCamera;
@@ -120,6 +121,7 @@ export default function CameraListPanel({
           </div>
         </div>
       )}
+      {prefs.showLight && prefs.quality !== 'simple' && !prefs.daylight && <ShowLichtEinstellung />}
       {prefs.showLight && prefs.quality !== 'simple' && prefs.daylight && (
         <TageslichtEinstellung sky={prefs.sky} onSky={(patch) => onPrefs({ sky: { ...prefs.sky, ...patch } })} />
       )}

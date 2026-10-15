@@ -5,6 +5,7 @@ import { raumAus, sitzblockNormal, sitzblockPlaetzeListe, sitzblockTiefe, type V
 import { poseFuer, type PublikumsPlatz, type TribuenenForm } from '../avplan/scene3d';
 import type { Stage, Venue } from '../types';
 import { stageTopZ } from './stageBody';
+import { showLichtAus } from './showRig';
 import { audienceSeats, type AudienceInput } from './view3dScene';
 
 const RAUM_SCHLUESSEL = ['ceilingHeightM', 'floorMaterial', 'wallMaterial', 'seatingBlocks', 'videoWalls'] as const;
@@ -17,7 +18,11 @@ const RAUM_SCHLUESSEL = ['ceilingHeightM', 'floorMaterial', 'wallMaterial', 'sea
 export function venueAusDatei(roh: Venue, stages: Stage[]): Venue {
   const basis: Record<string, unknown> = { ...roh };
   for (const k of RAUM_SCHLUESSEL) delete basis[k];
-  return { ...(basis as unknown as Venue), stages, ...raumAus(roh) };
+  delete basis.showLight;
+  const v: Venue = { ...(basis as unknown as Venue), stages, ...raumAus(roh) };
+  // Showlicht nur, wenn die Datei eines hat — sonst gelten die Standards.
+  if (roh.showLight && typeof roh.showLight === 'object') v.showLight = showLichtAus(roh.showLight);
+  return v;
 }
 
 /** Groesste Buehne — an ihr richten sich neue Flaechen und Waende aus. */

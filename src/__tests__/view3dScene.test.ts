@@ -10,7 +10,9 @@ describe('Blick durch eine Kamera', () => {
     expect(fwd[0]).toBeCloseTo(0, 5);
     expect(fwd[1]).toBeLessThan(-0.99);
     expect(f.pos[1]).toBeCloseTo(3, 5);
-    expect(f.pos[2]).toBeLessThan(20);
+    // Genau am Standort: 1 m im Plan ist 1 m in der Szene.
+    expect(f.pos[0]).toBeCloseTo(10, 6);
+    expect(f.pos[2]).toBeCloseTo(20, 6);
   });
 
   it('nimmt die Neigung als Pitch mit', () => {

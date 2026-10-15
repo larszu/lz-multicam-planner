@@ -37,18 +37,18 @@ export function cameraDirection(panDeg: number, tiltDeg: number): [number, numbe
 }
 
 /**
- * Blick durch das Objektiv einer Kamera. Die Blickkamera sitzt ein Stueck vor
- * dem Gehaeuse, sonst steht sie im eigenen Kasten.
+ * Blick durch das Objektiv einer Kamera — genau von ihrem Standort und ihrer
+ * Hoehe, damit Vorschau, Kamerablick und gerendertes Bild denselben Ausschnitt
+ * zeigen (#192). Das eigene Modell blendet die 3D-Ansicht im Kamerablick aus.
  */
 export function povFraming(
   cam: { x: number; y: number; z: number; pan: number; tilt: number },
   hFovDeg: number,
   aspect: number,
 ): Framing {
-  const [dx, dy, dz] = cameraDirection(cam.pan, cam.tilt);
-  const ahead = 0.35;
+  const [dx, , dz] = cameraDirection(cam.pan, cam.tilt);
   return {
-    pos: [cam.x + dx * ahead, cam.z + dy * ahead, cam.y + dz * ahead],
+    pos: [cam.x, cam.z, cam.y],
     yaw: Math.atan2(-dx, -dz),
     pitch: cam.tilt * DEG,
     fovDeg: vFovForHFov(hFovDeg, aspect),

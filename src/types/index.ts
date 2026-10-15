@@ -761,6 +761,29 @@ export interface Venue extends RaumErweiterung {
   stages: Stage[];
   /** Standard wall height in metres for walls without their own (#198). */
   defaultWallHeightM?: number;
+  /** Show light of the 3D views and rendered camera images; missing in files before v4.9 = defaults. */
+  showLight?: ShowLightSettings;
+}
+
+/** Colour look of the show light. */
+export type ShowLightMood = 'white' | 'warm' | 'worship' | 'concert' | 'custom';
+
+/**
+ * The show light is generated from the stages (utils/showRig) — these values
+ * only steer it. Every field has a default (`showLichtAus`).
+ */
+export interface ShowLightSettings {
+  /** Fixture brightness, 1 = default (0.25–2). */
+  brightness: number;
+  mood: ShowLightMood;
+  /** Beam colour for mood `custom` (#rrggbb). */
+  color: string;
+  /** Haze density 0–1. */
+  haze: number;
+  fixtures: 'both' | 'wash' | 'beams';
+  amount: 'few' | 'normal' | 'many';
+  /** Beams point onto the stage instead of fanning out over the audience. */
+  aimAtStage: boolean;
 }
 
 // ── Template ──

@@ -4,7 +4,7 @@
 //
 // Kulisse, keine Lichtplanung: die Lampen kommen aus der Buehnengroesse,
 // nicht aus einem Plan. Wer Licht plant, nimmt den light-planner.
-import type { Stage } from '../types';
+import type { ShowLightMood, ShowLightSettings, Stage } from '../types';
 import type { VenueVideoWall } from '../avplan/floorplan';
 import { stageTopZ } from './stageBody';
 import { videoBoardPlacement } from './view3dScene';
@@ -33,22 +33,74 @@ export function istSpielfeld(s: Stage): boolean {
   return Math.max(s.width, s.height) > FELD_AB_M && stageTopZ(s) <= 0.2;
 }
 
-// Lobpreis- und Konzertfarben: tiefes Blau, Magenta, Bernstein. Front immer
-// warmweiss — Gesichter sollen nach Gesichtern aussehen.
-const BEAM_FARBEN = ['#3f5bff', '#b23cff', '#ffae3a', '#3f5bff', '#ff4fa3', '#ffffff'];
-const WASH = '#fff0e2';
+// ── Einstellungen (im Projekt, alle optional) ──
+
+export const SHOW_LICHT_STANDARD: ShowLightSettings = {
+  brightness: 1,
+  mood: 'worship',
+  color: '#3f5bff',
+  haze: 0.5,
+  fixtures: 'both',
+  amount: 'normal',
+  aimAtStage: false,
+};
+
+const STIMMUNGEN: ShowLightMood[] = ['white', 'warm', 'worship', 'concert', 'custom'];
+const HEX = /^#[0-9a-f]{6}$/i;
+
+/** Gelesene Einstellung (Projektdatei, Eingabe) mit Standards fuer alles Fehlende oder Unbrauchbare. */
+export function showLichtAus(roh: unknown): ShowLightSettings {
+  const r = (roh && typeof roh === 'object' ? roh : {}) as Partial<Record<keyof ShowLightSettings, unknown>>;
+  const zahl = (v: unknown, min: number, max: number, std: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : std);
+  const d = SHOW_LICHT_STANDARD;
+  return {
+    brightness: zahl(r.brightness, 0.25, 2, d.brightness),
+    mood: STIMMUNGEN.includes(r.mood as ShowLightMood) ? (r.mood as ShowLightMood) : d.mood,
+    color: typeof r.color === 'string' && HEX.test(r.color) ? r.color.toLowerCase() : d.color,
+    haze: zahl(r.haze, 0, 1, d.haze),
+    fixtures: r.fixtures === 'wash' || r.fixtures === 'beams' ? r.fixtures : d.fixtures,
+    amount: r.amount === 'few' || r.amount === 'many' ? r.amount : d.amount,
+    aimAtStage: typeof r.aimAtStage === 'boolean' ? r.aimAtStage : d.aimAtStage,
+  };
+}
+
+// Front (Wash) bleibt in den bunten Stimmungen warmweiss — Gesichter sollen
+// nach Gesichtern aussehen.
+const FARBEN: Record<Exclude<ShowLightMood, 'custom'>, { wash: string; beams: string[] }> = {
+  white: { wash: '#f6f7ff', beams: ['#ffffff', '#eef2ff', '#ffffff', '#f4f6ff'] },
+  warm: { wash: '#ffe6c7', beams: ['#ffb347', '#ffd9a8', '#ff9a3c', '#ffe2b8'] },
+  worship: { wash: '#fff0e2', beams: ['#3f5bff', '#b23cff', '#5b74ff', '#ff4fa3', '#3f5bff', '#e8eeff'] },
+  concert: { wash: '#fff0e2', beams: ['#ff3b3b', '#3f5bff', '#2bd96b', '#ffae3a', '#ff4fa3', '#29d3ff'] },
+};
+
+function farbenFuer(e: ShowLightSettings): { wash: string; beams: string[] } {
+  return e.mood === 'custom' ? { wash: '#fff0e2', beams: [e.color] } : FARBEN[e.mood];
+}
+
+const MENGE = { few: 0.5, normal: 1, many: 1.6 } as const;
 
 /**
  * Rig fuer alle Buehnen. `blick` ist der Punkt, von dem aus geschaut wird
  * (Mitte der Kameras oder des Publikums) — vorn ist die Seite dorthin.
  */
-export function showRig(stages: Stage[], blick: { x: number; y: number }, venue: { widthM: number; heightM: number }, maxLampen = 48): Rig {
+export function showRig(
+  stages: Stage[],
+  blick: { x: number; y: number },
+  venue: { widthM: number; heightM: number },
+  einstellung: ShowLightSettings = SHOW_LICHT_STANDARD,
+  maxLampen = 48,
+): Rig {
   const traversen: Rig['traversen'] = [];
   const lampen: RigLampe[] = [];
+  const { wash: WASH, beams: BEAM_FARBEN } = farbenFuer(einstellung);
+  const menge = MENGE[einstellung.amount];
+  const mitWash = einstellung.fixtures !== 'beams';
+  const mitBeams = einstellung.fixtures !== 'wash';
+  const hell = einstellung.brightness;
   for (const s of [...stages].sort((a, b) => b.width * b.height - a.width * a.height)) {
     if (lampen.length >= maxLampen) break;
     if (istSpielfeld(s)) {
-      flutlicht(s, venue, lampen);
+      flutlicht(s, venue, lampen, hell);
       continue;
     }
     const top = stageTopZ(s);
@@ -71,30 +123,34 @@ export function showRig(stages: Stage[], blick: { x: number; y: number }, venue:
     traversen.push({ von: punkt(-breite / 2 - 0.5, vorn, hoehe), nach: punkt(breite / 2 + 0.5, vorn, hoehe) });
     traversen.push({ von: punkt(-breite / 2, 0.6, hoehe + 1), nach: punkt(breite / 2, 0.6, hoehe + 1) });
 
-    const nWash = Math.max(2, Math.min(10, Math.round(breite / 3)));
+    const nWash = mitWash ? Math.max(1, Math.min(16, Math.round(Math.max(2, Math.min(10, Math.round(breite / 3))) * menge))) : 0;
     for (let i = 0; i < nWash && lampen.length < maxLampen; i++) {
       const u = -breite / 2 + ((i + 0.5) / nWash) * breite;
-      lampen.push({ von: punkt(u, vorn, hoehe - 0.35), nach: punkt(u * 0.85, tiefe * 0.55, top + 1.2), farbe: WASH, feldwinkelDeg: 30, art: 'wash', intensitaet: 1 });
+      lampen.push({ von: punkt(u, vorn, hoehe - 0.35), nach: punkt(u * 0.85, tiefe * 0.55, top + 1.2), farbe: WASH, feldwinkelDeg: 30, art: 'wash', intensitaet: hell });
     }
     // Rueckwaertige Beams faechern ueber die Buehne ins Publikum: das Bild,
-    // das man aus jeder Halle kennt.
-    const nBeam = Math.max(3, Math.min(14, Math.round(breite / 2.5)));
-    const weit = Math.max(10, Math.min(40, tiefe * 2.5 + 8));
+    // das man aus jeder Halle kennt. Auf Wunsch zeigen sie auf die Buehne.
+    const nBeam = mitBeams ? Math.max(1, Math.min(20, Math.round(Math.max(3, Math.min(14, Math.round(breite / 2.5))) * menge))) : 0;
+    // Die Kegel enden in den vorderen Reihen: reichten sie bis zu den Kameras im
+    // Publikum, schaute jede Kamera in den Strahl und saehe nur noch Schleier.
+    const weit = Math.max(4, Math.min(16, tiefe * 1.2 + 2));
     for (let i = 0; i < nBeam && lampen.length < maxLampen; i++) {
       const t = nBeam === 1 ? 0.5 : i / (nBeam - 1);
       const u = -breite / 2 + t * breite;
-      const faecher = (t - 0.5) * breite * 1.1;
-      const ziel = punkt(faecher, tiefe + weit * (0.55 + 0.45 * Math.abs(t - 0.5) * 2), 0);
-      lampen.push({ von: punkt(u, 0.6, hoehe + 0.65), nach: ziel, farbe: BEAM_FARBEN[i % BEAM_FARBEN.length], feldwinkelDeg: 7, art: 'beam', intensitaet: 0.6 });
+      const ziel = einstellung.aimAtStage
+        ? punkt(u * 0.7, tiefe * (0.35 + 0.4 * ((i % 3) / 2)), top)
+        : punkt((t - 0.5) * breite * 1.1, tiefe + weit * (0.55 + 0.45 * Math.abs(t - 0.5) * 2), 0);
+      lampen.push({ von: punkt(u, 0.6, hoehe + 0.65), nach: ziel, farbe: BEAM_FARBEN[i % BEAM_FARBEN.length], feldwinkelDeg: 7, art: 'beam', intensitaet: 0.6 * hell });
     }
     // Grosse Buehne unter freiem Himmel oder in der Arena: zusaetzlich
-    // schmale Strahlen schraeg nach oben, ueber das Publikum hinweg.
-    if (breite >= 20) {
-      const nLuft = Math.max(4, Math.min(12, Math.round(breite / 5)));
+    // schmale Strahlen schraeg nach oben, ueber das Publikum hinweg — nicht,
+    // wenn alles auf die Buehne zeigen soll.
+    if (breite >= 20 && mitBeams && !einstellung.aimAtStage) {
+      const nLuft = Math.max(2, Math.min(16, Math.round(Math.max(4, Math.min(12, Math.round(breite / 5))) * menge)));
       for (let i = 0; i < nLuft && lampen.length < maxLampen; i++) {
         const t = i / (nLuft - 1);
         const u = -breite / 2 + t * breite;
-        lampen.push({ von: punkt(u, 0.3, top + 0.3), nach: punkt(u + (t - 0.5) * breite * 1.6, tiefe + 18 + Math.abs(t - 0.5) * 30, hoehe + 28), farbe: i % 2 ? '#e8eeff' : '#5b74ff', feldwinkelDeg: 3.5, art: 'beam', intensitaet: 1 });
+        lampen.push({ von: punkt(u, 0.3, top + 0.3), nach: punkt(u + (t - 0.5) * breite * 1.6, tiefe + 18 + Math.abs(t - 0.5) * 30, hoehe + 28), farbe: BEAM_FARBEN[(i + 1) % BEAM_FARBEN.length], feldwinkelDeg: 3.5, art: 'beam', intensitaet: hell });
       }
     }
   }
@@ -102,7 +158,7 @@ export function showRig(stages: Stage[], blick: { x: number; y: number }, venue:
 }
 
 /** Vier Masten an den Ecken des Feldes: je ein echtes Licht und zwei Kegel im Dunst. */
-function flutlicht(s: Stage, venue: { widthM: number; heightM: number }, lampen: RigLampe[]): void {
+function flutlicht(s: Stage, venue: { widthM: number; heightM: number }, lampen: RigLampe[], hell: number): void {
   const h = Math.max(25, Math.min(45, Math.max(s.width, s.height) * 0.35));
   const rand = 8;
   const ecken: [number, number][] = [
@@ -116,12 +172,12 @@ function flutlicht(s: Stage, venue: { widthM: number; heightM: number }, lampen:
   for (const [ex, ey] of ecken) {
     // Die erste Lampe je Mast traegt das echte Licht (breiter), die anderen
     // sind Kegel im Dunst.
-    lampen.push({ von: [ex, h, ey], nach: [cx + (ex - cx) * 0.15, 0, cy + (ey - cy) * 0.15], farbe: '#f4f6ff', feldwinkelDeg: 70, art: 'flut', intensitaet: 1 });
+    lampen.push({ von: [ex, h, ey], nach: [cx + (ex - cx) * 0.15, 0, cy + (ey - cy) * 0.15], farbe: '#f4f6ff', feldwinkelDeg: 70, art: 'flut', intensitaet: hell });
     for (let k = 0; k < 2; k++) {
       const t = (k + 0.5) / 2;
       const zx = ex + (cx - ex) * (0.35 + t * 0.9);
       const zy = ey + (cy - ey) * (0.35 + t * 0.9);
-      lampen.push({ von: [ex + (k - 0.5) * 2, h, ey], nach: [zx, 0, zy], farbe: '#f4f6ff', feldwinkelDeg: 24, art: 'beam', intensitaet: 0.5 });
+      lampen.push({ von: [ex + (k - 0.5) * 2, h, ey], nach: [zx, 0, zy], farbe: '#f4f6ff', feldwinkelDeg: 24, art: 'beam', intensitaet: 0.5 * hell });
     }
   }
 }

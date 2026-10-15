@@ -19,19 +19,19 @@ import { FiLock, FiUnlock } from 'react-icons/fi';
 import { VIEW3D_FOV_DEG, defaultCameraPos, defaultPitchRad } from '../../utils/view3d';
 import { useTranslation } from '../../i18n';
 import { easeOut, shortestAngleDelta, topFraming, type Framing } from '../../utils/view3dScene';
+import { bildVDeg, kameraBildwinkel } from '../../utils/bildwinkel';
 import { useSchmal } from '../../lib/useSchmal';
 import { useView3DPrefs } from './view3dPrefs';
-import { PLANUNG_JE_THEMA, PLANUNGS_BODEN } from './planungsLook';
 import { useIstHell } from '../../lib/useIstHell';
-import { Atmosphere, CoverageWedge, ScenePipeline } from './ShowScene';
+import { CoverageWedge, ScenePipeline } from './ShowScene';
+import { SzenenGrund } from '../Render3D/SzenenGrund';
+import { pipelineQualitaet, renderLook } from '../Render3D/renderLook';
 import { entsorgeKameraCache, stufenWerte, type Detail, type Stufe, type StufenWerte, type Tally } from '../../avplan/scene3d';
 import { kameraModell, type KameraModell } from '../../utils/kameraModell';
 import { Bediener } from './KameraModell';
 import { useKameraRig } from './useKameraRig';
 import { sitzblockNormal } from '../../avplan/floorplan';
 import { Figur } from './Figuren';
-import { Kulisse } from './Kulisse';
-import { Tageslicht } from './Tageslicht';
 import { useKulissenDaten } from './kulissenDaten';
 import { LABEL_FONT } from './labelFont';
 import CameraListPanel, { type CameraRow } from './CameraListPanel';
@@ -45,8 +45,6 @@ export interface FlyDetail {
   /** Fehlt `framing`, wird nur der Bildwinkel zurueckgefahren. */
   framing?: Framing;
   fovDeg?: number;
-  /** Fuer den Blick durch eine Kamera: H-FOV, aus dem das Bildfenster den V-FOV rechnet. */
-  povHFovDeg?: number;
   /** Draufsicht auf eine Halle dieser Groesse — gerahmt mit dem Seitenverhaeltnis der Ansicht. */
   topOf?: { widthM: number; depthM: number };
   durationMs?: number;
@@ -237,8 +235,7 @@ function FPSControls({ mouseLookEnabled, defaultPitch, onManualMove }: { mouseLo
     const onFly = (e: Event) => {
       const d = (e as CustomEvent<FlyDetail>).detail;
       const target = d.topOf ? topFraming(d.topOf.widthM, d.topOf.depthM, VIEW3D_FOV_DEG, aspect) : d.framing;
-      let toFov = d.fovDeg ?? target?.fovDeg ?? persp.fov;
-      if (d.povHFovDeg !== undefined) toFov = (2 * Math.atan(Math.tan((d.povHFovDeg * Math.PI) / 360) / aspect) * 180) / Math.PI;
+      const toFov = d.fovDeg ?? target?.fovDeg ?? persp.fov;
       const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
       fly.current = {
         t0: performance.now(),
@@ -453,6 +450,7 @@ function FPSControls({ mouseLookEnabled, defaultPitch, onManualMove }: { mouseLo
 
   useFrame((_, delta) => {
     const f = fly.current;
+    const persp = camera as THREE.PerspectiveCamera;
     if (f) {
       const k = f.dur > 0 ? easeOut((performance.now() - f.t0) / f.dur) : 1;
       if (f.toPos) {
@@ -460,7 +458,6 @@ function FPSControls({ mouseLookEnabled, defaultPitch, onManualMove }: { mouseLo
         yaw.current = f.fromYaw + f.dYaw * k;
         pitch.current = f.fromPitch + (f.toPitch - f.fromPitch) * k;
       }
-      const persp = camera as THREE.PerspectiveCamera;
       persp.fov = f.fromFov + (f.toFov - f.fromFov) * k;
       persp.updateProjectionMatrix();
       if (k >= 1) fly.current = null;
@@ -561,7 +558,7 @@ function FovPyramid({ cam, isSelected, look }: { cam: ReturnType<typeof useStore
   const geometry = useMemo(() => {
     if (!fov) return null;
     const halfH = Math.tan(((fov.horizontalDeg / 2) * Math.PI) / 180) * cam.focusDistance;
-    const halfV = Math.tan(((fov.verticalDeg / 2) * Math.PI) / 180) * cam.focusDistance;
+    const halfV = Math.tan(((bildVDeg(fov.horizontalDeg) / 2) * Math.PI) / 180) * cam.focusDistance;
     const d = cam.focusDistance;
 
     const vertices = new Float32Array([
@@ -582,7 +579,7 @@ function FovPyramid({ cam, isSelected, look }: { cam: ReturnType<typeof useStore
   const geoMin = useMemo(() => {
     if (!isZoom || !fovMin) return null;
     const halfH = Math.tan(((fovMin.horizontalDeg / 2) * Math.PI) / 180) * cam.focusDistance;
-    const halfV = Math.tan(((fovMin.verticalDeg / 2) * Math.PI) / 180) * cam.focusDistance;
+    const halfV = Math.tan(((bildVDeg(fovMin.horizontalDeg) / 2) * Math.PI) / 180) * cam.focusDistance;
     const d = cam.focusDistance;
     const vertices = new Float32Array([0,0,0, -halfH,halfV,-d, halfH,halfV,-d, halfH,-halfV,-d, -halfH,-halfV,-d]);
     const indices = [0,1,2, 0,2,3, 0,3,4, 0,4,1, 1,2,3, 1,3,4];
@@ -595,7 +592,7 @@ function FovPyramid({ cam, isSelected, look }: { cam: ReturnType<typeof useStore
   const geoMax = useMemo(() => {
     if (!isZoom || !fovMax) return null;
     const halfH = Math.tan(((fovMax.horizontalDeg / 2) * Math.PI) / 180) * cam.focusDistance;
-    const halfV = Math.tan(((fovMax.verticalDeg / 2) * Math.PI) / 180) * cam.focusDistance;
+    const halfV = Math.tan(((bildVDeg(fovMax.horizontalDeg) / 2) * Math.PI) / 180) * cam.focusDistance;
     const d = cam.focusDistance;
     const vertices = new Float32Array([0,0,0, -halfH,halfV,-d, halfH,halfV,-d, halfH,-halfV,-d, -halfH,-halfV,-d]);
     const indices = [0,1,2, 0,2,3, 0,3,4, 0,4,1, 1,2,3, 1,3,4];
@@ -976,11 +973,9 @@ type ViewPreset = 'top' | 'perspective' | 'camera';
 /** Bildwinkel einer Planer-Kamera, wie ihn Vorschau und Rechner benutzen. */
 function cameraFov(cam: ReturnType<typeof useStore.getState>['cameras'][0]) {
   const st = useStore.getState();
-  const camDef = getCameraById(cam.cameraId, st.customCameras);
-  const lensDef = getLensById(cam.lensId, st.customLenses);
-  if (!camDef || !lensDef) return { camDef, lensDef, fov: null, sensor: null };
-  const sensor = getEffectiveSensor(camDef, lensDef, cam.useSpeedbooster, cam.sensorModeIndex, cam.activeMount);
-  return { camDef, lensDef, sensor, fov: computeFov(sensor, cam.focalLength, cam.focusDistance, cam.extenderActive, lensDef.squeeze ?? 1) };
+  const b = kameraBildwinkel(cam, st);
+  if (!b) return { camDef: getCameraById(cam.cameraId, st.customCameras), lensDef: getLensById(cam.lensId, st.customLenses), fov: null, sensor: null };
+  return { camDef: b.camDef, lensDef: b.lensDef, sensor: b.sensor, fov: b.fov };
 }
 
 export default function Venue3D() {
@@ -1060,6 +1055,7 @@ export default function Venue3D() {
   const show = prefs.showLight && !simple;
   const tag = show && prefs.daylight;
   const [tagBelichtung, setTagBelichtung] = useState(1);
+  const look = useMemo(() => renderLook(show, tag ? tagBelichtung : undefined), [show, tag, tagBelichtung]);
   // Viele Kameras in der Planungsansicht: einfache Modelle, sonst stockt das
   // Drehen. Im Showlicht zaehlt das Bild — bis zu einer Grenze.
   const detail: Detail = cameras.length <= (show ? 16 : 6) ? 'hoch' : 'niedrig';
@@ -1078,7 +1074,7 @@ export default function Venue3D() {
   const labelSize = Math.min(2.2, Math.max(0.35, diag / 55));
 
   const kulisse = useKulissenDaten(prefs.videoBoard);
-  const { draussen, farDist, personBlick } = kulisse;
+  const { farDist, personBlick } = kulisse;
 
   const [bereit, setBereit] = useState(false);
   const thema = useIstHell() ? 'hell' : 'dunkel';
@@ -1136,21 +1132,24 @@ export default function Venue3D() {
         <Canvas key={simple ? 'simple' : 'real'} style={kamerablick ? { visibility: 'hidden' } : undefined} frameloop="demand" gl={{ preserveDrawingBuffer: true, antialias: simple, powerPreference: WEBGL_POWER_PREFERENCE }} dpr={simple ? 1 : [1, 1.5]} shadows={!simple}>
           <Suspense fallback={null}>
           <ErsterFrame onBereit={setBereit} />
-          {!simple && <ScenePipeline quality={prefs.quality === 'simple' ? 'low' : prefs.quality} show={show} dof={null} onWerte={onWerte} belichtung={tag ? tagBelichtung : undefined} />}
-          {tag
-            ? <Tageslicht sky={prefs.sky} diagM={diag} mitte={{ x: venue.widthM / 2, y: venue.heightM / 2 }} farDist={farDist} onBelichtung={setTagBelichtung} />
-            : <Atmosphere look={show ? (draussen ? 'nacht' : 'arena') : 'planung'} hintergrund={show ? undefined : PLANUNG_JE_THEMA[thema]} diagM={diag} domeRadius={farDist * 0.8} />}
+          {/* Die freie Ansicht zeigt die Halle, nicht das Bild einer Kamera —
+              Tiefenunschaerfe gehoert in den Kamerablick (Preview/Kamerablick). */}
+          {!simple && <ScenePipeline quality={pipelineQualitaet(prefs.quality)} look={look} dof={null} onWerte={onWerte} />}
           <PerspectiveCamera makeDefault position={[camX, camY, camZ]} fov={VIEW3D_FOV_DEG} near={0.1} far={farDist} />
           <FPSControls mouseLookEnabled={unlockedCameraId === null} defaultPitch={startPitch} />
 
-          <Kulisse
+          <SzenenGrund
             daten={kulisse}
             show={show}
-            tageslicht={tag}
+            tag={tag}
+            sky={prefs.sky}
             simple={simple}
             werte={werte}
             audience={prefs.audience}
-            planungsBoden={PLANUNGS_BODEN[thema]}
+            thema={thema}
+            far={farDist}
+            look={look}
+            onBelichtung={setTagBelichtung}
             einfacheBuehne={(st) => <StageMesh stage={st} />}
           />
 

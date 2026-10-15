@@ -17,6 +17,7 @@ import { defaultWallHeight, resolveWallHeights, type ResolvedWall } from '../../
 import { getCameraById, getEffectiveSensor } from '../../data/cameras';
 import { getLensById } from '../../data/lenses';
 import { computeFov } from '../../utils/fov';
+import { bildVDeg, kameraProjektion } from '../../utils/bildwinkel';
 import { effectiveCameraPos } from '../../utils/camera';
 import type { Camera, Lens, ReferencePerson, Stage, StageObjectType, Venue, VenueCamera, Wall } from '../../types';
 import type { StageFace } from '../../utils/stageBody';
@@ -164,15 +165,19 @@ export function drawCameraView(args: DrawCameraViewArgs): ProjectedPerson[] | un
   const H = cssH;
 
   const fov = computeFov(sensor, cam.focalLength, cam.focusDistance, cam.extenderActive, lensDef?.squeeze ?? 1);
+  // Das Bild ist 16:9 so breit wie der Sensor — der vertikale Winkel folgt
+  // daraus (utils/bildwinkel), nicht aus der Sensorhoehe. Sonst waere ein
+  // 3:2-Sensor in der 16:9-Flaeche senkrecht gestaucht.
+  const vDeg = bildVDeg(fov.horizontalDeg);
 
   const imgW = fov.imageWidthAtDistance;
-  const imgH = fov.imageHeightAtDistance;
+  const imgH = (imgW * 9) / 16;
 
   // ── Pan/Tilt offsets ──
   // For a level camera the horizon sits at H/2 regardless of camera height — cam.z only
   // affects where individual objects project (handled in worldToScreen below).
   // Positive tilt = looking up → horizon must move DOWN in the frame (larger y).
-  const tiltOffsetPx = (Math.tan((cam.tilt * Math.PI) / 180) / Math.tan((fov.verticalDeg / 2) * Math.PI / 180)) * (H / 2);
+  const tiltOffsetPx = (Math.tan((cam.tilt * Math.PI) / 180) / Math.tan((vDeg / 2) * Math.PI / 180)) * (H / 2);
   const groundY = H * 0.5 + tiltOffsetPx;
   const groundYClamped = Math.max(-H, Math.min(H * 2, groundY));
 
@@ -223,37 +228,15 @@ export function drawCameraView(args: DrawCameraViewArgs): ProjectedPerson[] | un
   }
 
   // ── Helpers: world ↔ camera-space ↔ screen ──
-  const panRad = (cam.pan * Math.PI) / 180;
-  const cosP = Math.cos(panRad);
-  const sinP = Math.sin(panRad);
-  const fovHRad = (fov.horizontalDeg * Math.PI) / 360;
-  const fovVRad = (fov.verticalDeg * Math.PI) / 360;
-  const tiltRad = (cam.tilt * Math.PI) / 180;
-  const tiltShift = Math.tan(tiltRad);
   const NEAR = 0.1;
 
   type CamPoint = { x: number; y: number; z: number };
 
   const camPos = effectiveCameraPos(cam!);
-  const worldToCamera = (wx: number, wy: number, wz: number): CamPoint => {
-    const c = cam!;
-    const dx = wx - camPos.x;
-    const dy = wy - camPos.y;
-    return {
-      x: -dx * sinP + dy * cosP,
-      y: wz - c.z,
-      z: dx * cosP + dy * sinP,
-    };
-  };
-
-  const cameraToScreen = (p: CamPoint) => {
-    const screenX = W / 2 + (p.x / (p.z * Math.tan(fovHRad))) * (W / 2);
-    const apparentY = p.y / p.z;
-    // Positive tilt (look up) rotates the world DOWN in camera frame → subtract tiltShift
-    // so that ground objects move toward the bottom of the screen as tilt increases.
-    const screenY = H / 2 - ((apparentY - tiltShift) / Math.tan(fovVRad)) * (H / 2);
-    return { sx: screenX, sy: screenY, dist: p.z };
-  };
+  // Dieselbe Lochkamera wie der Kamerablick und das gerenderte Bild (#192).
+  const projektion = kameraProjektion({ x: camPos.x, y: camPos.y, z: cam.z, pan: cam.pan, tilt: cam.tilt }, fov.horizontalDeg, W, H);
+  const worldToCamera = projektion.zuKamera;
+  const cameraToScreen = projektion.zuBild;
 
   /** Sutherland–Hodgman polygon clipping against the near plane (z ≥ NEAR). */
   const clipPolygonNear = (poly: CamPoint[]): CamPoint[] => {
@@ -938,7 +921,7 @@ export function drawCameraView(args: DrawCameraViewArgs): ProjectedPerson[] | un
   ctx.textAlign = 'right';
 
   for (let m = 0; m <= imgH; m += stepV) {
-    const py = groundYClamped - (m / imgH) * (H * 0.6);
+    const py = groundYClamped - (m / imgH) * H;
     if (py < 0 || py > H - rulerH) continue;
     ctx.beginPath(); ctx.moveTo(vRulerX, py); ctx.lineTo(vRulerX + 5, py); ctx.stroke();
     ctx.fillText(`${m.toFixed(m < 1 ? 2 : 1)}m`, W - 3, py + 3);

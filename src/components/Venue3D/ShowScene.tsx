@@ -10,13 +10,14 @@
 // ───────────────────────────────────────────────────────────────────────────
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { PLANUNGS_BODEN } from './planungsLook';
+import { wendeLookAn, type RenderLook } from '../Render3D/renderLook';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import type { Stage, Venue, VenueCamera } from '../../types';
 import { stageTopZ } from '../../utils/stageBody';
 import { coverageWedge } from '../../utils/view3dScene';
 import { publikumsBild } from '../../utils/raum';
-import { showRig } from '../../utils/showRig';
+import { showLichtAus, showRig } from '../../utils/showRig';
 import { videowandNormal, type RaumBoden, type RaumWand, type VenueVideoWall } from '../../avplan/floorplan';
 import {
   HINTERGRUENDE,
@@ -48,11 +49,10 @@ function useEntsorgen(obj: THREE.Object3D | null): void {
 }
 
 /* ── Pipeline: rendert statt react-three-fiber (useFrame mit Prioritaet 1) ── */
-export function ScenePipeline({ quality, show, dof, onWerte, belichtung }: {
+export function ScenePipeline({ quality, look, dof, onWerte }: {
   quality: Qualitaet;
-  show: boolean;
-  /** Vorgegebene Belichtung (Tageslicht); sonst die des Looks. */
-  belichtung?: number;
+  /** Derselbe Look wie im gerenderten Kamerabild (Render3D/renderLook). */
+  look: RenderLook;
   dof: Tiefenschaerfe | null;
   onWerte: (w: StufenWerte, stufe: Stufe) => void;
 }) {
@@ -63,9 +63,12 @@ export function ScenePipeline({ quality, show, dof, onWerte, belichtung }: {
   const ref = useRef<SzenenPipeline | null>(null);
   const onWerteRef = useRef(onWerte);
   useEffect(() => { onWerteRef.current = onWerte; }, [onWerte]);
+  const lookRef = useRef(look);
+  useEffect(() => { lookRef.current = look; }, [look]);
 
   useEffect(() => {
     const p = new SzenenPipeline(gl, scene, camera, { qualitaet: quality, stufeGeaendert: (st, w) => onWerteRef.current(w, st) });
+    wendeLookAn(p, lookRef.current);
     ref.current = p;
     onWerteRef.current(p.werte, p.stufe);
     return () => { p.dispose(); ref.current = null; };
@@ -81,15 +84,8 @@ export function ScenePipeline({ quality, show, dof, onWerte, belichtung }: {
   }, [quality]);
   useEffect(() => { ref.current?.setTiefenschaerfe(dof); }, [dof]);
   useEffect(() => {
-    const p = ref.current;
-    if (!p) return;
-    p.setTonemapping(show ? 'agx' : 'neutral');
-    p.setBelichtung(belichtung ?? (show ? 1.05 : 1));
-    // Tageslicht: die Schwelle gilt vor dem Tonemapping, die Szene liegt um
-    // den Kehrwert der Belichtung hoeher. Tags bleibt Bloom fast aus — der
-    // Schein um jede besonnte Flaeche sah aus wie Nebel.
-    p.setBloom(belichtung !== undefined ? 0.6 * Math.min(1, belichtung) ** 2 : show ? 0.6 : 0.15, 1.3 / Math.min(1, belichtung ?? 1));
-  }, [show, belichtung]);
+    if (ref.current) wendeLookAn(ref.current, look);
+  }, [look]);
   useFrame((state, dt) => {
     SZENEN_ZEIT.value = state.clock.elapsedTime;
     ref.current?.render(dt);
@@ -119,7 +115,10 @@ export function Atmosphere({ look, diagM, domeRadius, hintergrund }: { look: Hin
 
 /* ── Halle: Boden, Waende, Decke ── */
 export function Arena({ venue, show, offen = false, planungsBoden = PLANUNGS_BODEN.dunkel }: { venue: Venue; show: boolean; offen?: boolean; planungsBoden?: string }) {
-  const boden: RaumBoden = venue.floorMaterial ?? 'concrete';
+  // Gewaehlte Boden- und Wandoberflaechen gelten auch ohne Showlicht (#191);
+  // ohne Wahl bleibt der Planungs-Look schlicht.
+  const gewaehlt = venue.floorMaterial;
+  const boden: RaumBoden = gewaehlt ?? 'concrete';
   const w = venue.widthM;
   const d = venue.heightM;
   // Unter freiem Himmel stehen keine Hallenwaende und keine Decke.
@@ -127,7 +126,7 @@ export function Arena({ venue, show, offen = false, planungsBoden = PLANUNGS_BOD
   const wandArt = venue.wallMaterial;
   const obj = useMemo(() => {
     const g = new THREE.Group();
-    const flaeche = new THREE.Mesh(new THREE.PlaneGeometry(w, d), show ? oberflaechenMaterial(boden, { breiteM: w, tiefeM: d }) : new THREE.MeshStandardMaterial({ color: planungsBoden, roughness: 1 }));
+    const flaeche = new THREE.Mesh(new THREE.PlaneGeometry(w, d), show || gewaehlt ? oberflaechenMaterial(boden, { breiteM: w, tiefeM: d }) : new THREE.MeshStandardMaterial({ color: planungsBoden, roughness: 1 }));
     flaeche.rotation.x = -Math.PI / 2;
     flaeche.position.set(w / 2, 0, d / 2);
     flaeche.receiveShadow = true;
@@ -140,7 +139,7 @@ export function Arena({ venue, show, offen = false, planungsBoden = PLANUNGS_BOD
       aussen.receiveShadow = true;
       g.add(aussen);
     }
-    if (show && decke) {
+    if ((show || wandArt) && decke) {
       // Innenseiten nach innen: von aussen (Draufsicht, Rundgang) bleiben
       // Waende und Decke durchsichtig, von innen sind sie da.
       // Ohne gewaehlte Wandoberflaeche (#171) bleibt die dunkle Halle.
@@ -154,13 +153,16 @@ export function Arena({ venue, show, offen = false, planungsBoden = PLANUNGS_BOD
         m.receiveShadow = true;
         g.add(m);
       }
-      const deckeM = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color: '#0d0e10', roughness: 0.95 }));
-      deckeM.rotation.x = Math.PI / 2;
-      deckeM.position.set(w / 2, decke, d / 2);
-      g.add(deckeM);
+      // Die Decke nur im Showlicht: zum Planen bleibt der Blick von oben frei.
+      if (show) {
+        const deckeM = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color: '#0d0e10', roughness: 0.95 }));
+        deckeM.rotation.x = Math.PI / 2;
+        deckeM.position.set(w / 2, decke, d / 2);
+        g.add(deckeM);
+      }
     }
     return g;
-  }, [w, d, boden, decke, wandArt, show, planungsBoden]);
+  }, [w, d, boden, gewaehlt, decke, wandArt, show, planungsBoden]);
   useEntsorgen(obj);
   return obj ? <primitive object={obj} /> : null;
 }
@@ -278,8 +280,11 @@ export function CrowdAndSeating({ venue, cameras, persons, walls, max }: {
 }
 
 /* ── Showlicht: Traversen, Scheinwerfer mit Kegel im Dunst ── */
-export function ShowRig({ venue, look, werte, dunst }: { venue: Venue; look: { x: number; y: number }; werte: StufenWerte; dunst: number }) {
-  const rig = useMemo(() => showRig(venue.stages, look, venue), [venue, look]);
+export function ShowRig({ venue, look, werte, draussen }: { venue: Venue; look: { x: number; y: number }; werte: StufenWerte; draussen: boolean }) {
+  const einstellung = useMemo(() => showLichtAus(venue.showLight), [venue.showLight]);
+  const rig = useMemo(() => showRig(venue.stages, look, venue, einstellung), [venue, look, einstellung]);
+  // Unter freiem Himmel verteilt sich der Dunst — dieselbe Einstellung wirkt schwaecher.
+  const dunst = einstellung.haze * (draussen ? 0.64 : 1);
   const obj = useMemo(() => {
     const g = new THREE.Group();
     for (const t of rig.traversen) g.add(erzeugeTraverse(new THREE.Vector3(...t.von), new THREE.Vector3(...t.nach)));
