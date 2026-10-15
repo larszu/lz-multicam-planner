@@ -12,7 +12,7 @@
 // Wer hier dreht, dreht fuer alle Ansichten.
 // ───────────────────────────────────────────────────────────────────────────
 import * as THREE from 'three';
-import type { Qualitaet, SzenenPipeline, Tiefenschaerfe, Tonemapping } from '../../avplan/scene3d';
+import type { Qualitaet, SzenenPipeline, Tonemapping } from '../../avplan/scene3d';
 import type { View3DQuality } from '../Venue3D/view3dPrefs';
 
 export interface RenderLook {
@@ -60,17 +60,4 @@ export function stelleEinfachEin(gl: THREE.WebGLRenderer, look: RenderLook): voi
 /** Pipeline-Stufe aus der Wahl des Nutzers; `simple` laeuft ohne Pipeline. */
 export function pipelineQualitaet(q: View3DQuality): Qualitaet {
   return q === 'simple' ? 'low' : q;
-}
-
-/** Schaerfentiefe des Objektivs — im Kamerablick und im gerenderten Kamerabild gleich. */
-export function tiefenschaerfeVon(
-  cam: { focusDistance: number; aperture: number; focalLength: number; extenderActive?: number },
-  sensorBreiteMm: number,
-): Tiefenschaerfe {
-  return {
-    fokusM: Math.max(0.3, cam.focusDistance),
-    blende: cam.aperture,
-    brennweiteMm: cam.focalLength * (cam.extenderActive || 1),
-    sensorBreiteMm,
-  };
 }

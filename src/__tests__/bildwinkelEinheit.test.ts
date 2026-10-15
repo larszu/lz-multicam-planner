@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { getCameraById, getEffectiveSensor } from '../data/cameras';
 import { getLensById } from '../data/lenses';
 import { computeFov } from '../utils/fov';
-import { BILD_SEITENVERHAELTNIS, bildKamera, bildVDeg, kameraBildwinkel, kameraProjektion, povLeinwand } from '../utils/bildwinkel';
+import { BILD_SEITENVERHAELTNIS, bildKamera, bildVDeg, kameraBildwinkel, kameraProjektion } from '../utils/bildwinkel';
 import { cameraDirection, povFraming } from '../utils/view3dScene';
 import { groundHeightAt, stageTopZ } from '../utils/stageBody';
 import type { Stage, VenueCamera } from '../types';
@@ -23,7 +23,8 @@ const FAELLE: { name: string; cam: Partial<VenueCamera> }[] = [
   { name: 'AW-UE150 1" PTZ, 30 mm', cam: { cameraId: 'pana-aw-ue150', lensId: 'ptz-pana-ue150', focalLength: 30, extenderActive: 1 } },
   { name: 'ALEXA 35 mit Anamorphot 2x, 40 mm', cam: { cameraId: 'arri-alexa-35', lensId: 'arri-ma-40', focalLength: 40, extenderActive: 1 } },
 ];
-const FENSTER: [number, number][] = [[1600, 900], [1000, 1100], [1900, 700], [390, 800], [1250, 703]];
+/** Breiten, die die Bildflaeche je nach Fenster bekommt — das Bild bleibt 16:9. */
+const BREITEN = [1600, 1000, 1900, 390, 1250];
 const NEIGUNGEN = [0, -8, 12];
 
 function kamera(teil: Partial<VenueCamera>, tilt: number): VenueCamera {
@@ -70,8 +71,8 @@ describe('Ein Bildwinkel fuer Vorschau, Kamerablick und gerendertes Bild (#192)'
     });
 
     for (const tilt of NEIGUNGEN) {
-      for (const [b, h] of FENSTER) {
-        it(`${fall.name}, Neigung ${tilt}°, Fenster ${b}×${h}: alle drei Ansichten treffen denselben Bildrand`, () => {
+      for (const b of BREITEN) {
+        it(`${fall.name}, Neigung ${tilt}°, Bildbreite ${b}: gezeichnetes und gerendertes Bild treffen denselben Rand`, () => {
           const cam = kamera(fall.cam, tilt);
           const bw = kameraBildwinkel(cam, KATALOG)!;
           const tanH = Math.tan((bw.hDeg * DEG) / 2);
@@ -79,18 +80,12 @@ describe('Ein Bildwinkel fuer Vorschau, Kamerablick und gerendertes Bild (#192)'
           // Rechter Rand Mitte, oberer Rand Mitte, linke obere Ecke.
           const proben: [number, number, number, number][] = [[tanH, 0, 1, 0.5], [0, tanV, 0.5, 0], [-tanH, tanV, 0, 0]];
 
-          // 1. Gezeichnete Vorschau: 16:9-Flaeche so breit wie die Vorschau.
-          const vb = Math.min(b, 1280);
-          const vh = (vb * 9) / 16;
-          const zeichnung = kameraProjektion(cam, bw.hDeg, vb, vh);
-          // 2. Kamerablick der 3D-Ansicht: ganze Flaeche, 16:9-Rahmen darin.
-          const lw = povLeinwand(b, h, bw.hDeg);
-          expect(lw.rahmen.w / lw.rahmen.h).toBeCloseTo(BILD_SEITENVERHAELTNIS, 9);
-          expect(lw.rahmen.w).toBeLessThanOrEqual(b + 1e-9);
-          expect(lw.rahmen.h).toBeLessThanOrEqual(h + 1e-9);
-          expect(Math.max(lw.rahmen.w / b, lw.rahmen.h / h)).toBeCloseTo(1, 9);
-          const pov = povFraming(cam, bw.hDeg, b / h);
-          // 3. Gerendertes Kamerabild (Host): eigene Kamera, genau 16:9.
+          // 1. Gezeichnete Vorschau (cameraViewRenderer): Flaeche so breit wie
+          // die Ansicht, Hoehe daraus — 16:9, nie vom Fenster gestreckt.
+          const vh = b / BILD_SEITENVERHAELTNIS;
+          const zeichnung = kameraProjektion(cam, bw.hDeg, b, vh);
+          // 2. Gerendertes Kamerabild (Host, auch im Kamerablick und Multiview):
+          // eigene Blickkamera, genau 16:9.
           const bild = bildKamera(cam, bw.hDeg);
           const rb = 1280;
           const rh = 720;
@@ -98,12 +93,8 @@ describe('Ein Bildwinkel fuer Vorschau, Kamerablick und gerendertes Bild (#192)'
           for (const [u, v, ex, ey] of proben) {
             const p = punktImBild(cam, u, v);
             const z = zeichnung.zuBild(zeichnung.zuKamera(...p));
-            expect(z.sx / vb).toBeCloseTo(ex, 6);
+            expect(z.sx / b).toBeCloseTo(ex, 6);
             expect(z.sy / vh).toBeCloseTo(ey, 6);
-
-            const k = durchThree(pov, lw.vFovDeg, b / h, p, b, h);
-            expect((k.sx - lw.rahmen.x) / lw.rahmen.w).toBeCloseTo(ex, 6);
-            expect((k.sy - lw.rahmen.y) / lw.rahmen.h).toBeCloseTo(ey, 6);
 
             const r = durchThree(bild, bild.fovDeg, bild.aspect, p, rb, rh);
             expect(r.sx / rb).toBeCloseTo(ex, 6);

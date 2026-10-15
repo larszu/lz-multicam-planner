@@ -99,29 +99,10 @@ export function kameraProjektion(
   };
 }
 
-export interface Rahmen { x: number; y: number; w: number; h: number }
-
 /**
- * Kamerablick in einer Flaeche beliebiger Groesse: das 16:9-Bild liegt
- * eingepasst in der Mitte (Balken oben/unten oder links/rechts), der Rest
- * zeigt die Umgebung abgedunkelt. Liefert den vertikalen Winkel fuer die
- * GANZE Flaeche, damit das Bildfenster genau `hDeg` breit ist.
- */
-export function povLeinwand(breite: number, hoehe: number, hDeg: number, aspect = BILD_SEITENVERHAELTNIS): { vFovDeg: number; rahmen: Rahmen } {
-  const b = breite > 0 ? breite : aspect;
-  const h = hoehe > 0 ? hoehe : 1;
-  const w = Math.min(b, h * aspect);
-  const rh = w / aspect;
-  const tanH = Math.tan((hDeg * DEG) / 2);
-  // Die ganze Flaeche ist um h/rh hoeher als das Bild.
-  const vFovDeg = (2 * Math.atan((tanH / aspect) * (h / rh))) / DEG;
-  return { vFovDeg, rahmen: { x: (b - w) / 2, y: (h - rh) / 2, w, h: rh } };
-}
-
-/**
- * Blickkamera des gerenderten Kamerabilds (Vorschau, Multiview): Standort
- * und Ausrichtung der Planer-Kamera, Bild genau 16:9 mit `hDeg` Breite.
- * `cam.x/y` ist der wirksame Standort (`effectiveCameraPos`).
+ * Blickkamera des gerenderten Kamerabilds (Kamerablick, Vorschau, Multiview):
+ * Standort und Ausrichtung der Planer-Kamera, Bild genau 16:9 mit `hDeg`
+ * Breite. `cam.x/y` ist der wirksame Standort (`effectiveCameraPos`).
  */
 export function bildKamera(cam: { x: number; y: number; z: number; pan: number; tilt: number }, hDeg: number): Framing & { aspect: number } {
   return { ...povFraming(cam, hDeg, BILD_SEITENVERHAELTNIS), aspect: BILD_SEITENVERHAELTNIS };

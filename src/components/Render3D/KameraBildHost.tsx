@@ -19,7 +19,8 @@ import { useView3DPrefs } from '../Venue3D/view3dPrefs';
 import { useIstHell } from '../../lib/useIstHell';
 import { HOST_BREITE, HOST_HOEHE, RenderMessung, bildPixel, setzeRenderer3D, szene3DGeaendert, type BildRolle } from './kameraBild3d';
 import { WEBGL_POWER_PREFERENCE } from '../../utils/gpuInfo';
-import { renderLook, tiefenschaerfeVon, wendeLookAn } from './renderLook';
+import { renderLook, wendeLookAn } from './renderLook';
+import { tiefenschaerfeFuerBild } from '../../utils/tiefenschaerfe';
 import { SzenenGrund } from './SzenenGrund';
 
 export default function KameraBildHost() {
@@ -152,7 +153,10 @@ function HostSzene() {
             z.w = w;
             z.h = h;
           }
-          z.p.setTiefenschaerfe(show ? tiefenschaerfeVon(cam, bw.sensor.widthMm) : null);
+          // Tiefenunschaerfe aus Fokus, Blende, Brennweite (mit Extender) und
+          // Sensor — dieselbe Rechnung wie die Zahlen daneben. In den Kacheln
+          // rechnet die schnelle Stufe, die sie ohnehin ueberspringt.
+          z.p.setTiefenschaerfe(tiefenschaerfeFuerBild(cam, bw.sensor));
           gl.setScissorTest(false);
           z.p.render(0);
         }
