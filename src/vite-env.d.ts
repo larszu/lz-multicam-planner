@@ -14,10 +14,3 @@ declare module 'troika-three-text' {
     [key: string]: unknown;
   }): void;
 }
-
-// pdf.js liefert fuer sein Worker-Bundle keine Typen. Der Plan-Erkennungs-
-// Worker legt das Modul unter `globalThis.pdfjsWorker` ab, damit pdf.js in
-// diesem Thread rechnet, statt einen weiteren Thread zu suchen.
-declare module 'pdfjs-dist/build/pdf.worker.min.mjs' {
-  export const WorkerMessageHandler: unknown;
-}
