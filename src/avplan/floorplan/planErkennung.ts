@@ -133,6 +133,13 @@ export interface PlanErkennungOptionen {
 }
 
 /** Ebenen, auf denen keine Wand liegt (DE/EN, ArchiCAD/Revit/AutoCAD). */
+/**
+ * Ebenen, auf denen sicher keine Wand liegt und deren Pfade deshalb gar
+ * nicht erst gelesen werden muessen. Enger gefasst als `KEINE_WAND_EBENE`:
+ * was hier steht, faellt vor dem Lesen weg, also nur das Unstrittige.
+ */
+export const EBENE_OHNE_BAUTEIL = /einricht|möb|mob|kueche|küche|sanit|import|bestuhlung|außenanl|aussenanl/i
+
 const KEINE_WAND_EBENE = /einricht|möb|mob|sanit|bema|dimen|text|beschrift|achs|axis|grid|außenanl|aussenanl|^dach|vordach|import|furn|anno|räume|raeume|room|area|treppe|stair|höhenkot|hoehenkot|schnitt|section|symbol|rahmen|frame|plankopf|title|logo|kueche|küche|lighting|elektr/i
 const WAND_EBENE = /wand|wände|waende|wall|mauer|fassade|fassad|stütz|stuetz|column|tragwerk|struct|beton|mauerwerk|a-wall|s-col/i
 

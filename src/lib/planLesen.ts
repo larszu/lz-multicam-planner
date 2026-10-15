@@ -13,6 +13,7 @@
 // Rest bekommt die Oberflaeche einen Bild-Takt, damit der Spinner steht.
 import * as pdfjsLib from 'pdfjs-dist';
 import {
+  EBENE_OHNE_BAUTEIL,
   dxfLesen,
   pdfVektorLesen,
   planErkennen,
@@ -46,7 +47,12 @@ export async function planAusQuelle(q: PlanQuelle, optionen: PlanErkennungOption
   const zeichnung =
     q.art === 'dxf'
       ? dxfLesen(dxfText(q.daten))
-      : await pdfVektorLesen(pdfjsLib as unknown as PdfVektorModul, q.daten, q.seite);
+      : await pdfVektorLesen(pdfjsLib as unknown as PdfVektorModul, q.daten, q.seite, {
+          // Einrichtung, Kuechentechnik und Fremd-Importe gar nicht erst
+          // lesen: auf dem groessten Testplan sind das 92 % aller Pfade und
+          // keine einzige Wand (gemessen 2026-10-15, gleiche Wandzahl).
+          ebeneAuslassen: (name) => EBENE_OHNE_BAUTEIL.test(name),
+        });
   await atmen();
   return planErkennen(zeichnung, optionen);
 }

@@ -68,7 +68,22 @@ const hex = (v: unknown): string | undefined => {
  * `ebene` an den Pfad, wenn der Export sie traegt — ArchiCAD schreibt dort
  * seine Ebenen hinein („Wände neu", „Bemaßung").
  */
-export async function pdfVektorLesen(pdfjs: PdfVektorModul, daten: Uint8Array, seite = 0): Promise<VektorZeichnung & { seiten: number }> {
+export interface PdfVektorOptionen {
+  /**
+   * Ebenen, deren Pfade nicht gebraucht werden (Einrichtung, Kuechentechnik,
+   * Fremd-Importe). Texte und alles ohne Ebene bleiben. Spart auf einem
+   * A0-Blatt die Mehrzahl der Pfade — dort liegen 600 000 Haarlinien in der
+   * Kuecheneinrichtung und keine einzige Wand.
+   */
+  ebeneAuslassen?: (name: string) => boolean
+}
+
+export async function pdfVektorLesen(
+  pdfjs: PdfVektorModul,
+  daten: Uint8Array,
+  seite = 0,
+  o: PdfVektorOptionen = {},
+): Promise<VektorZeichnung & { seiten: number }> {
   const doc = await pdfjs.getDocument({ data: daten }).promise
   try {
     const nr = Math.min(Math.max(0, seite), doc.numPages - 1) + 1
@@ -85,7 +100,7 @@ export async function pdfVektorLesen(pdfjs: PdfVektorModul, daten: Uint8Array, s
     // PDF-Raum (y nach oben, pt) → Papier-mm, y nach unten.
     const basis: Matrix = [MM_JE_PT, 0, 0, -MM_JE_PT, -x0 * MM_JE_PT, y1 * MM_JE_PT]
     const ol = await page.getOperatorList()
-    const pfade = operatorListeLesen(pdfjs.OPS, ol, basis, ebenenNamen)
+    const pfade = operatorListeLesen(pdfjs.OPS, ol, basis, ebenenNamen, o.ebeneAuslassen)
     const texte = textInhaltLesen((await page.getTextContent()).items, basis)
     return {
       quelle: 'pdf',
@@ -106,12 +121,15 @@ export function operatorListeLesen(
   ol: { fnArray: ArrayLike<number>; argsArray: unknown[] },
   basis: Matrix,
   ebenenNamen: Map<string, string> = new Map(),
+  ebeneAuslassen?: (name: string) => boolean,
 ): VektorPfad[] {
   const art = zeichenArt(OPS)
   type Zustand = { ctm: Matrix; breite: number; fuell?: string; strich?: string }
   let z: Zustand = { ctm: basis, breite: 0 }
   const stapel: Zustand[] = []
   const ebenen: (string | null)[] = []
+  /** Tiefe der uebersprungenen Ebenen; > 0 heisst: Pfade hier nicht lesen. */
+  let auslassen = 0
   const pfade: VektorPfad[] = []
 
   for (let i = 0; i < ol.fnArray.length; i++) {
@@ -147,16 +165,21 @@ export function operatorListeLesen(
         break
       case OPS.beginMarkedContentProps: {
         const p = a[1] as { type?: string; id?: string } | undefined
-        ebenen.push(a[0] === 'OC' && p?.id ? (ebenenNamen.get(p.id) ?? p.id) : null)
+        const name = a[0] === 'OC' && p?.id ? (ebenenNamen.get(p.id) ?? p.id) : null
+        ebenen.push(name)
+        if (name && ebeneAuslassen?.(name)) auslassen++
         break
       }
       case OPS.beginMarkedContent:
         ebenen.push(null)
         break
-      case OPS.endMarkedContent:
-        ebenen.pop()
+      case OPS.endMarkedContent: {
+        const weg = ebenen.pop()
+        if (weg && ebeneAuslassen?.(weg)) auslassen--
         break
+      }
       case OPS.constructPath: {
+        if (auslassen > 0) break
         const op = a[0] as number
         const fuellt = art.fuellt.has(op)
         const zieht = art.zieht.has(op)

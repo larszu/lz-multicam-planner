@@ -63,8 +63,15 @@ export function wandEinrasten<R extends Strecke>(ki: Strecke, ref: readonly R[],
   // eine lange Fassade soll nicht ueber den Teil hinauswachsen, den die KI meinte.
   const ua = Math.min(...gleich.map((k) => k.a))
   const ub = Math.max(...gleich.map((k) => k.b))
-  const a = Math.abs(ua) <= tol ? ua : Math.max(ua, 0)
-  const b = Math.abs(ub - l) <= tol ? ub : Math.min(ub, l)
+  let a = Math.abs(ua) <= tol ? ua : Math.max(ua, 0)
+  let b = Math.abs(ub - l) <= tol ? ub : Math.min(ub, l)
+  // Deckt das gefundene Wandstueck nur ein Stueckchen der KI-Wand, bleibt
+  // deren Laenge stehen: sonst entstuende aus einer 5-m-Wand ein 8-cm-Rest,
+  // weil zufaellig nur ihr Ende auf einem kurzen Wandstueck liegt.
+  if (b - a < l * 0.5) {
+    a = 0
+    b = l
+  }
   const r = best.r
   const rl = laenge(r)
   const rx = (r.x2 - r.x1) / rl
