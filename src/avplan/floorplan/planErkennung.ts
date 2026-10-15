@@ -114,6 +114,13 @@ export interface ErkannterPlan {
   treppen: ErkannteTreppe[]
   raeume: ErkannterRaum[]
   buehnen: ErkannteBuehne[]
+  /**
+   * Gegenprobe zum Massstab: erkannte Raumflaeche gegen die Flaeche im
+   * Raumstempel. Ein Median nahe 1 heisst, dass der Massstab stimmt — und
+   * zwar unabhaengig von den Bemassungsketten, aus denen er kam. Liegt er
+   * bei 4 oder 0,25, ist der Massstab um den Faktor 2 daneben.
+   */
+  raumProbe?: { anzahl: number; verhaeltnisMedian: number }
   /** Rahmen um alle Waende. */
   gebaeude?: Rahmen
   /** Wie die Waende gefunden wurden. */
@@ -232,9 +239,20 @@ export function planErkennen(z: VektorZeichnung, o: PlanErkennungOptionen = {}):
     treppen: treppen.filter((t) => imBereich(t.ecken[0].x, t.ecken[0].y)),
     raeume: raeume.filter((r) => imBereich(r.x, r.y)),
     buehnen: buehnen.filter((b) => imBereich(b.x + b.breiteM / 2, b.y + b.tiefeM / 2)),
+    raumProbe: raumProbe(raeume),
     gebaeude: pkte.length ? rahmenVon(pkte) : undefined,
     hinweise,
   }
+}
+
+/** Median von erkannter zu gestempelter Raumflaeche. */
+function raumProbe(raeume: readonly ErkannterRaum[]): ErkannterPlan['raumProbe'] {
+  const v = raeume
+    .filter((r) => r.flaecheM2 && r.umrissFlaecheM2)
+    .map((r) => r.umrissFlaecheM2! / r.flaecheM2!)
+    .sort((a, b) => a - b)
+  if (v.length < 3) return undefined
+  return { anzahl: v.length, verhaeltnisMedian: v[Math.floor(v.length / 2)] }
 }
 
 // ── Stuetzen ────────────────────────────────────────────────────────────

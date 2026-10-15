@@ -43,6 +43,8 @@ export interface PlanLaufOptionen {
 
 export interface PlanLaufBericht {
   quelle: 'vektor' | 'ki' | 'vektor+ki';
+  /** Gegenprobe: erkannte Raumflaeche gegen die Flaeche im Raumstempel. */
+  raumProbe?: { anzahl: number; verhaeltnisMedian: number };
   massstab?: { massstab?: number; quelle: string; passend: number; gelesen: number; fehlerMedianM?: number };
   waende: number;
   tueren: number;
@@ -133,6 +135,7 @@ export function vorschauAusPlan(p: ErkannterPlan, plan: BackgroundPlan, o: PlanL
         gelesen: p.massstab.gelesen,
         fehlerMedianM: p.massstab.fehlerMedianM,
       },
+      raumProbe: p.raumProbe,
       waende: waende.filter((w) => w.art === 'wall').length,
       tueren: p.oeffnungen.filter((q) => q.art === 'door').length,
       fenster: p.oeffnungen.filter((q) => q.art === 'window').length,

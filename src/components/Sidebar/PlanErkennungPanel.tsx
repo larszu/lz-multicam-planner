@@ -250,6 +250,14 @@ export default function PlanErkennungPanel() {
               })}
             </p>
           )}
+          {bericht.raumProbe && (
+            <p className="text-[10px] text-bc-muted">
+              {format(t('plan.detect.roomCheck', '{n} room stamps confirm the scale (median {v}× the printed area)'), {
+                n: bericht.raumProbe.anzahl,
+                v: bericht.raumProbe.verhaeltnisMedian.toFixed(2),
+              })}
+            </p>
+          )}
           {bericht.kiEingerastet && (
             <p className="text-[10px] text-bc-muted">
               {format(t('plan.detect.snapped', '{n} of {all} AI parts snapped onto the drawing'), {

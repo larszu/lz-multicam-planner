@@ -122,6 +122,7 @@ export const sidebar: Record<string, string> = {
   'plan.detect.found': '{walls} Wände, {stages} Bühnen, {rooms} Räume',
   'plan.detect.openings': '{doors} Türen, {windows} Fenster',
   'plan.detect.scale': 'Maßstab 1:{n} ({src}, {hits} von {read} Maßen)',
+  'plan.detect.roomCheck': '{n} Raumstempel bestätigen den Maßstab (Median {v}× der gedruckten Fläche)',
   'plan.detect.snapped': '{n} von {all} KI-Teilen auf die Zeichnung eingerastet',
   'plan.detect.page': 'Blatt {n} von {all}',
   'plan.detect.apply': 'Übernehmen',

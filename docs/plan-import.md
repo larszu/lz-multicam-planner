@@ -73,13 +73,13 @@ Five sheets by the same office (ArchiCAD, A0, 1:200, two of them area plans
 after DIN 277). They are the client's drawings and are **not** in the repo; the
 tests in `@avplan/floorplan` use small plans drawn in the test itself.
 
-| Plan | Scale found | Chains read / used | Chain error median · p95 | Walls | Doors · windows | Columns | Rooms (with outline) | Room area vs. stamp (median) | Time |
+| Plan | Scale | Chains read / used | Chain error median · p95 | Walls | Doors · windows | Columns | Rooms (with outline) | Room check (median) | Time |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| G-01 Erdgeschoß/UG | 1:200 from chains | 1053 / 292 | 0 mm · 6 mm | 2381 (2483 m) | 130 · 35 | 102 | 133 (86) | 5,5 % | 1,7 s |
-| G-02 1. Obergeschoß | 1:200 from chains | 1095 / 273 | 1 mm · 10 mm | 3888 (3127 m) | 137 · 123 | 170 | 113 (67) | 8,1 % | 2,3 s |
-| G-03 2. Obergeschoß | 1:200 from chains | 459 / 166 | 0 mm · 6 mm | 881 (1439 m) | 48 · 20 | 61 | 84 (68) | 8,4 % | 0,9 s |
-| Ü-NRF-01 EG+UG | 1:200 from chains | 12 / 6 | 0 mm · 1 mm | 2445 (2557 m) | 139 · 114 | 106 | 131 (127) | **0,0 %** | 0,3 s |
-| Ü-NRF-02 1. OG | 1:200 from title block | 4 / 1 | 1 mm · 1 mm | 3917 (2974 m) | 158 · 291 | 175 | 110 (106) | **0,0 %** | 0,7 s |
+| G-01 Erdgeschoß/UG | 1:200 from chains | 1027 / 332 | 0 mm · 6 mm | 2381 (2483 m) | 130 · 35 | 102 | 133 (86) | 86 rooms, 1,00 | 1,5 s |
+| G-02 1. Obergeschoß | 1:200 from chains | 1079 / 328 | 0 mm · 10 mm | 3888 (3127 m) | 137 · 123 | 170 | 113 (67) | 67 rooms, 1,02 | 1,9 s |
+| G-03 2. Obergeschoß | 1:200 from chains | 459 / 166 | 0 mm · 6 mm | 881 (1439 m) | 48 · 20 | 61 | 84 (68) | 68 rooms, 1,05 | 0,9 s |
+| Ü-NRF-01 EG+UG | 1:200 from title block | 1 / 0 | — | 2445 (2557 m) | 139 · 114 | 106 | 131 (127) | 127 rooms, **1,00** | 0,2 s |
+| Ü-NRF-02 1. OG | 1:200 from title block | 3 / 1 | 2 mm · 2 mm | 3917 (2974 m) | 158 · 291 | 175 | 110 (106) | 106 rooms, **1,00** | 0,4 s |
 
 How to read this:
 
@@ -93,6 +93,13 @@ How to read this:
   many chains dimension things that are not walls (window reveals, furniture,
   axes, fixture positions) and then hit the wrong face. 81 of 184 points on
   G-01 are within 2 cm.
+- **The room stamps confirm the scale independently.** The scale comes from
+  the dimension chains; the stamps are a second, unrelated source. Detected
+  area divided by printed area, median over all rooms: 0,997 · 1,015 · 1,047
+  · 1,000 · 1,000 across the five plans — including the two whose scale came
+  from the title block because they carry almost no dimension chains (one and
+  three). A median near 4 or 0,25 would mean the scale is off by a factor of
+  two. The panel shows this line after a run.
 - **Room area against the stamp** is the strongest single check, because the
   stamp is a number the architect wrote: on both area plans the detected
   outline matches the printed m² to 0,0 % median (125 of 131, resp. 102 of 110
@@ -100,9 +107,9 @@ How to read this:
   flooded against the walls instead of taken from a coloured area, the median
   is 5–8 % — the flood fill includes installation shafts and wall niches that
   the stamp's net area leaves out.
-- The two area plans have almost no dimension chains. Ü-NRF-02 therefore falls
-  back to the title block (`M 1:200`) — and the room areas confirm it
-  independently.
+- The two area plans have almost no dimension chains and therefore fall back
+  to the title block (`M 1:200`) — and their room areas confirm it
+  independently, to three decimal places.
 
 **How long it takes.** The reading runs in the app's own thread, because
 pdf.js cannot be driven from a web worker (it looks for `window.location`
