@@ -196,6 +196,11 @@ export function toVenueExchange(input: MultiCamVenueInput): VenueExchange {
         return {
           id: w.id, x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2, height: wallHeight(w, defaultWallHeight(venue)), label: w.label,
           ...(w.color !== undefined ? { color: w.color } : {}),
+          // Wandstaerke und Oeffnungen kommen aus der Plan-Erkennung (#205)
+          // und gehoeren der Wand, nicht dem Planer: light und cable zeichnen
+          // dieselbe Tuer an dieselbe Stelle.
+          ...(w.thicknessM !== undefined ? { thickness: w.thicknessM } : {}),
+          ...(w.openings?.length ? { openings: w.openings } : {}),
           ...(f?.cx !== undefined ? { cx: f.cx } : {}),
           ...(f?.cy !== undefined ? { cy: f.cy } : {}),
           ...(f?.reflectance !== undefined ? { reflectance: f.reflectance } : {}),
@@ -283,6 +288,8 @@ export function fromVenueExchange(ex: VenueExchange): MultiCamVenueResult {
     walls: (v.walls ?? []).map((w) => ({
       id: w.id, x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2, height: w.height, label: w.label ?? '',
       ...(w.color !== undefined ? { color: w.color } : {}),
+      ...(typeof w.thickness === 'number' ? { thicknessM: w.thickness } : {}),
+      ...(w.openings?.length ? { openings: w.openings } : {}),
     })),
     backgroundPlan: v.floorPlan ? floorPlanToBg(v.floorPlan) : null,
     stageForeign: collectStageForeign(v.stageObjects ?? []),

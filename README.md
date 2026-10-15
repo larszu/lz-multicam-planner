@@ -118,6 +118,7 @@ stellen.
 
 ## Documentation
 
+- [Plan import](docs/plan-import.md) — walls, doors, windows, columns and rooms straight out of a vector PDF or DXF, to scale and without AI; what the AI is still for, and how accurate it is on five real architect's drawings.
 - [Feature reference](docs/FEATURES.md) — every function in detail: catalogue, device library, 2D, 3D, preview, multiview, shotlist, rig, project files, design, tech stack, scripts and architecture notes.
 - [Releases](https://github.com/larszu/lz-multicam-planner/releases) — installers for macOS and Windows.
 

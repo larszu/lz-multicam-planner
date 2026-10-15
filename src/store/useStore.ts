@@ -32,6 +32,7 @@ import { translate } from '../i18n';
 import type { VenueSeatingBlock, VenueVideoWall } from '../avplan/floorplan';
 import { defaultWallHeight, migrateWallHeights } from '../utils/wallHeight';
 import { adoptLegacyShotlists, normaliseShotlists } from './legacyShotlists';
+import type { PlanVorschau } from '../lib/planVorschau';
 import { neueSitzflaeche, neueVideowand, platzFuerPerson, venueAusDatei } from '../utils/raum';
 
 // Injected by Vite from package.json. In a release build that came through
@@ -216,6 +217,19 @@ interface AppState {
   /** When true, wall endpoints magnet to nearby endpoints while drawing/dragging (issue #40). */
   wallSnap: boolean;
   setWallSnap: (v: boolean) => void;
+
+  // Plan-Erkennung: Vorschau (nur im Speicher) und Uebernahme als ein Schritt.
+  planVorschau: PlanVorschau | null;
+  setPlanVorschau: (v: PlanVorschau | null) => void;
+  /** Ausschnitt auf dem 2D-Plan aufziehen. */
+  planBereichModus: boolean;
+  setPlanBereichModus: (v: boolean) => void;
+  planUebernehmen: (u: {
+    waende: Omit<Wall, 'id'>[];
+    buehnen: Omit<Stage, 'id'>[];
+    backgroundPlan?: BackgroundPlan;
+    venueGroesse?: { widthM: number; heightM: number };
+  }) => void;
 
   // View
   activeTab: ViewTab;
@@ -902,6 +916,26 @@ export const useStore = create<AppState>((set, get) => ({
   updateWall: (id, updates) => set((s) => ({ walls: s.walls.map((w) => (w.id === id ? { ...w, ...updates } : w)), projectVersion: s.projectVersion + 1 })),
   wallSnap: true,
   setWallSnap: (v) => set({ wallSnap: v }),
+
+  planVorschau: null,
+  setPlanVorschau: (v) => set({ planVorschau: v, ...(v ? {} : { planBereichModus: false }) }),
+  planBereichModus: false,
+  setPlanBereichModus: (v) => set({ planBereichModus: v }),
+  planUebernehmen: (u) => {
+    // Ein `set`: ein Schritt fuer Rueckgaengig.
+    set((s) => ({
+      walls: [...s.walls, ...u.waende.map((w) => ({ ...w, id: uid('wall') }))],
+      venue: {
+        ...s.venue,
+        ...(u.venueGroesse ?? {}),
+        stages: [...s.venue.stages, ...u.buehnen.map((b) => ({ ...b, id: stageUid() }))],
+      },
+      ...(u.backgroundPlan ? { backgroundPlan: u.backgroundPlan } : {}),
+      planVorschau: null,
+      planBereichModus: false,
+      projectVersion: s.projectVersion + 1,
+    }));
+  },
 
   activeTab: '2d',
   setActiveTab: (tab) => set({ activeTab: tab }),

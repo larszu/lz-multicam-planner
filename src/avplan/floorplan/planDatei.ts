@@ -73,12 +73,23 @@ export const istBildDatei = (f: DateiArt): boolean =>
 
 export const istPdfDatei = (f: DateiArt): boolean => f.type === 'application/pdf' || /\.pdf$/i.test(f.name)
 
-/** Taugt die Datei als Plan? PDFs nur, wenn ein Renderer da ist. */
-export const istPlanDatei = (f: DateiArt, o: { pdf?: boolean } = {}): boolean =>
-  istBildDatei(f) || (!!o.pdf && istPdfDatei(f))
+/** `.dxf` kommt oft ohne MIME-Typ an, deshalb auch an der Endung. */
+export const istDxfDatei = (f: DateiArt): boolean =>
+  f.type === 'image/vnd.dxf' || f.type === 'application/dxf' || /\.dxf$/i.test(f.name)
+
+/** Taugt die Datei als Plan? PDF und DXF nur, wenn der Planer sie kann. */
+export const istPlanDatei = (f: DateiArt, o: PlanArten = {}): boolean =>
+  istBildDatei(f) || (!!o.pdf && istPdfDatei(f)) || (!!o.dxf && istDxfDatei(f))
+
+/** Welche Arten der Planer annimmt. */
+export interface PlanArten {
+  pdf?: boolean
+  dxf?: boolean
+}
 
 /** Das `accept`-Attribut fuer ein `<input type="file">`, passend zum Lader. */
-export const planAccept = (o: { pdf?: boolean } = {}): string => (o.pdf ? 'image/*,application/pdf,.pdf' : 'image/*')
+export const planAccept = (o: PlanArten = {}): string =>
+  ['image/*', ...(o.pdf ? ['application/pdf', '.pdf'] : []), ...(o.dxf ? ['.dxf'] : [])].join(',')
 
 type DateiTraeger = { types?: readonly string[] | DOMStringList; files?: FileList | readonly File[] | null } | null | undefined
 
@@ -91,7 +102,7 @@ export const ziehtDateien = (dt: DataTransfer | DateiTraeger): boolean => {
 }
 
 /** Die brauchbaren Plan-Dateien eines Drops, in ihrer Reihenfolge. */
-export const planDateienAus = (dt: DataTransfer | DateiTraeger, o: { pdf?: boolean } = {}): File[] =>
+export const planDateienAus = (dt: DataTransfer | DateiTraeger, o: PlanArten = {}): File[] =>
   Array.from((dt?.files ?? []) as ArrayLike<File>).filter((f) => istPlanDatei(f, o))
 
 /** Zielgroesse nach dem Verkleinern; `faktor` 1 heisst: bleibt, wie es ist. */
@@ -210,6 +221,7 @@ export function planAblage(o: {
   onUngeeignet?: (dateien: File[]) => void
   onAktiv?: (aktiv: boolean) => void
   pdf?: boolean
+  dxf?: boolean
 }) {
   type Ereignis = { preventDefault(): void; dataTransfer: DataTransfer | null }
   return {
@@ -226,7 +238,7 @@ export function planAblage(o: {
       if (!ziehtDateien(e.dataTransfer)) return
       e.preventDefault()
       o.onAktiv?.(false)
-      const passend = planDateienAus(e.dataTransfer, { pdf: o.pdf })
+      const passend = planDateienAus(e.dataTransfer, { pdf: o.pdf, dxf: o.dxf })
       if (passend[0]) o.onDatei(passend[0])
       else o.onUngeeignet?.(Array.from((e.dataTransfer?.files ?? []) as ArrayLike<File>))
     },

@@ -57,7 +57,7 @@ import {
 import { CustomCameraForm } from './CustomCameraForm';
 import RoomPanel from './RoomPanel';
 import { CalculationBreakdown } from './CalculationBreakdown';
-import AiPlanAnalysis from './AiPlanAnalysis';
+import PlanErkennungPanel from './PlanErkennungPanel';
 import { planAblage, planAccept } from '../../avplan/floorplan';
 import { usePlanLaden } from '../../lib/usePlanLaden';
 import { useTranslation, format } from '../../i18n';
@@ -2168,6 +2168,7 @@ export default function Sidebar() {
   const [planZiehtDarueber, setPlanZiehtDarueber] = useState(false);
   const planAblageHandler = planAblage({
     pdf: true,
+    dxf: true,
     onDatei: (datei) => { void ladePlan(datei); },
     onUngeeignet: meldeUngeeignet,
     onAktiv: setPlanZiehtDarueber,
@@ -2286,7 +2287,7 @@ export default function Sidebar() {
         />
         {bgOpen && (
           <div className="space-y-2 text-xs" style={{ padding: '0 14px 12px' }}>
-            <input ref={fileInputRef} type="file" accept={planAccept({ pdf: true })} className="hidden" onChange={handleBgUpload} />
+            <input ref={fileInputRef} type="file" accept={planAccept({ pdf: true, dxf: true })} className="hidden" onChange={handleBgUpload} />
             <button
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-1 px-2 py-1 bg-bc-accent/20 text-bc-accent text-xs hover:bg-bc-accent/30 w-full justify-center"
@@ -2296,7 +2297,7 @@ export default function Sidebar() {
             <p className="text-bc-muted">
               {planZiehtDarueber
                 ? t('sidebar.planDrop.release', 'Release to load the floor plan')
-                : t('sidebar.planDrop.hint', 'or drop an image or PDF here or onto the 2D plan')}
+                : t('sidebar.planDrop.hint', 'or drop an image, PDF or DXF here or onto the 2D plan')}
             </p>
             {backgroundPlan && (
               <>
@@ -2438,8 +2439,8 @@ export default function Sidebar() {
                 </button>
               </>
             )}
-            {/* AI floor-plan analysis (issues #39 / #40) */}
-            <AiPlanAnalysis />
+            {/* Wände und Bühnen aus dem Plan (#205); KI nur, wo Geometrie fehlt. */}
+            <PlanErkennungPanel />
           </div>
         )}
       </div>

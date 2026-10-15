@@ -37,7 +37,7 @@ export const venue: Record<string, string> = {
   'venue.groups.cameras.title': 'Kameras',
   'venue.groups.on': 'bearbeitbar, klicken zum Sperren',
   'venue.groups.off': 'gesperrt, klicken zum Bearbeiten',
-  'venue.planDrop.release': 'Loslassen, um das Bild oder PDF als Grundriss zu laden',
+  'venue.planDrop.release': 'Loslassen, um das Bild, PDF oder DXF als Grundriss zu laden',
   'venue.lockPosition': 'Position sperren',
   'venue.unlockPosition': 'Position entsperren',
   'venue.delete': '{kind} löschen',

@@ -18,15 +18,20 @@
 import { useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import {
+  dxfLesen,
+  DxfFehler,
   ladePlanDatei,
   pdfjsRenderer,
   PlanDateiFehler,
   PLAN_BILD_MAX_BYTES,
+  istDxfDatei,
   istPdfDatei,
+  vektorAlsPlan,
   type GeladenerPlan,
   type PdfjsModul,
   type PdfSeitenRenderer,
 } from '../avplan/floorplan';
+import { setPlanQuelle } from './planQuelle';
 import { useStore } from '../store/useStore';
 import { useTranslation, format } from '../i18n';
 import type { BackgroundPlan } from '../types';
@@ -64,6 +69,12 @@ export function alsHintergrundPlan(plan: GeladenerPlan, venueBreiteM: number): B
   };
 }
 
+/** DXF bis R2004 ist ANSI (meist Windows-1252), ab R2007 UTF-8. */
+function dxfText(d: Uint8Array): string {
+  const utf8 = new TextDecoder('utf-8').decode(d);
+  return utf8.includes('\uFFFD') ? new TextDecoder('windows-1252').decode(d) : utf8;
+}
+
 export function usePlanLaden() {
   const { t } = useTranslation();
   const venueBreiteM = useStore((s) => s.venue.widthM);
@@ -72,9 +83,21 @@ export function usePlanLaden() {
   const meldeUngeeignet = useCallback(
     (dateien: File[]) => {
       const namen = dateien.map((f) => f.name).join(', ');
+      // DWG ist ein geschlossenes Binaerformat; die freie Bibliothek dafuer
+      // steht unter GPL-3.0 und darf hier nicht mit. Statt still zu scheitern,
+      // nennt die Meldung den Weg, den jedes CAD-Buero ohnehin hat.
+      if (dateien.some((f) => /\.dwg$/i.test(f.name))) {
+        alert(
+          t(
+            'sidebar.planDrop.dwg',
+            'DWG cannot be read directly. Export the drawing as DXF (File → Save as → DXF), or convert it with the free ODA File Converter — a DXF keeps walls, dimensions and room stamps.',
+          ),
+        );
+        return;
+      }
       alert(
         format(
-          t('sidebar.planDrop.unsuitable', '"{name}" cannot be used as a floor plan. Drop an image (PNG, JPEG, WebP …) or a PDF.'),
+          t('sidebar.planDrop.unsuitable', '"{name}" cannot be used as a floor plan. Drop an image (PNG, JPEG, WebP …), a PDF or a DXF.'),
           { name: namen || '?' },
         ),
       );
@@ -85,9 +108,20 @@ export function usePlanLaden() {
   const lade = useCallback(
     async (datei: File) => {
       try {
-        const plan = await ladePlanDatei(datei, { pdf: pdfRenderer() });
+        // DXF kennt der Paket-Lader nicht: es traegt kein Bild in sich, es
+        // wird eines. Gezeichnet wird hier, erkannt spaeter aus denselben Daten.
+        const dxf = istDxfDatei(datei);
+        const bytes = dxf || istPdfDatei(datei) ? new Uint8Array(await datei.arrayBuffer()) : null;
+        const plan = dxf
+          ? vektorAlsPlan(dxfLesen(dxfText(bytes!)), datei.name)
+          : await ladePlanDatei(datei, { pdf: pdfRenderer() });
+        setPlanQuelle(bytes ? { art: dxf ? 'dxf' : 'pdf', name: datei.name, daten: bytes, seite: plan.seite, bild: plan.src } : null);
         setBackgroundPlan(alsHintergrundPlan(plan, venueBreiteM));
       } catch (err) {
+        if (err instanceof DxfFehler) {
+          alert(err.message);
+          return;
+        }
         if (err instanceof PlanDateiFehler) {
           const mb = (datei.size / 1024 / 1024).toFixed(1);
           if (err.code === 'typ' || err.code === 'pdf-nicht-verfuegbar') {

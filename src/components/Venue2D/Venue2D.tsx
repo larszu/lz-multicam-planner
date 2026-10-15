@@ -18,6 +18,8 @@ import { FiCopy, FiLock, FiUnlock, FiTrash2 } from 'react-icons/fi';
 import { useTranslation, format } from '../../i18n';
 import { useIstHell } from '../../lib/useIstHell';
 import { planAblage } from '../../avplan/floorplan';
+import PlanVorschauOverlay from './PlanVorschauOverlay';
+import { wandDicke } from '../../utils/wallOpenings';
 import { usePlanLaden } from '../../lib/usePlanLaden';
 import EditGroupsBar from './EditGroupsBar';
 import RaumOverlay, { type RaumAuswahl } from './RaumOverlay';
@@ -85,6 +87,10 @@ const PALETTE = {
 export default function Venue2D() {
   const { t } = useTranslation();
   const P = PALETTE[useIstHell() ? 'hell' : 'dunkel'];
+  const planVorschau = useStore((s) => s.planVorschau);
+  const setPlanVorschau = useStore((s) => s.setPlanVorschau);
+  const planBereichModus = useStore((s) => s.planBereichModus);
+  const setPlanBereichModus = useStore((s) => s.setPlanBereichModus);
   const { venue, setVenue, cameras, selectedCameraId, selectCamera, moveCamera, updateCamera, removeCamera, duplicateCamera, showAllFov, showDof, pixelsPerMeter, persons, updatePerson, removePerson, duplicatePerson, updateStage, addStage, removeStage, updateSeatingBlock, updateVideoWall, backgroundPlan, setBackgroundPlan, walls, updateWall, addWall, removeWall, wallSnap, editGroups, avForeign, showForeign } = useStore();
 
   // Gesperrte Gruppen (#43, #169). Eine freie Gruppe faellt auf die Sperre
@@ -104,10 +110,14 @@ export default function Venue2D() {
   const [planZiehtDarueber, setPlanZiehtDarueber] = useState(false);
   const planAblageHandler = planAblage({
     pdf: true,
+    dxf: true,
     onDatei: (datei) => { void ladePlan(datei); },
     onUngeeignet: meldeUngeeignet,
     onAktiv: setPlanZiehtDarueber,
   });
+  // Ausschnitt fuer die Plan-Erkennung aufziehen (#205).
+  const [bereichStart, setBereichStart] = useState<{ x: number; y: number } | null>(null);
+  const [bereichJetzt, setBereichJetzt] = useState<{ x: number; y: number } | null>(null);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
   const [containerSize, setContainerSize] = useState({ w: 800, h: 600 });
   const [zoom, setZoom] = useState(1);
@@ -405,16 +415,47 @@ export default function Venue2D() {
     }
   }, [addWall, backgroundPlan, calibActive, calibAutoResize, calibAxis, calibDistM, calibPoints, calibScaleLocked, drawingWall, getPointerWorldPoint, ppm, setBackgroundPlan, setVenue, snapPoint, snapToEndpoints, venue, wallStart, walls.length]);
 
+  const bereichPunkt = useCallback(() => {
+    const p = getPointerWorldPoint();
+    return p ? { x: p.xPx / ppm, y: p.yPx / ppm } : null;
+  }, [getPointerWorldPoint, ppm]);
+
+  const handleStageMouseDown = useCallback(() => {
+    if (!planBereichModus) return;
+    const p = bereichPunkt();
+    if (p) setBereichStart(p);
+  }, [bereichPunkt, planBereichModus]);
+
+  const handleStageMouseUp = useCallback(() => {
+    if (!planBereichModus || !bereichStart) return;
+    const p = bereichPunkt();
+    setBereichStart(null);
+    if (!p) return;
+    const rahmen = {
+      minX: Math.min(bereichStart.x, p.x),
+      minY: Math.min(bereichStart.y, p.y),
+      maxX: Math.max(bereichStart.x, p.x),
+      maxY: Math.max(bereichStart.y, p.y),
+    };
+    // Ein Klick ohne Zug hebt den Ausschnitt auf, statt einen leeren zu setzen.
+    const leer = rahmen.maxX - rahmen.minX < 0.5 || rahmen.maxY - rahmen.minY < 0.5;
+    setPlanVorschau({ ...(planVorschau ?? { waende: [], buehnen: [], raeume: [] }), bereich: leer ? undefined : rahmen });
+    setPlanBereichModus(false);
+  }, [bereichPunkt, bereichStart, planBereichModus, planVorschau, setPlanBereichModus, setPlanVorschau]);
+
   const handleStageMouseMove = useCallback(() => {
     const point = getPointerWorldPoint();
     if (!point) return;
+    if (planBereichModus && bereichStart) {
+      setBereichJetzt({ x: point.xPx / ppm, y: point.yPx / ppm });
+    }
     if (drawingWall && wallStart) {
       setWallCursor(snapToEndpoints(snapPoint(wallStart, { x: point.xPx / ppm, y: point.yPx / ppm })));
     }
     if (calibActive && calibPoints.length === 1) {
       setCalibCursor({ x: point.xPx, y: point.yPx });
     }
-  }, [calibActive, calibPoints.length, drawingWall, getPointerWorldPoint, ppm, snapPoint, snapToEndpoints, wallStart]);
+  }, [bereichStart, calibActive, calibPoints.length, drawingWall, getPointerWorldPoint, planBereichModus, ppm, snapPoint, snapToEndpoints, wallStart]);
 
   const handleWallEndpointDragMove = useCallback((wall: Wall, end: 'start' | 'end', e: Konva.KonvaEventObject<DragEvent>) => {
     const node = e.target;
@@ -637,7 +678,7 @@ export default function Venue2D() {
           className="absolute inset-0 z-20 flex items-center justify-center border-2 border-dashed border-bc-accent bg-bc-accent/10 pointer-events-none"
         >
           <span className="bg-bc-panel text-bc-text-bright text-sm px-3 py-2 border border-bc-accent">
-            {t('venue.planDrop.release', 'Release to load the image or PDF as the floor plan')}
+            {t('venue.planDrop.release', 'Release to load the image, PDF or DXF as the floor plan')}
           </span>
         </div>
       )}
@@ -654,7 +695,7 @@ export default function Venue2D() {
         scaleY={zoom}
         x={stagePos.x}
         y={stagePos.y}
-        draggable={!calibActive && !drawingWall}
+        draggable={!calibActive && !drawingWall && !planBereichModus}
         onDragEnd={(e) => {
           // Dieselbe Regel wie bei der Kamera-Marke, nur hier schon immer von
           // Hand geschrieben: ein Drag-Handler rechnet nur mit seinem eigenen
@@ -664,8 +705,10 @@ export default function Venue2D() {
         }}
         onWheel={handleWheel}
         onClick={handleStageClick}
+        onMouseDown={handleStageMouseDown}
+        onMouseUp={handleStageMouseUp}
         onMouseMove={handleStageMouseMove}
-        style={{ cursor: calibActive || drawingWall ? 'crosshair' : 'grab' }}
+        style={{ cursor: calibActive || drawingWall || planBereichModus ? 'crosshair' : 'grab' }}
       >
       {/* ── Layer 1: Static background (venue, image, grid, scale bar) ── */}
       <Layer listening={false}>
@@ -851,7 +894,7 @@ export default function Venue2D() {
           <React.Fragment key={`wall-${w.id}`}>
             <Line
               points={[w.x1 * ppm, w.y1 * ppm, w.x2 * ppm, w.y2 * ppm]}
-              stroke="#9ca3af" strokeWidth={3} hitStrokeWidth={10}
+              stroke="#9ca3af" strokeWidth={Math.max(3, wandDicke(w) * ppm)} hitStrokeWidth={Math.max(10, wandDicke(w) * ppm)}
               draggable={!drawingWall && !lockWalls}
               onContextMenu={(e) => { e.evt.preventDefault(); if (!lockWalls) openContextMenu('wall', w.id, false, e); }}
               onDragEnd={(e) => {
@@ -866,6 +909,25 @@ export default function Venue2D() {
             <Text x={((w.x1 + w.x2) / 2) * ppm - 20} y={((w.y1 + w.y2) / 2) * ppm - 14} text={w.label} fontSize={9} fill="#9ca3af" align="center" width={40} />
           </React.Fragment>
         ))}
+        {planVorschau && (
+          <PlanVorschauOverlay
+            vorschau={planVorschau}
+            ppm={ppm}
+            farben={{ wand: '#e11d48', stuetze: '#f59e0b', buehne: '#f97316', raum: '#22c55e', rahmen: '#38bdf8' }}
+          />
+        )}
+        {planBereichModus && bereichStart && bereichJetzt && (
+          <Rect
+            x={Math.min(bereichStart.x, bereichJetzt.x) * ppm}
+            y={Math.min(bereichStart.y, bereichJetzt.y) * ppm}
+            width={Math.abs(bereichJetzt.x - bereichStart.x) * ppm}
+            height={Math.abs(bereichJetzt.y - bereichStart.y) * ppm}
+            stroke="#38bdf8"
+            dash={[8, 6]}
+            strokeWidth={1.5}
+            listening={false}
+          />
+        )}
         {drawingWall && wallStart && wallCursor && (
           <>
             <Line points={[wallStart.x * ppm, wallStart.y * ppm, wallCursor.x * ppm, wallCursor.y * ppm]} stroke="#f59e0b" strokeWidth={2} dash={[6, 4]} listening={false} />

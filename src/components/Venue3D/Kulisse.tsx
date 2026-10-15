@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import type { Stage } from '../../types';
 import type { StufenWerte } from '../../avplan/scene3d';
 import { istSpielfeld } from '../../utils/showRig';
+import { wandDicke, wandStuecke } from '../../utils/wallOpenings';
 import { Arena, CrowdAndSeating, FieldMesh, LedWalls, ShowRig, StageBodyReal, WallSurfaceMaterial } from './ShowScene';
 import type { KulissenDaten } from './kulissenDaten';
 
@@ -67,22 +68,17 @@ export function Kulisse({ daten, show, tageslicht = false, simple, werte, audien
       {ledWaende.length > 0 && <LedWalls walls={ledWaende} maxLichter={show && werte.ao ? 1 : 0} />}
 
       {walls.map((w) => {
-        const dx = w.x2 - w.x1;
-        const dy = w.y2 - w.y1;
-        const len = Math.sqrt(dx * dx + dy * dy);
-        const cx = (w.x1 + w.x2) / 2;
-        const cy = (w.y1 + w.y2) / 2;
-        const angle = Math.atan2(dy, dx);
-        return (
-          <mesh key={w.id} position={[cx, w.height / 2, cy]} rotation={[0, -angle, 0]}>
-            <boxGeometry args={[len, w.height, 0.15]} />
+        const dicke = wandDicke(w);
+        return wandStuecke(w, w.height).map((st, i) => (
+          <mesh key={`${w.id}-${i}`} position={[st.x, st.unten + st.hoehe / 2, st.y]} rotation={[0, -st.winkel, 0]}>
+            <boxGeometry args={[st.laenge, st.hoehe, dicke]} />
             {venue.wallMaterial
-              ? <WallSurfaceMaterial art={venue.wallMaterial} laengeM={len} hoeheM={w.height} farbe={w.color} />
+              ? <WallSurfaceMaterial art={venue.wallMaterial} laengeM={st.laenge} hoeheM={st.hoehe} farbe={w.color} />
               : show
               ? <meshStandardMaterial color={w.color ?? '#3a3d42'} roughness={0.9} />
               : <meshStandardMaterial color={w.color ?? '#6b7280'} opacity={0.6} transparent />}
           </mesh>
-        );
+        ));
       })}
     </>
   );

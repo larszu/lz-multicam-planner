@@ -1,4 +1,4 @@
-import type { RaumErweiterung } from '../avplan/floorplan';
+import type { RaumErweiterung, VenueWallOpening } from '../avplan/floorplan';
 import type { SourceIdentity } from '../utils/sourceIdentity';
 
 // ── Sensor ──
@@ -225,6 +225,13 @@ export interface Wall {
    */
   height?: number;
   label: string;
+  /** Wandstaerke in Metern (aus der Plan-Erkennung). Ohne Angabe 0,15 m. */
+  thicknessM?: number;
+  /**
+   * Tuer- und Fensteroeffnungen entlang der Wand. Die 3D-Ansicht spart sie
+   * aus und laesst Bruestung und Sturz stehen.
+   */
+  openings?: VenueWallOpening[];
   /** Base surface colour (hex). Falls back to a neutral grey when unset. */
   color?: string;
   /** Surface pattern for blur-checking in the preview. Defaults to 'solid'. */

@@ -178,13 +178,24 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 
 ### 2D Venue Planner
 - Top-down drag & drop camera placement with real-time FOV cones
-- Zoom, pan, snap-to-grid, background floor plan import (image & PDF, first
-  page) — via the upload button **or by dragging the file onto the 2D plan or
-  the sidebar's Floor Plan section**. Images are capped at 3000 px on the long
+- Zoom, pan, snap-to-grid, background floor plan import (image, PDF, **DXF**) —
+  via the upload button **or by dragging the file onto the 2D plan or the
+  sidebar's Floor Plan section**. Images are capped at 3000 px on the long
   edge, PDFs are rendered to at most 2000 px, so a phone photo no longer bloats
-  the project file
+  the project file. DWG says what to do instead (export DXF, or the free ODA
+  File Converter) rather than failing silently
 - Two-point calibration tool for scaling imported floor plans (per axis, X or Y)
-- **AI floor-plan analysis** (sidebar, Floor plan): reads walls, stages and scale from the uploaded plan. Uses the provider from **Settings → AI**
+- **Walls and stages from the plan** (sidebar, Floor plan → *Detect walls and
+  stages*): a vector PDF or DXF carries the drawing itself, so walls (with
+  their thickness), doors, windows, columns, stairs, room outlines with their
+  stamp and stages come out **to scale and without AI**. The scale comes from
+  the dimension chains, so *Scale the plan too* puts the picture into the venue
+  at 1:1. The result is an **overlay on the 2D plan** — nothing is changed
+  until *Apply*, and a rectangle dragged on the plan limits the run to one
+  hall. For scans and photos, or a drawing too unusual to read, an AI traces it
+  instead (provider from **Settings → AI**) and the answer is snapped onto the
+  drawn lines. Measured on five real architect's drawings:
+  [`docs/plan-import.md`](plan-import.md)
 - Draw walls with 45° shift-snapping
 - **What can be edited** sits as a small switch bar in the top-left corner of the plan: Floor plan, Stage, Room, Objects, Cameras. Click a group to lock it (lock icon) and again to free it — e.g. lock everything but cameras while placing cameras. *Edit → Edit mode* offers the same as one-click presets
 - Place stage objects (person, guitarist, drums, keys, mic stand, custom) — new people land on the main stage, side by side
@@ -209,6 +220,8 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 - **Touch: one finger looks around (the picture follows the finger), two fingers pinch to move forward/back and drag to slide sideways and up/down** — no keyboard needed on a phone or tablet
 - Drag cameras in space, visualize stage meshes & venue boundaries
 - Background floor plan projection, floor grid with metric labels
+- Walls are built with their own thickness and keep their door and window
+  openings open — jambs, sill and lintel stay standing
 
 ### Camera view & Preview
 One view answers *what does this camera see?* — in the **Preview** tab and as **Camera view** in the 3D view. Same picture, same controls, same settings (overlays, presets, transition time are shared between both).
