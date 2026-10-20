@@ -122,6 +122,17 @@ a hall plan is a fraction of that. Layers that cannot hold a wall
 (furniture, kitchen equipment, foreign imports) are skipped while reading —
 on G-02 that is 609 000 of 774 000 paths and not one wall among them.
 
+**How long it takes.** The reading runs in the app's own thread, because
+pdf.js cannot be driven from a web worker (it looks for `window.location`
+when starting its own worker, and its fallback hijacks the port it runs in —
+measured 2026-10-15, both ways). Its heavy part, taking the page apart, runs
+in pdf.js's own worker anyway. What is left in the app's thread are the
+figures in the *Time* column above: 0,3–2,3 s on an Apple M-series. The
+sheets here are A0 building plans with up to 5,5 million drawing operations;
+a hall plan is a fraction of that. Layers that cannot hold a wall
+(furniture, kitchen equipment, foreign imports) are skipped while reading —
+on G-02 that is 609 000 of 774 000 paths and not one wall among them.
+
 Known limits on these sheets:
 
 - The hall's structural columns are picked up as columns, but a few furniture
