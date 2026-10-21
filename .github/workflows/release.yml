@@ -4,9 +4,9 @@ name: Release
 #
 # Push a version tag (e.g. `git tag v0.4.1 && git push origin v0.4.1`) and this
 # workflow:
-#   1. builds the Windows + macOS desktop apps (matrix),
+#   1. builds the Windows, macOS and Linux (x64 + arm64) desktop apps (matrix),
 #   2. creates a GitHub Release with auto-generated notes and the binaries
-#      attached (NSIS installer, portable .exe, DMG, ZIP),
+#      attached (NSIS installer, portable .exe, DMG, ZIP, AppImage, deb),
 #   3. writes the tag version back into package.json on the default branch so
 #      it never drifts behind the released tags.
 # It can also be run manually (workflow_dispatch) to smoke-test the build —
@@ -40,6 +40,13 @@ jobs:
           - os: macos-latest
             name: macos
             build_args: --mac --x64 --arm64
+          # glibc 2.35 (Ubuntu 22.04) like lz-scopes: Raspberry Pi OS 12, Debian 12, Ubuntu 22.04+
+          - os: ubuntu-22.04
+            name: linux-x64
+            build_args: --linux --x64
+          - os: ubuntu-22.04-arm
+            name: linux-arm64
+            build_args: --linux --arm64
 
     runs-on: ${{ matrix.os }}
 
@@ -110,6 +117,8 @@ jobs:
             release/*.exe
             release/*.dmg
             release/*.zip
+            release/*.AppImage
+            release/*.deb
             release/*.blockmap
             release/latest*.yml
           # Fail loudly if a platform produced no artifacts (silent failure
@@ -134,6 +143,8 @@ jobs:
             artifacts/**/*.exe
             artifacts/**/*.dmg
             artifacts/**/*.zip
+            artifacts/**/*.AppImage
+            artifacts/**/*.deb
             artifacts/**/*.blockmap
             artifacts/**/latest*.yml
           generate_release_notes: true

@@ -35,6 +35,7 @@
     "desktop": "electron .",
     "dist:win": "npm run build && electron-builder --win --publish never",
     "dist:mac": "npm run build && electron-builder --mac --x64 --arm64 --publish never",
+    "dist:linux": "npm run build && electron-builder --linux --publish never",
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest run",
@@ -114,6 +115,19 @@
     },
     "dmg": {
       "writeUpdateInfo": false
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "artifactName": "LZ-Multicam-Planner-${version}-${arch}.${ext}",
+      "executableName": "lz-multicam-planner",
+      "icon": "build/icon.png",
+      "category": "AudioVideo;Video",
+      "maintainer": "Lars Zumpe <209382770+larszu@users.noreply.github.com>",
+      "vendor": "Lars Zumpe",
+      "synopsis": "Broadcast camera and lens planner"
     }
   },
   "dependencies": {

@@ -5,6 +5,7 @@
 [![Open in browser](https://img.shields.io/badge/Open%20in%20browser-1D324F?style=for-the-badge)](https://larszu.github.io/lz-multicam-planner/)
 [![Download for macOS](https://img.shields.io/badge/Download%20for%20macOS-1D324F?style=for-the-badge)](https://github.com/larszu/lz-multicam-planner/releases/latest)
 [![Download for Windows](https://img.shields.io/badge/Download%20for%20Windows-1D324F?style=for-the-badge)](https://github.com/larszu/lz-multicam-planner/releases/latest)
+[![Download for Linux](https://img.shields.io/badge/Download%20for%20Linux-1D324F?style=for-the-badge)](https://github.com/larszu/lz-multicam-planner/releases/latest)
 [![Documentation](https://img.shields.io/badge/Documentation-5C6B85?style=for-the-badge)](docs/FEATURES.md)
 
 <picture>
@@ -129,6 +130,7 @@ npm install
 npm run dev        # http://localhost:4182
 npm run desktop    # Electron in dev mode
 npm run dist:mac   # DMG + ZIP (on macOS)
+npm run dist:linux # AppImage + deb (on Linux, host arch)
 npm run dist:win   # installer + portable
 ```
 
