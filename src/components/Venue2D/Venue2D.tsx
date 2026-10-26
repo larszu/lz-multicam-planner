@@ -1,5 +1,6 @@
 import { Stage, Layer, Rect, Wedge, Arc, Circle, Text, Group, Line, Image as KImage, Transformer } from 'react-konva';
 import { useStore } from '../../store/useStore';
+import { useLiveCameras, useSurfaceCameraId } from '../../store/bridgeLive';
 import { foreignFixturesFrom, cctToColor } from '../../utils/foreignView';
 import { getCameraById, getEffectiveSensor } from '../../data/cameras';
 import { getLensById } from '../../data/lenses';
@@ -91,7 +92,10 @@ export default function Venue2D() {
   const setPlanVorschau = useStore((s) => s.setPlanVorschau);
   const planBereichModus = useStore((s) => s.planBereichModus);
   const setPlanBereichModus = useStore((s) => s.setPlanBereichModus);
-  const { venue, setVenue, cameras, selectedCameraId, selectCamera, moveCamera, updateCamera, removeCamera, duplicateCamera, showAllFov, showDof, pixelsPerMeter, persons, updatePerson, removePerson, duplicatePerson, updateStage, addStage, removeStage, updateSeatingBlock, updateVideoWall, backgroundPlan, setBackgroundPlan, walls, updateWall, addWall, removeWall, wallSnap, editGroups, avForeign, showForeign } = useStore();
+  const { venue, setVenue, cameras: planCameras, selectedCameraId, selectCamera, moveCamera, updateCamera, removeCamera, duplicateCamera, showAllFov, showDof, pixelsPerMeter, persons, updatePerson, removePerson, duplicatePerson, updateStage, addStage, removeStage, updateSeatingBlock, updateVideoWall, backgroundPlan, setBackgroundPlan, walls, updateWall, addWall, removeWall, wallSnap, editGroups, avForeign, showForeign } = useStore();
+  // Live-Pose der Bridge liegt nur auf der Anzeige, der Plan bleibt.
+  const cameras = useLiveCameras(planCameras);
+  const surfaceCameraId = useSurfaceCameraId(planCameras);
 
   // Gesperrte Gruppen (#43, #169). Eine freie Gruppe faellt auf die Sperre
   // des einzelnen Objekts durch.
@@ -994,6 +998,7 @@ export default function Venue2D() {
           const pos = effectiveCameraPos(cam);
           return (
             <Group key={`cam-${cam.id}`} x={pos.x * ppm} y={pos.y * ppm} draggable={!drawingWall && !cam.locked && !lockCameras} onDragEnd={(e) => handleCamDragEnd(cam, e)} onClick={() => selectCamera(cam.id)} onTap={() => selectCamera(cam.id)} onContextMenu={(e) => { e.evt.preventDefault(); if (!lockCameras) openContextMenu('camera', cam.id, !!cam.locked, e); }}>
+              {cam.id === surfaceCameraId && <Circle radius={16} stroke={cam.color} strokeWidth={2} dash={[4, 3]} listening={false} />}
               <Circle radius={isSelected ? 10 : 8} fill={cam.color} stroke={isSelected ? '#fff' : cam.color} strokeWidth={isSelected ? 3 : 1} shadowColor={cam.color} shadowBlur={isSelected ? 12 : 0} />
               <Line points={[0, 0, 14 * Math.cos((cam.pan * Math.PI) / 180), 14 * Math.sin((cam.pan * Math.PI) / 180)]} stroke={cam.color} strokeWidth={2} />
               {/* Pan-rotation handle — drag to aim the camera (issue #36).

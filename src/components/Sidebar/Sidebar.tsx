@@ -38,6 +38,7 @@ import Regler from '../ui/Regler';
 // Derselbe Objektiv-Regler wie im Preview-Tab: logarithmische Bahn, Rastung,
 // direkte Zahleneingabe. Zwei Implementierungen waeren zwei Bedienungen.
 import LensSlider from '../Preview/LensSlider';
+import BridgeLiveRow from '../Bridge/BridgeLiveRow';
 import LibraryBadge from '../Library/LibraryBadge';
 import UploadDialog from '../Library/UploadDialog';
 import UploadStatus from '../Library/UploadStatus';
@@ -480,6 +481,8 @@ function CameraCard({
           </div>
         )}
       </div>
+
+      <BridgeLiveRow cam={cam} expanded={expanded} />
 
       {/* Ausgeklappte Eigenschaften */}
       {expanded && (
