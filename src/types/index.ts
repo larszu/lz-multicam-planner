@@ -535,6 +535,12 @@ export interface VenueCamera {
    */
   presets?: PtzPreset[];
   /**
+   * Kameranummer in LZ Camera Bridge, deren Pose diese Position live dreht.
+   * Fehlt sie, gilt die Zahl im Namen („CAM 3" -> 3), sonst die Listenposition
+   * (`utils/bridgeLive.ts`). Ein Feld, das man nur bei Abweichung fuellt.
+   */
+  bridgeCameraNumber?: number;
+  /**
    * Bedarf 58 — welchen Ausschnitt diese Position liefern MUSS.
    *
    *   > Lens choice per position is guessed from experience or checked ad hoc

@@ -2,6 +2,7 @@ import React from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Grid, Text, PerspectiveCamera, Html, TransformControls, Billboard } from '@react-three/drei';
 import { useStore } from '../../store/useStore';
+import { useLiveCameras, useSurfaceCameraId } from '../../store/bridgeLive';
 import { getCameraById, getEffectiveSensor } from '../../data/cameras';
 import { getLensById } from '../../data/lenses';
 import { computeFov } from '../../utils/fov';
@@ -980,7 +981,9 @@ function cameraFov(cam: ReturnType<typeof useStore.getState>['cameras'][0]) {
 
 export default function Venue3D() {
   const { t } = useTranslation();
-  const { venue, cameras, persons, backgroundPlan, updatePerson, selectCamera, selectedCameraId, programCameraId } = useStore();
+  const { venue, cameras: planCameras, persons, backgroundPlan, updatePerson, selectCamera, selectedCameraId, programCameraId } = useStore();
+  const cameras = useLiveCameras(planCameras);
+  const surfaceCameraId = useSurfaceCameraId(planCameras);
   const [unlockedCameraId, setUnlockedCameraId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState<CameraEditMode>('move');
   const [prefs, updatePrefs] = useView3DPrefs();
@@ -1063,11 +1066,12 @@ export default function Venue3D() {
     const m = new Map<string, KameraModell>();
     for (const c of cameras) {
       const info = fovById.get(c.id);
-      const tally: Tally = c.id === programCameraId ? 'rot' : c.id === selectedCameraId && programCameraId ? 'gruen' : 'aus';
+      // Am Pult gewaehlt = Vorschau-Tally, wie am Mischer.
+      const tally: Tally = c.id === programCameraId ? 'rot' : (c.id === selectedCameraId && programCameraId) || c.id === surfaceCameraId ? 'gruen' : 'aus';
       m.set(c.id, kameraModell(c, info?.camDef, info?.lensDef, { detail, tally, deckeM: venue.ceilingHeightM }));
     }
     return m;
-  }, [cameras, fovById, detail, programCameraId, selectedCameraId, venue.ceilingHeightM]);
+  }, [cameras, fovById, detail, programCameraId, selectedCameraId, surfaceCameraId, venue.ceilingHeightM]);
   useEffect(() => () => entsorgeKameraCache(), []);
 
   const diag = Math.hypot(venue.widthM, venue.heightM);

@@ -1,3 +1,6 @@
+import BridgeStatusText from '../Bridge/BridgeStatusText';
+import { useBridgeLive } from '../../store/bridgeLive';
+import { openSettings } from '../Settings/openSettings';
 import { useStore } from '../../store/useStore';
 import { getCameraById } from '../../data/cameras';
 import { useTranslation, format } from '../../i18n';
@@ -60,6 +63,7 @@ export default function StatusBar() {
           ? t('status.mode.objects', 'Editing: objects')
           : t('status.mode.cameras', 'Editing: cameras');
 
+  const bridgeOn = useBridgeLive((s) => s.enabled);
   return (
     <footer className="bc-statusbar">
       <span className="truncate font-medium text-bc-text">{venue.name}</span>
@@ -78,6 +82,11 @@ export default function StatusBar() {
       {/* Eine Meldung im Sinne des ADR: die automatische Sicherung haelt den
           Stand gerade NICHT — wer jetzt schliesst, verliert, was seit dem
           letzten Speichern als Datei geaendert wurde. */}
+      {bridgeOn && (
+        <button type="button" className="whitespace-nowrap" onClick={() => openSettings('bridge')}>
+          <BridgeStatusText />
+        </button>
+      )}
       {autosaveStorageFull && (
         <span className="truncate text-bc-red-text" role="status">
           {t('status.autosaveFull', 'Autosave failed — storage is full. Save the project to a file.')}

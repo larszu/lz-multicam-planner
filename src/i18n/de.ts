@@ -17,6 +17,7 @@ import { chrome } from './de/chrome';
 import { library } from './de/library';
 import { room } from './de/room';
 import { ai } from './de/ai';
+import { bridge } from './de/bridge';
 
 export const de: Record<string, string> = {
   ...sidebar,
@@ -34,4 +35,5 @@ export const de: Record<string, string> = {
   ...library,
   ...room,
   ...ai,
+  ...bridge,
 };

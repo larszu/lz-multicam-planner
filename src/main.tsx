@@ -11,6 +11,7 @@ import { loadZoom, applyZoom } from './utils/uiZoom';
 import { restoreAutosave, startAutosave } from './store/autosave';
 import { useDeviceLibrary } from './library/store';
 import { startAutoSync } from './library/autoSync';
+import { verbinden as bridgeVerbinden } from './store/bridgeLive';
 
 // Gespeicherten UI-Zoom vor dem ersten Render anwenden (kein Flash).
 applyZoom(loadZoom());
@@ -27,6 +28,9 @@ window.addEventListener('pagehide', autosave.flush);
 // Katalog traegt bis dahin den Cache.
 startAutoSync();
 void useDeviceLibrary.getState().init();
+
+// Live-Verbindung zur Kamera-Bridge, nur wenn eingeschaltet.
+bridgeVerbinden();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

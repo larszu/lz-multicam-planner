@@ -86,6 +86,7 @@ before the first rehearsal.
 - **Audience and room:** seated and standing areas, video walls, ceiling height, floor and wall materials. Walls take a standard height for the whole room; any wall can have its own, an empty field uses the standard.
 - **Shotlist and rig:** capture shots, set transitions, play the sequence, export a storyboard — shotlists are saved in the project file; record and replay camera moves within the rig's real limits.
 - **Templates:** football stadium, stadium event, small and large concert, church, conference — or save your own.
+- **Live from a control panel:** with *Settings → Camera bridge* switched on, the planner connects to [LZ Camera Bridge](https://github.com/larszu/lz-camera-bridge) (default `ws://localhost:9700`, reconnects on its own, status in the status bar). Pan, tilt and zoom the bridge reports — for example from a Broadcast Pix joystick — turn the planned camera in 2D and 3D; the camera chosen on the panel gets a dashed ring in 2D and a green tally in 3D. Each planned camera follows the bridge camera with the number in its name (*CAM 2* → 2); a different number goes in the camera's *Bridge camera* field. The plan stays as it was until you click *Apply* on the camera marked *Live*.
 - **Hands over to the Cable Planner:** cameras, lenses and positions travel in the `.avplan` exchange file.
 
 ## Quick start
@@ -111,6 +112,11 @@ Optiken passen: Grundriss mit echtem Bildwinkel, fotorealistisches 3D mit Blick
 durch jede Kamera, gerenderte Vorschau und Multiview mit Preview, Program, CUT
 und AUTO. Läuft im Browser und als Desktop-App für macOS und Windows,
 kostenlos nutzbar.
+
+Live vom Pult: *Einstellungen → Kamera-Bridge* verbindet mit LZ Camera
+Bridge; Schwenk, Neigung und Zoom der Bridge (etwa vom Joystick) drehen die
+geplante Kamera mit derselben Nummer in 2D und 3D. Erst *Übernehmen* schreibt
+die Stellung in den Plan.
 
 Windows-Rechner mit zwei Grafikkarten: den Installer statt der portablen
 Fassung nehmen und die Programmdatei (angezeigt unter *Einstellungen →
