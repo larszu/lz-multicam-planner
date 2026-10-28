@@ -375,6 +375,11 @@ export type ControlPath =
   // ob sich die Blende dieser Position vom Pult aus stellen laesst.
   | 'b4-lens'
   | 'robotic-head'
+  // Broadcast-Fernsteuerprotokolle (seriell bzw. ueber Netzwerk-Bridge):
+  // Sony 700-Remote/CNA-1, Panasonic AW/AK, Canon BU/XU, Hitachi RCZ,
+  // Ikegami IUP, Grass Valley LDK, Marshall CV420.
+  | 'sony-700' | 'sony-cna1' | 'panasonic-serial' | 'canon-bu'
+  | 'hitachi-rcz' | 'ikegami-iup' | 'gv-ldk' | 'marshall-cv420'
   | 'none';
 
 export interface VenueCamera {

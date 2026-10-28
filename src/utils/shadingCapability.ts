@@ -81,7 +81,7 @@ export const BRIDGE_SOURCE = {
   file: 'packages/web-rcp/src/capabilities.ts',
   symbol: 'MODE_CAPS',
   /** Stand der Quelle, aus der diese Kopie genommen wurde. */
-  commit: '0e4158db19330dd16819bd4b5185162cac5d71d6',
+  commit: 'cbf99257b64af3d60237a80436ba680fea45347d',
 } as const;
 
 /**
@@ -189,6 +189,14 @@ export const CONTROL_PATH_LABEL: Readonly<Record<ControlPath, string>> = {
   'dji-ronin': 'DJI Ronin RS 2 / RS 3 Pro (Gimbal)',
   'b4-lens': 'B4-Objektiv (ESP32 am 12-Pin-Hirose)',
   'robotic-head': 'Robotik-Kopf (ASCII, TCP 3001)',
+  'sony-700': 'Sony 700-Remote (RS-422)',
+  'sony-cna1': 'Sony CNA-1 (700-Protokoll)',
+  'panasonic-serial': 'Panasonic AW/AK (seriell)',
+  'canon-bu': 'Canon BU/XU (seriell)',
+  'hitachi-rcz': 'Hitachi RCZ',
+  'ikegami-iup': 'Ikegami IUP',
+  'gv-ldk': 'Grass Valley LDK',
+  'marshall-cv420': 'Marshall CV420 (VISCA)',
   none: 'kein Fernsteuerweg — von Hand am Body',
 };
 
@@ -200,8 +208,8 @@ export const CONTROL_PATH_LABEL: Readonly<Record<ControlPath, string>> = {
  * Body" heisst fernsteuerbar gar nichts, und das ist eine Entscheidung, kein
  * fehlender Eintrag.
  *
- * `abb` und `autoIris` stehen in KEINER Zeile. Das ist kein Vergessen: die
- * Bridge begruendet es fuer die Sony-CCU-Wege ausdruecklich — Sonys
+ * `abb` und `autoIris` fehlen in den CCU-, Kamera- und PTZ-Zeilen. Das ist
+ * kein Vergessen: die Bridge begruendet es fuer die Sony-CCU-Wege ausdruecklich — Sonys
  * 700-Protokoll ist NDA-only, keine oeffentliche Quelle dokumentiert die
  * Auto-Setup-Befehlscodes. Eine Spalte, die ueberall „nein" sagt, bleibt hier
  * trotzdem stehen: sie beantwortet die Frage, die der Bildtechniker sonst in
@@ -262,6 +270,39 @@ export const MODE_PAINT: Readonly<Record<ControlPath, readonly PaintFunction[]>>
   // NICHTS am Bild: kein Paint ueber diesen Weg. Wie birddog wird `focus`
   // in dieser Paint-Tabelle nicht gefuehrt -- also leer.
   'http-cgi': [],
+  // Sony 700-Remote-Satz: kennt die Auto-Setup-Codes (`25 01/02`), die dem
+  // CCU-Weg fehlen -- daher hier AWB/ABB und Auto-Blende.
+  'sony-700': [
+    'iris', 'ndFilter', 'shutter', 'masterGain', 'autoIris', 'masterBlack',
+    'blackBalance', 'abb', 'masterGamma', 'whiteBalance', 'awb', 'bars',
+  ],
+  'sony-cna1': [
+    'iris', 'ndFilter', 'shutter', 'masterGain', 'autoIris', 'masterBlack',
+    'blackBalance', 'abb', 'masterGamma', 'whiteBalance', 'awb', 'bars',
+  ],
+  'panasonic-serial': [
+    'iris', 'ndFilter', 'shutter', 'masterGain', 'autoIris', 'masterBlack',
+    'blackBalance', 'abb', 'whiteBalance', 'awb', 'bars',
+  ],
+  'canon-bu': [
+    'iris', 'ndFilter', 'masterGain', 'autoIris', 'masterBlack', 'blackBalance',
+    'whiteBalance', 'bars',
+  ],
+  'hitachi-rcz': [
+    'iris', 'ndFilter', 'masterGain', 'autoIris', 'masterBlack', 'blackBalance',
+    'abb', 'masterGamma', 'whiteBalance', 'awb', 'bars',
+  ],
+  'ikegami-iup': [
+    'iris', 'ndFilter', 'masterGain', 'autoIris', 'masterBlack', 'blackBalance',
+    'abb', 'whiteBalance', 'awb', 'bars',
+  ],
+  'gv-ldk': [
+    'iris', 'ndFilter', 'masterGain', 'autoIris', 'masterBlack', 'blackBalance',
+    'masterGamma', 'saturation', 'whiteBalance', 'awb', 'bars',
+  ],
+  'marshall-cv420': [
+    'iris', 'masterGain', 'autoIris', 'masterBlack', 'saturation', 'whiteBalance', 'awb',
+  ],
   none: [],
 };
 

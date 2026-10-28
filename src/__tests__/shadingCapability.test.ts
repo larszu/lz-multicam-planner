@@ -116,12 +116,22 @@ describe('die Herkunft der Tabelle steht als Wert da', () => {
     // nicht eine Automatik, die man anfassen kann.
     //
     // Als Liste und nicht als `if`, damit die naechste solche Ausnahme eine
-    // Zeile mit Begruendung braucht. `abb` bleibt ausnahmslos verboten: einen
-    // Schwarzabgleich kann keiner dieser Wege ausloesen.
-    const AUTOIRIS_ERLAUBT: readonly ControlPath[] = ['b4-lens'];
+    // Zeile mit Begruendung braucht. `abb` nur dort, wo der Befehlssatz
+    // einen Schwarzabgleich ausloesen kann (ABB_ERLAUBT).
+    // Die Broadcast-Protokolle (Sony 700/CNA-1, Panasonic AW/AK, Canon BU,
+    // Hitachi, Ikegami, GV LDK, Marshall) haben die Auto-Setup-Befehle
+    // dokumentiert im Satz -- die Quelle fuehrt sie, also hier auch.
+    const BROADCAST: readonly ControlPath[] = [
+      'sony-700', 'sony-cna1', 'panasonic-serial', 'canon-bu',
+      'hitachi-rcz', 'ikegami-iup', 'gv-ldk', 'marshall-cv420',
+    ];
+    const AUTOIRIS_ERLAUBT: readonly ControlPath[] = ['b4-lens', ...BROADCAST];
+    const ABB_ERLAUBT: readonly ControlPath[] = [
+      'sony-700', 'sony-cna1', 'panasonic-serial', 'hitachi-rcz', 'ikegami-iup',
+    ];
 
     for (const w of Object.keys(MODE_PAINT) as ControlPath[]) {
-      expect(MODE_PAINT[w]).not.toContain('abb');
+      if (!ABB_ERLAUBT.includes(w)) expect(MODE_PAINT[w]).not.toContain('abb');
       if (!AUTOIRIS_ERLAUBT.includes(w)) {
         expect(MODE_PAINT[w]).not.toContain('autoIris');
       }
