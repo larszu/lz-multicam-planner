@@ -546,6 +546,12 @@ export interface VenueCamera {
    */
   bridgeCameraNumber?: number;
   /**
+   * Eingang am Bildmischer, auf dem diese Kamera liegt. Fehlt er, gilt die
+   * Bridge-Nummer (CAM 3 -> Eingang 3); 0 = liegt auf keinem Eingang. Am
+   * echten Mischer ist die Belegung selten 1:1 (`utils/bridgeLive.ts`).
+   */
+  mixerInput?: number;
+  /**
    * Bedarf 58 — welchen Ausschnitt diese Position liefern MUSS.
    *
    *   > Lens choice per position is guessed from experience or checked ad hoc

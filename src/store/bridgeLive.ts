@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { create } from 'zustand';
 import type { VenueCamera } from '../types';
 import { loadJSON, saveJSON } from '../utils/storage';
-import { applyLive, bussesFromMixer, cameraIdForNumber, inputForCamera, mixerInputs, parseBridgeMessage, type LiveOptik, type LivePose } from '../utils/bridgeLive';
+import { applyLive, bussesFromMixer, cameraIdForNumber, inputForCamera, isVirtualMixer, mixerInputs, parseBridgeMessage, type LiveOptik, type LivePose, type MixerBus } from '../utils/bridgeLive';
 import { getCameraById, getEffectiveSensor } from '../data/cameras';
 import { getLensById } from '../data/lenses';
 import { useStore } from './useStore';
@@ -27,12 +27,17 @@ interface BridgeLiveState {
   mixerNumber: number | null;
   /** Zaehlt jeden AUTO, den der Bridge-Mischer startet; die Multiview blendet dann selbst. */
   autoRequest: number;
+  /** Mischer der Bridge, wie zuletzt gemeldet (Typ, Eingaenge, Busse). */
+  mixers: MixerBus[];
+  /** Echten Mischer vom Planer aus schalten (sonst nur anzeigen). */
+  mixerDrives: boolean;
   setEnabled: (on: boolean) => void;
   setUrl: (url: string) => void;
   setMixerNumber: (n: number | null) => void;
+  setMixerDrives: (on: boolean) => void;
 }
 
-type Prefs = { enabled?: boolean; url?: string; mixerNumber?: number | null };
+type Prefs = { enabled?: boolean; url?: string; mixerNumber?: number | null; mixerDrives?: boolean };
 const prefs: Prefs = { ...loadJSON<Prefs>(PREFS_KEY, {}), ...ausAdresse() };
 
 /**
@@ -50,8 +55,8 @@ function ausAdresse(): Prefs {
   if (Object.keys(out).length) saveJSON(PREFS_KEY, { ...loadJSON<Prefs>(PREFS_KEY, {}), ...out });
   return out;
 }
-const merken = (s: Pick<BridgeLiveState, 'enabled' | 'url' | 'mixerNumber'>) =>
-  saveJSON(PREFS_KEY, { enabled: s.enabled, url: s.url, mixerNumber: s.mixerNumber });
+const merken = (s: Pick<BridgeLiveState, 'enabled' | 'url' | 'mixerNumber' | 'mixerDrives'>) =>
+  saveJSON(PREFS_KEY, { enabled: s.enabled, url: s.url, mixerNumber: s.mixerNumber, mixerDrives: s.mixerDrives });
 
 export const useBridgeLive = create<BridgeLiveState>((set, get) => ({
   enabled: prefs.enabled === true,
@@ -61,6 +66,8 @@ export const useBridgeLive = create<BridgeLiveState>((set, get) => ({
   surfaceCameraNumber: null,
   mixerNumber: prefs.mixerNumber ?? null,
   autoRequest: 0,
+  mixers: [],
+  mixerDrives: prefs.mixerDrives === true,
   setEnabled: (enabled) => {
     set({ enabled });
     merken(get());
@@ -74,7 +81,14 @@ export const useBridgeLive = create<BridgeLiveState>((set, get) => ({
   setMixerNumber: (mixerNumber) => {
     set({ mixerNumber });
     merken(get());
-    if (mixerNumber !== null) { meldeEingaenge(true); sock()?.send(JSON.stringify({ type: 'listSwitchers' })); }
+    if (mixerNumber === null) return;
+    const bus = gefolgt();
+    if (bus) { meldeEingaenge(true); folgeMischer(bus); }
+    sock()?.send(JSON.stringify({ type: 'listSwitchers' }));
+  },
+  setMixerDrives: (mixerDrives) => {
+    set({ mixerDrives });
+    merken(get());
   },
 }));
 
@@ -97,7 +111,7 @@ export function verbinden() {
   trennen();
   const { enabled, url } = useBridgeLive.getState();
   if (!enabled) {
-    useBridgeLive.setState({ status: 'off', live: {}, surfaceCameraNumber: null });
+    useBridgeLive.setState({ status: 'off', live: {}, surfaceCameraNumber: null, mixers: [] });
     return;
   }
   useBridgeLive.setState({ status: 'connecting' });
@@ -114,7 +128,7 @@ export function verbinden() {
     versuch = 0;
     useBridgeLive.setState({ status: 'connected' });
     sock.send(JSON.stringify({ type: 'listCameras' }));
-    if (useBridgeLive.getState().mixerNumber !== null) { meldeEingaenge(true); sock.send(JSON.stringify({ type: 'listSwitchers' })); }
+    sock.send(JSON.stringify({ type: 'listSwitchers' }));
   };
   sock.onmessage = (e) => {
     const m = parseBridgeMessage(String(e.data));
@@ -124,9 +138,12 @@ export function verbinden() {
     } else if (m.type === 'surfaceInput') {
       if (m.cameraNumber !== undefined) useBridgeLive.setState({ surfaceCameraNumber: m.cameraNumber });
     } else if (m.type === 'mixer') {
-      const num = useBridgeLive.getState().mixerNumber;
-      const bus = m.mixers.find((x) => x.switcherNumber === num);
-      if (bus) folgeMischer(bus);
+      const vorher = gefolgt();
+      useBridgeLive.setState((s) => ({ mixers: m.full ? m.mixers : einpflegen(s.mixers, m.mixers) }));
+      const bus = gefolgt();
+      if (!bus) return;
+      if (isVirtualMixer(bus) && !isVirtualMixer(vorher)) meldeEingaenge(true);
+      folgeMischer(bus);
     } else if (m.type === 'cameras') {
       for (const c of m.cameras) if (c.connected) sock.send(JSON.stringify({ type: 'readPose', cameraNumber: c.cameraNumber }));
     }
@@ -141,16 +158,45 @@ export function verbinden() {
 
 const sock = (): WebSocket | null => (ws && ws.readyState === WebSocket.OPEN ? ws : null);
 
+/** Einzelstand in die Liste; Typ, Name und Verbindung aus der Liste bleiben. */
+function einpflegen(liste: MixerBus[], neu: MixerBus[]): MixerBus[] {
+  const out = [...liste];
+  for (const n of neu) {
+    const i = out.findIndex((x) => x.switcherNumber === n.switcherNumber);
+    if (i >= 0) out[i] = { ...out[i], ...n, inputs: n.inputs ?? out[i].inputs };
+    else out.push({ connected: true, ...n });
+  }
+  return out;
+}
+
+/** Der Mischer, dem die Multiview folgt, sobald die Bridge ihn gemeldet hat. */
+function gefolgt(): MixerBus | undefined {
+  const { mixerNumber, mixers } = useBridgeLive.getState();
+  return mixerNumber === null ? undefined : mixers.find((x) => x.switcherNumber === mixerNumber);
+}
+
+/** Befehl an den gefolgten Mischer (Multiview am echten Mischer, wenn erlaubt). */
+export function mischerBefehl(cmd: 'preview' | 'cut' | 'auto' | 'take', source?: number): boolean {
+  const { mixerNumber } = useBridgeLive.getState();
+  const s = sock();
+  if (mixerNumber === null || !s) return false;
+  s.send(JSON.stringify({ type: 'switcherCommand', switcherNumber: mixerNumber, cmd, params: source !== undefined ? { source } : {} }));
+  return true;
+}
+
 // ── Multiview folgt einem Bridge-Mischer ─────────────────────────────────
 // Der Mischer der Bridge ist die Wahrheit: was ein Pult schaltet, kommt hier
-// an und setzt Program/Preview. Was im Planer geschaltet wird, geht als
-// `mirror` zurueck, damit Tally und Pult-Tasten stimmen. Gleiche Werte in
-// beide Richtungen aendern nichts, darum laeuft das nicht im Kreis.
+// an und setzt Program/Preview. Nur beim Mischer ohne Hardware geht, was im
+// Planer geschaltet wird, als `mirror` zurueck, damit Tally und Pult-Tasten
+// stimmen. Gleiche Werte in beide Richtungen aendern nichts, darum laeuft
+// das nicht im Kreis. Einen echten Mischer liest der Planer nur; seine
+// Preview zeigt die Multiview direkt (`useMixerFollow`), die Auswahl im Plan
+// bleibt frei.
 
 let uebernehme = false;
 let warImUebergang = false;
 
-function folgeMischer(bus: { program: number; preview: number; inTransition: boolean }) {
+function folgeMischer(bus: MixerBus) {
   const { cameras, programCameraId, selectedCameraId } = useStore.getState();
   const { programId, previewId } = bussesFromMixer(cameras, bus);
   // AUTO am Pult: die Multiview blendet selbst; das Ende meldet der Mischer.
@@ -160,7 +206,7 @@ function folgeMischer(bus: { program: number; preview: number; inTransition: boo
   uebernehme = true;
   try {
     if (programId !== programCameraId) useStore.getState().setProgramCamera(programId);
-    if (previewId && previewId !== selectedCameraId) useStore.getState().selectCamera(previewId);
+    if (isVirtualMixer(bus) && previewId && previewId !== selectedCameraId) useStore.getState().selectCamera(previewId);
   } finally {
     uebernehme = false;
   }
@@ -174,7 +220,7 @@ function meldeBusse() {
     meldung = null;
     const { mixerNumber } = useBridgeLive.getState();
     const s = sock();
-    if (mixerNumber === null || !s) return;
+    if (mixerNumber === null || !s || !isVirtualMixer(gefolgt())) return;
     const { cameras, programCameraId, selectedCameraId } = useStore.getState();
     s.send(JSON.stringify({
       type: 'switcherCommand', switcherNumber: mixerNumber, cmd: 'mirror',
@@ -192,7 +238,7 @@ let gemeldet = '';
 function meldeEingaenge(immer = false) {
   const { mixerNumber } = useBridgeLive.getState();
   const s = sock();
-  if (mixerNumber === null || !s) return;
+  if (mixerNumber === null || !s || !isVirtualMixer(gefolgt())) return;
   const inputs = mixerInputs(useStore.getState().cameras);
   const key = `${mixerNumber}|${JSON.stringify(inputs)}`;
   if (!immer && key === gemeldet) return;
@@ -201,7 +247,12 @@ function meldeEingaenge(immer = false) {
 }
 
 useStore.subscribe((s, vorher) => {
-  if (useBridgeLive.getState().mixerNumber === null) return;
+  if (!isVirtualMixer(gefolgt())) {
+    // Echter Mischer: neue Zuordnung im Plan gleich am Stand des Mischers zeigen.
+    const bus = gefolgt();
+    if (bus && s.cameras !== vorher.cameras) folgeMischer(bus);
+    return;
+  }
   if (s.cameras !== vorher.cameras) meldeEingaenge();
   if (uebernehme) return;
   if (s.programCameraId !== vorher.programCameraId || s.selectedCameraId !== vorher.selectedCameraId) meldeBusse();
@@ -233,4 +284,25 @@ export function useLiveCameras(cameras: VenueCamera[]): VenueCamera[] {
 export function useSurfaceCameraId(cameras: VenueCamera[]): string | null {
   const num = useBridgeLive((s) => (s.status === 'connected' ? s.surfaceCameraNumber : null));
   return useMemo(() => cameraIdForNumber(cameras, num), [cameras, num]);
+}
+
+export interface MixerFollow {
+  bus: MixerBus;
+  /** Echter Mischer (ATEM …): Planer liest nur, ausser `drives`. */
+  extern: boolean;
+  /** Multiview-Tasten schalten den Mischer der Bridge. */
+  drives: boolean;
+  previewId: string | null;
+  programId: string | null;
+}
+
+/** Der gefolgte Mischer, wie die Multiview ihn zeigt; null ohne Verbindung. */
+export function useMixerFollow(cameras: VenueCamera[]): MixerFollow | null {
+  const bus = useBridgeLive((s) => (s.status === 'connected' && s.mixerNumber !== null ? s.mixers.find((x) => x.switcherNumber === s.mixerNumber) : undefined));
+  const drives = useBridgeLive((s) => s.mixerDrives);
+  return useMemo(() => {
+    if (!bus) return null;
+    const extern = !isVirtualMixer(bus);
+    return { bus, extern, drives: extern && drives && bus.connected !== false, ...bussesFromMixer(cameras, bus) };
+  }, [bus, cameras, drives]);
 }

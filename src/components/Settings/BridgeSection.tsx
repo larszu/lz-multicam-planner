@@ -1,14 +1,32 @@
 import { useState } from 'react';
 import { useTranslation, format } from '../../i18n';
 import { BRIDGE_DEFAULT_URL, useBridgeLive } from '../../store/bridgeLive';
+import { useStore } from '../../store/useStore';
+import { isVirtualMixer, matchInputsByName, mixerInputFor, type MixerBus } from '../../utils/bridgeLive';
 import BridgeStatusText from '../Bridge/BridgeStatusText';
 
 const feld = 'block w-full border border-bc-border bg-bc-panel-raised text-xs text-bc-text-bright';
 const kopf = 'text-sm font-semibold text-bc-text-bright';
+// Gerätenamen der Mischertypen der Bridge (`switcher/SwitcherClient.ts`).
+const KIND_LABEL: Record<string, string> = {
+  atem: 'Blackmagic ATEM', 'vis-catc': 'VIS-CATC', 'vision-mixer': 'LZ Vision Mixer', vmix: 'vMix',
+  obs: 'OBS', roland: 'Roland', 'panasonic-hs': 'Panasonic', ross: 'Ross', tricaster: 'TriCaster', kframe: 'K-Frame',
+};
 
 export default function BridgeSection() {
   const { t } = useTranslation();
-  const { enabled, url, setEnabled, setUrl, mixerNumber, setMixerNumber } = useBridgeLive();
+  const { enabled, url, setEnabled, setUrl, mixerNumber, setMixerNumber, mixers, mixerDrives, setMixerDrives } = useBridgeLive();
+  const gefolgt = mixers.find((m) => m.switcherNumber === mixerNumber);
+  // Die Mischer der Bridge mit Namen; ohne Liste (noch nicht verbunden) 1–8.
+  const wahl: Pick<MixerBus, 'switcherNumber' | 'label' | 'kind' | 'connected'>[] = mixers.length
+    ? [...mixers].sort((a, b) => a.switcherNumber - b.switcherNumber)
+    : [1, 2, 3, 4, 5, 6, 7, 8].map((n) => ({ switcherNumber: n }));
+  if (mixerNumber !== null && !wahl.some((m) => m.switcherNumber === mixerNumber)) wahl.push({ switcherNumber: mixerNumber });
+  const mischerName = (m: Pick<MixerBus, 'switcherNumber' | 'label' | 'kind' | 'connected'>) => {
+    const n = format(t('settings.bridge.mixer.n', 'Mixer {n}'), { n: m.switcherNumber });
+    const art = m.kind === 'virtual' ? t('settings.bridge.mixer.virtual', 'Virtual mixer') : m.kind ? (KIND_LABEL[m.kind] ?? m.kind) : '';
+    return [n, m.label, art, m.connected === false ? t('settings.bridge.mixer.offline', 'offline') : ''].filter(Boolean).join(' · ');
+  };
   const [entwurf, setEntwurf] = useState(url);
   const uebernehmen = () => setUrl(entwurf.trim() || BRIDGE_DEFAULT_URL);
 
@@ -56,17 +74,94 @@ export default function BridgeSection() {
           aria-label={t('settings.bridge.mixer', 'Multiview follows a bridge mixer')}
         >
           <option value={0}>{t('settings.bridge.mixer.off', 'No – the planner switches on its own')}</option>
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-            <option key={n} value={n}>{format(t('settings.bridge.mixer.n', 'Mixer {n}'), { n })}</option>
+          {wahl.map((m) => (
+            <option key={m.switcherNumber} value={m.switcherNumber}>{mischerName(m)}</option>
           ))}
         </select>
         <p className="mt-1 text-xs text-bc-muted">
           {t(
             'settings.bridge.mixer.desc',
-            'Program and preview come from that mixer in the bridge – for example its virtual mixer, switched from a control panel. A cut in the planner goes back to the bridge, so tally and panel buttons stay right. Input n is the camera with bridge number n.',
+            'Program and preview come from that mixer in the bridge, as it is switched – from a control panel, its own panel or anywhere else. Which camera sits on which input is set below.',
           )}
         </p>
+        {gefolgt && !isVirtualMixer(gefolgt) && (
+          <label className="mt-3 flex cursor-pointer items-start gap-2 text-xs text-bc-text">
+            <input type="checkbox" className="mt-0.5 accent-bc-accent" checked={mixerDrives} onChange={(e) => setMixerDrives(e.target.checked)} />
+            <span>
+              {t('settings.bridge.mixer.drives', 'Switch this mixer from the multiview')}
+              <span className="block text-bc-muted">
+                {t('settings.bridge.mixer.drivesDesc', 'Off: the planner only shows what the mixer does. On: CUT, AUTO and the tiles in the multiview switch the real mixer – on air.')}
+              </span>
+            </span>
+          </label>
+        )}
       </section>
+      {mixerNumber !== null && <InputMapping bus={gefolgt} />}
     </div>
+  );
+}
+
+/** Welche Planer-Kamera auf welchem Mischer-Eingang liegt. */
+function InputMapping({ bus }: { bus: MixerBus | undefined }) {
+  const { t } = useTranslation();
+  const cameras = useStore((s) => s.cameras);
+  const updateCamera = useStore((s) => s.updateCamera);
+  // Der Mischer ohne Hardware hat seine Namen vom Planer — also nur die belegten;
+  // dort und ohne gemeldete Namen stehen alle Nummern zur Wahl.
+  const virtuell = isVirtualMixer(bus);
+  const gemeldet = virtuell ? undefined : bus?.inputs?.length ? bus.inputs : undefined;
+  const inputs = gemeldet
+    ?? Array.from({ length: Math.max(16, cameras.length) }, (_, i) => ({ id: i + 1, name: bus?.inputs?.find((x) => x.id === i + 1)?.name ?? '' }));
+  const treffer = gemeldet ? matchInputsByName(cameras, gemeldet) : {};
+  const nachName = Object.entries(treffer).filter(([id, n]) => {
+    const i = cameras.findIndex((c) => c.id === id);
+    return mixerInputFor(cameras[i], i) !== n;
+  });
+  if (cameras.length === 0) return null;
+
+  return (
+    <section style={{ marginTop: '24px' }}>
+      <h3 className={kopf}>{t('settings.bridge.inputs', 'Cameras on mixer inputs')}</h3>
+      <p className="mt-1 text-xs text-bc-muted">
+        {gemeldet
+          ? t('settings.bridge.inputs.desc', 'Input names come from the mixer. Without a setting a camera sits on the input with its bridge number.')
+          : virtuell
+            ? t('settings.bridge.inputs.virtual', 'The virtual mixer takes its input names from these cameras. Without a setting a camera sits on the input with its bridge number.')
+            : t('settings.bridge.inputs.noNames', 'The mixer reports no input names yet; numbers only. Without a setting a camera sits on the input with its bridge number.')}
+      </p>
+      {nachName.length > 0 && (
+        <button
+          type="button"
+          className="bc-btn-soft mt-2 text-xs"
+          style={{ padding: '4px 10px' }}
+          onClick={() => nachName.forEach(([id, n]) => updateCamera(id, { mixerInput: n }))}
+        >
+          {format(t('settings.bridge.inputs.match', 'Assign by name ({n})'), { n: nachName.length })}
+        </button>
+      )}
+      <div className="mt-2 grid gap-1" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.4fr)' }}>
+        {cameras.map((cam, i) => {
+          const wert = mixerInputFor(cam, i);
+          return (
+            <label key={cam.id} className="contents text-xs text-bc-text">
+              <span className="truncate self-center">{cam.label}</span>
+              <select
+                className={feld}
+                style={{ padding: '4px 6px' }}
+                value={wert}
+                aria-label={format(t('settings.bridge.inputs.aria', 'Mixer input for {name}'), { name: cam.label })}
+                onChange={(e) => updateCamera(cam.id, { mixerInput: Number(e.target.value) })}
+              >
+                <option value={0}>{t('settings.bridge.inputs.none', 'Not on the mixer')}</option>
+                {inputs.map((inp) => (
+                  <option key={inp.id} value={inp.id}>{inp.name ? `${inp.id} · ${inp.name}` : String(inp.id)}</option>
+                ))}
+                {wert > 0 && !inputs.some((inp) => inp.id === wert) && <option value={wert}>{wert}</option>}
+              </select>
+            </label>
+          );
+        })}
+      </div>
+    </section>
   );
 }
