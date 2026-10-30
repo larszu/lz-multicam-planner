@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useStore } from '../../store/useStore';
+import { useBridgeLive } from '../../store/bridgeLive';
 import { renderCamera, wallSurfaces } from '../Preview/cameraViewRenderer';
 import LookToggle from '../Render3D/LookToggle';
 import { bereit3D, bildVersion3D, render3D, useBedarf3D, useBildVersion3D, useKameraLook, type BildRolle } from '../Render3D/kameraBild3d';
@@ -75,6 +76,18 @@ export default function Multiview() {
     mixRef.current = { from: programId, to: previewId, start: performance.now(), durMs: autoSeconds * 1000 };
     setMixTo(previewId);
   }, [autoSeconds, cut, previewId, programId]);
+
+  // AUTO an einem Pult der Bridge: dieselbe Blende wie mit dem eigenen Knopf.
+  const autoRequest = useBridgeLive((s) => s.autoRequest);
+  const autoRef = useRef(auto);
+  useEffect(() => { autoRef.current = auto; }, [auto]);
+  // Nur neue Anforderungen: beim Oeffnen der Multiview laeuft keine alte nach.
+  const gesehenRef = useRef(autoRequest);
+  useEffect(() => {
+    if (autoRequest === gesehenRef.current) return;
+    gesehenRef.current = autoRequest;
+    autoRef.current();
+  }, [autoRequest]);
 
   const takeDirect = useCallback((id: string) => {
     if (mixRef.current) return;

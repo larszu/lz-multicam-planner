@@ -179,7 +179,7 @@ function createMainWindow() {
         ...details.responseHeaders,
         'Content-Security-Policy': [
           "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-          "img-src 'self' data: blob:; connect-src 'self' https://generativelanguage.googleapis.com https://api.openai.com https://api.anthropic.com https://api.mistral.ai https://api.x.ai https://devices.zumpelars.de data:; " +
+          "img-src 'self' data: blob:; connect-src 'self' https://generativelanguage.googleapis.com https://api.openai.com https://api.anthropic.com https://api.mistral.ai https://api.x.ai https://devices.zumpelars.de ws://localhost:9700 ws://127.0.0.1:9700 data:; " +
           "font-src 'self' data:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
         ],
       },
