@@ -17,6 +17,7 @@ export const bridge: Record<string, string> = {
   'settings.bridge.inputs': 'Kameras auf Mischer-Eingängen',
   'settings.bridge.inputs.desc': 'Die Eingangsnamen kommen vom Mischer. Ohne Eintrag liegt eine Kamera auf dem Eingang mit ihrer Bridge-Nummer.',
   'settings.bridge.inputs.noNames': 'Der Mischer meldet noch keine Eingangsnamen, nur Nummern. Ohne Eintrag liegt eine Kamera auf dem Eingang mit ihrer Bridge-Nummer.',
+  'settings.bridge.inputs.virtual': 'Der Mischer ohne Hardware übernimmt seine Eingangsnamen von diesen Kameras. Ohne Eintrag liegt eine Kamera auf dem Eingang mit ihrer Bridge-Nummer.',
   'settings.bridge.inputs.match': 'Nach Namen zuordnen ({n})',
   'settings.bridge.inputs.aria': 'Mischer-Eingang für {name}',
   'settings.bridge.inputs.none': 'Nicht am Mischer',

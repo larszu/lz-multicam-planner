@@ -106,10 +106,13 @@ function InputMapping({ bus }: { bus: MixerBus | undefined }) {
   const { t } = useTranslation();
   const cameras = useStore((s) => s.cameras);
   const updateCamera = useStore((s) => s.updateCamera);
-  const inputs = bus?.inputs?.length
-    ? bus.inputs
-    : Array.from({ length: Math.max(8, cameras.length) }, (_, i) => ({ id: i + 1, name: '' }));
-  const treffer = bus?.inputs?.length ? matchInputsByName(cameras, bus.inputs) : {};
+  // Der Mischer ohne Hardware hat seine Namen vom Planer — also nur die belegten;
+  // dort und ohne gemeldete Namen stehen alle Nummern zur Wahl.
+  const virtuell = isVirtualMixer(bus);
+  const gemeldet = virtuell ? undefined : bus?.inputs?.length ? bus.inputs : undefined;
+  const inputs = gemeldet
+    ?? Array.from({ length: Math.max(16, cameras.length) }, (_, i) => ({ id: i + 1, name: bus?.inputs?.find((x) => x.id === i + 1)?.name ?? '' }));
+  const treffer = gemeldet ? matchInputsByName(cameras, gemeldet) : {};
   const nachName = Object.entries(treffer).filter(([id, n]) => {
     const i = cameras.findIndex((c) => c.id === id);
     return mixerInputFor(cameras[i], i) !== n;
@@ -120,9 +123,11 @@ function InputMapping({ bus }: { bus: MixerBus | undefined }) {
     <section style={{ marginTop: '24px' }}>
       <h3 className={kopf}>{t('settings.bridge.inputs', 'Cameras on mixer inputs')}</h3>
       <p className="mt-1 text-xs text-bc-muted">
-        {bus?.inputs?.length
+        {gemeldet
           ? t('settings.bridge.inputs.desc', 'Input names come from the mixer. Without a setting a camera sits on the input with its bridge number.')
-          : t('settings.bridge.inputs.noNames', 'The mixer reports no input names yet; numbers only. Without a setting a camera sits on the input with its bridge number.')}
+          : virtuell
+            ? t('settings.bridge.inputs.virtual', 'The virtual mixer takes its input names from these cameras. Without a setting a camera sits on the input with its bridge number.')
+            : t('settings.bridge.inputs.noNames', 'The mixer reports no input names yet; numbers only. Without a setting a camera sits on the input with its bridge number.')}
       </p>
       {nachName.length > 0 && (
         <button
