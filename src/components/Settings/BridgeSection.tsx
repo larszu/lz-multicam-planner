@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation, format } from '../../i18n';
-import { BRIDGE_DEFAULT_URL, useBridgeLive } from '../../store/bridgeLive';
+import { atemApi, BRIDGE_DEFAULT_URL, useBridgeLive } from '../../store/bridgeLive';
 import { useStore } from '../../store/useStore';
 import { isVirtualMixer, matchInputsByName, mixerInputFor, type MixerBus } from '../../utils/bridgeLive';
 import BridgeStatusText from '../Bridge/BridgeStatusText';
@@ -15,8 +15,13 @@ const KIND_LABEL: Record<string, string> = {
 
 export default function BridgeSection() {
   const { t } = useTranslation();
-  const { enabled, url, setEnabled, setUrl, mixerNumber, setMixerNumber, mixers, mixerDrives, setMixerDrives } = useBridgeLive();
-  const gefolgt = mixers.find((m) => m.switcherNumber === mixerNumber);
+  const { enabled, url, setEnabled, setUrl, mixerNumber, setMixerNumber, mixers, mixerDrives, setMixerDrives, mixerSource, setMixerSource, atemHost, setAtemHost, atemBus } = useBridgeLive();
+  const direkt = mixerSource === 'atem';
+  const gefolgt = direkt ? atemBus ?? undefined : mixers.find((m) => m.switcherNumber === mixerNumber);
+  const folgt = direkt || mixerNumber !== null;
+  const desktop = !!atemApi();
+  const [atemEntwurf, setAtemEntwurf] = useState(atemHost);
+  const atemUebernehmen = () => { if (atemEntwurf.trim() !== atemHost) setAtemHost(atemEntwurf.trim()); };
   // Die Mischer der Bridge mit Namen; ohne Liste (noch nicht verbunden) 1–8.
   const wahl: Pick<MixerBus, 'switcherNumber' | 'label' | 'kind' | 'connected'>[] = mixers.length
     ? [...mixers].sort((a, b) => a.switcherNumber - b.switcherNumber)
@@ -65,25 +70,58 @@ export default function BridgeSection() {
         </p>
       </section>
       <section style={{ marginTop: '24px' }}>
-        <h3 className={kopf}>{t('settings.bridge.mixer', 'Multiview follows a bridge mixer')}</h3>
+        <h3 className={kopf}>{t('settings.bridge.mixer', 'Multiview follows a mixer')}</h3>
         <select
           className={`${feld} mt-2`}
           style={{ padding: '6px 8px' }}
-          value={mixerNumber ?? 0}
-          onChange={(e) => setMixerNumber(Number(e.target.value) || null)}
-          aria-label={t('settings.bridge.mixer', 'Multiview follows a bridge mixer')}
+          value={direkt ? 'atem' : mixerNumber ?? 0}
+          onChange={(e) => {
+            if (e.target.value === 'atem') setMixerSource('atem');
+            else setMixerNumber(Number(e.target.value) || null);
+          }}
+          aria-label={t('settings.bridge.mixer', 'Multiview follows a mixer')}
         >
           <option value={0}>{t('settings.bridge.mixer.off', 'No – the planner switches on its own')}</option>
           {wahl.map((m) => (
             <option key={m.switcherNumber} value={m.switcherNumber}>{mischerName(m)}</option>
           ))}
+          <option value="atem" disabled={!desktop}>
+            {desktop
+              ? t('settings.bridge.atem', 'ATEM directly, without the bridge')
+              : t('settings.bridge.atem.desktopOnly', 'ATEM directly – desktop app only')}
+          </option>
         </select>
         <p className="mt-1 text-xs text-bc-muted">
           {t(
             'settings.bridge.mixer.desc',
-            'Program and preview come from that mixer in the bridge, as it is switched – from a control panel, its own panel or anywhere else. Which camera sits on which input is set below.',
+            'Program and preview come from that mixer as it is switched – from a control panel, its own panel or anywhere else. An ATEM also works without the bridge, straight from the desktop app. Which camera sits on which input is set below.',
           )}
         </p>
+        {direkt && (
+          <div className="mt-3">
+            <label className="block text-xs text-bc-text">
+              {t('settings.bridge.atem.host', 'ATEM address')}
+              <input
+                type="text"
+                className={`${feld} mt-1`}
+                style={{ padding: '6px 8px' }}
+                value={atemEntwurf}
+                placeholder="192.168.10.240"
+                onChange={(e) => setAtemEntwurf(e.target.value)}
+                onBlur={atemUebernehmen}
+                onKeyDown={(e) => { if (e.key === 'Enter') atemUebernehmen(); }}
+                spellCheck={false}
+              />
+            </label>
+            <p className="mt-1 text-xs" role="status">
+              {!atemHost
+                ? <span className="text-bc-muted">{t('settings.bridge.atem.noHost', 'Enter the address shown in ATEM Setup.')}</span>
+                : atemBus?.connected
+                  ? <span className="text-bc-green-text">{format(t('settings.bridge.atem.connected', 'Connected · {model}'), { model: atemBus.label ?? 'ATEM' })}</span>
+                  : <span className="text-bc-muted">{format(t('settings.bridge.atem.connecting', 'Looking for the ATEM at {host} …'), { host: atemHost })}</span>}
+            </p>
+          </div>
+        )}
         {gefolgt && !isVirtualMixer(gefolgt) && (
           <label className="mt-3 flex cursor-pointer items-start gap-2 text-xs text-bc-text">
             <input type="checkbox" className="mt-0.5 accent-bc-accent" checked={mixerDrives} onChange={(e) => setMixerDrives(e.target.checked)} />
@@ -96,7 +134,7 @@ export default function BridgeSection() {
           </label>
         )}
       </section>
-      {mixerNumber !== null && <InputMapping bus={gefolgt} />}
+      {folgt && <InputMapping bus={gefolgt} />}
     </div>
   );
 }

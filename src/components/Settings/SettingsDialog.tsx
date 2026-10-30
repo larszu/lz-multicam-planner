@@ -68,7 +68,7 @@ export default function SettingsDialog({ onClose, initialSection = 'general' }: 
     { id: 'general', label: t('settings.tab.general', 'General'), icon: FiSliders },
     { id: 'library', label: t('settings.tab.library', 'Device library'), icon: FiDatabase },
     { id: 'ai', label: t('settings.tab.ai', 'AI'), icon: FiCpu },
-    { id: 'bridge', label: t('settings.tab.bridge', 'Camera bridge'), icon: FiRadio },
+    { id: 'bridge', label: t('settings.tab.bridge', 'Bridge & mixer'), icon: FiRadio },
   ];
   const aktiv = SECTIONS.find((s) => s.id === section) ?? SECTIONS[0];
 

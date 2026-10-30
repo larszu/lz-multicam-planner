@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { create } from 'zustand';
 import type { VenueCamera } from '../types';
 import { loadJSON, saveJSON } from '../utils/storage';
-import { applyLive, bussesFromMixer, cameraIdForNumber, inputForCamera, isVirtualMixer, mixerInputs, parseBridgeMessage, type LiveOptik, type LivePose, type MixerBus } from '../utils/bridgeLive';
+import { applyLive, atemAlsBus, bussesFromMixer, cameraIdForNumber, inputForCamera, isVirtualMixer, mixerInputs, parseBridgeMessage, type AtemStand, type LiveOptik, type LivePose, type MixerBus } from '../utils/bridgeLive';
 import { getCameraById, getEffectiveSensor } from '../data/cameras';
 import { getLensById } from '../data/lenses';
 import { useStore } from './useStore';
@@ -15,6 +15,18 @@ const PREFS_KEY = 'multicam-bridge-live';
 const RETRY_MS = [1000, 2000, 5000, 10000];
 
 export type BridgeStatus = 'off' | 'connecting' | 'connected' | 'error';
+/** Woher die Multiview ihren Mischer liest: Bridge oder ATEM direkt (nur Desktop-App). */
+export type MixerSource = 'bridge' | 'atem';
+
+interface AtemBridge {
+  connect(host: string): Promise<boolean>;
+  disconnect(): Promise<void>;
+  command(cmd: string, source?: number): Promise<boolean>;
+  onState(cb: (s: AtemStand) => void): () => void;
+}
+/** Nur in der Desktop-App: ein Browser erreicht das UDP-Protokoll des ATEM nicht. */
+export const atemApi = (): AtemBridge | undefined =>
+  typeof window === 'undefined' ? undefined : (window as unknown as { multicamAtem?: AtemBridge }).multicamAtem;
 
 interface BridgeLiveState {
   enabled: boolean;
@@ -31,13 +43,19 @@ interface BridgeLiveState {
   mixers: MixerBus[];
   /** Echten Mischer vom Planer aus schalten (sonst nur anzeigen). */
   mixerDrives: boolean;
+  mixerSource: MixerSource;
+  atemHost: string;
+  /** ATEM direkt, solange `mixerSource` 'atem' ist. */
+  atemBus: MixerBus | null;
   setEnabled: (on: boolean) => void;
   setUrl: (url: string) => void;
   setMixerNumber: (n: number | null) => void;
   setMixerDrives: (on: boolean) => void;
+  setMixerSource: (src: MixerSource) => void;
+  setAtemHost: (host: string) => void;
 }
 
-type Prefs = { enabled?: boolean; url?: string; mixerNumber?: number | null; mixerDrives?: boolean };
+type Prefs = { enabled?: boolean; url?: string; mixerNumber?: number | null; mixerDrives?: boolean; mixerSource?: MixerSource; atemHost?: string };
 const prefs: Prefs = { ...loadJSON<Prefs>(PREFS_KEY, {}), ...ausAdresse() };
 
 /**
@@ -51,12 +69,12 @@ function ausAdresse(): Prefs {
   const mixer = Number(q.get('mixer'));
   const out: Prefs = {};
   if (url && /^wss?:\/\//.test(url)) { out.enabled = true; out.url = url; }
-  if (Number.isInteger(mixer) && mixer > 0) out.mixerNumber = mixer;
+  if (Number.isInteger(mixer) && mixer > 0) { out.mixerNumber = mixer; out.mixerSource = 'bridge'; }
   if (Object.keys(out).length) saveJSON(PREFS_KEY, { ...loadJSON<Prefs>(PREFS_KEY, {}), ...out });
   return out;
 }
-const merken = (s: Pick<BridgeLiveState, 'enabled' | 'url' | 'mixerNumber' | 'mixerDrives'>) =>
-  saveJSON(PREFS_KEY, { enabled: s.enabled, url: s.url, mixerNumber: s.mixerNumber, mixerDrives: s.mixerDrives });
+const merken = (s: Pick<BridgeLiveState, 'enabled' | 'url' | 'mixerNumber' | 'mixerDrives' | 'mixerSource' | 'atemHost'>) =>
+  saveJSON(PREFS_KEY, { enabled: s.enabled, url: s.url, mixerNumber: s.mixerNumber, mixerDrives: s.mixerDrives, mixerSource: s.mixerSource, atemHost: s.atemHost });
 
 export const useBridgeLive = create<BridgeLiveState>((set, get) => ({
   enabled: prefs.enabled === true,
@@ -68,6 +86,9 @@ export const useBridgeLive = create<BridgeLiveState>((set, get) => ({
   autoRequest: 0,
   mixers: [],
   mixerDrives: prefs.mixerDrives === true,
+  mixerSource: prefs.mixerSource === 'atem' ? 'atem' : 'bridge',
+  atemHost: prefs.atemHost ?? '',
+  atemBus: null,
   setEnabled: (enabled) => {
     set({ enabled });
     merken(get());
@@ -79,8 +100,9 @@ export const useBridgeLive = create<BridgeLiveState>((set, get) => ({
     if (get().enabled) verbinden();
   },
   setMixerNumber: (mixerNumber) => {
-    set({ mixerNumber });
+    set({ mixerNumber, mixerSource: 'bridge' });
     merken(get());
+    atemVerbinden();
     if (mixerNumber === null) return;
     const bus = gefolgt();
     if (bus) { meldeEingaenge(true); folgeMischer(bus); }
@@ -89,6 +111,16 @@ export const useBridgeLive = create<BridgeLiveState>((set, get) => ({
   setMixerDrives: (mixerDrives) => {
     set({ mixerDrives });
     merken(get());
+  },
+  setMixerSource: (mixerSource) => {
+    set({ mixerSource });
+    merken(get());
+    atemVerbinden();
+  },
+  setAtemHost: (atemHost) => {
+    set({ atemHost });
+    merken(get());
+    atemVerbinden();
   },
 }));
 
@@ -141,7 +173,7 @@ export function verbinden() {
       const vorher = gefolgt();
       useBridgeLive.setState((s) => ({ mixers: m.full ? m.mixers : einpflegen(s.mixers, m.mixers) }));
       const bus = gefolgt();
-      if (!bus) return;
+      if (!bus || useBridgeLive.getState().mixerSource !== 'bridge') return;
       if (isVirtualMixer(bus) && !isVirtualMixer(vorher)) meldeEingaenge(true);
       folgeMischer(bus);
     } else if (m.type === 'cameras') {
@@ -151,7 +183,8 @@ export function verbinden() {
   sock.onerror = () => useBridgeLive.setState({ status: 'error' });
   sock.onclose = () => {
     ws = null;
-    useBridgeLive.setState({ status: 'error' });
+    // Ohne Verbindung kein Mischerstand: ein alter darf den Plan nicht mehr setzen.
+    useBridgeLive.setState({ status: 'error', mixers: [] });
     nochmal();
   };
 }
@@ -169,14 +202,21 @@ function einpflegen(liste: MixerBus[], neu: MixerBus[]): MixerBus[] {
   return out;
 }
 
-/** Der Mischer, dem die Multiview folgt, sobald die Bridge ihn gemeldet hat. */
+/** Der Mischer, dem die Multiview folgt, sobald er gemeldet ist. */
 function gefolgt(): MixerBus | undefined {
-  const { mixerNumber, mixers } = useBridgeLive.getState();
+  const { mixerNumber, mixers, mixerSource, atemBus } = useBridgeLive.getState();
+  if (mixerSource === 'atem') return atemBus ?? undefined;
   return mixerNumber === null ? undefined : mixers.find((x) => x.switcherNumber === mixerNumber);
 }
 
 /** Befehl an den gefolgten Mischer (Multiview am echten Mischer, wenn erlaubt). */
 export function mischerBefehl(cmd: 'preview' | 'cut' | 'auto' | 'take', source?: number): boolean {
+  if (useBridgeLive.getState().mixerSource === 'atem') {
+    const api = atemApi();
+    if (!api) return false;
+    void api.command(cmd, source);
+    return true;
+  }
   const { mixerNumber } = useBridgeLive.getState();
   const s = sock();
   if (mixerNumber === null || !s) return false;
@@ -298,11 +338,39 @@ export interface MixerFollow {
 
 /** Der gefolgte Mischer, wie die Multiview ihn zeigt; null ohne Verbindung. */
 export function useMixerFollow(cameras: VenueCamera[]): MixerFollow | null {
-  const bus = useBridgeLive((s) => (s.status === 'connected' && s.mixerNumber !== null ? s.mixers.find((x) => x.switcherNumber === s.mixerNumber) : undefined));
+  const bus = useBridgeLive((s) => (s.mixerSource === 'atem'
+    ? (s.atemBus?.connected ? s.atemBus : undefined)
+    : s.status === 'connected' && s.mixerNumber !== null ? s.mixers.find((x) => x.switcherNumber === s.mixerNumber) : undefined));
   const drives = useBridgeLive((s) => s.mixerDrives);
   return useMemo(() => {
     if (!bus) return null;
     const extern = !isVirtualMixer(bus);
     return { bus, extern, drives: extern && drives && bus.connected !== false, ...bussesFromMixer(cameras, bus) };
   }, [bus, cameras, drives]);
+}
+
+// ── ATEM direkt (Desktop-App) ───────────────────────────────────────────
+// Derselbe Weg wie ein Bridge-Mischer: der Stand wird zu einem `MixerBus`,
+// die Multiview folgt ihm, und geschaltet wird nur mit Freigabe.
+
+function atemVerbinden() {
+  const api = atemApi();
+  if (!api) return;
+  const { mixerSource, atemHost } = useBridgeLive.getState();
+  if (mixerSource === 'atem' && atemHost.trim()) void api.connect(atemHost.trim());
+  else {
+    void api.disconnect();
+    useBridgeLive.setState({ atemBus: null });
+  }
+}
+
+const atem = atemApi();
+if (atem) {
+  atem.onState((a) => {
+    if (useBridgeLive.getState().mixerSource !== 'atem') return;
+    const bus = atemAlsBus(a);
+    useBridgeLive.setState({ atemBus: bus });
+    if (bus.connected) folgeMischer(bus);
+  });
+  atemVerbinden();
 }

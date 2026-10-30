@@ -60,10 +60,12 @@
     "directories": {
       "output": "release"
     },
+    "npmRebuild": false,
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "package.json"
+      "package.json",
+      "!node_modules/@julusian/freetype2/build/**"
     ],
     "extraResources": [
       {
@@ -133,6 +135,7 @@
   "dependencies": {
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
+    "atem-connection": "^3.10.3",
     "flexlayout-react": "^0.9.1",
     "konva": "^10.3.0",
     "pdfjs-dist": "^6.0.227",
