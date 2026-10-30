@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { VenueCamera } from '../types';
-import { applyLive, bridgeNumberFor, cameraIdForNumber, focalFromLive, liveUpdates, parseBridgeMessage } from '../utils/bridgeLive';
+import { applyLive, bridgeNumberFor, bussesFromMixer, cameraIdForNumber, focalFromLive, inputForCamera, liveUpdates, mixerInputs, parseBridgeMessage } from '../utils/bridgeLive';
 
 const cam = (over: Partial<VenueCamera> = {}): VenueCamera => ({
   id: 'a', label: 'CAM 1', cameraId: 'x', lensId: 'y', x: 0, y: 0, z: 1.5, pan: 30, tilt: 0,
@@ -60,5 +60,33 @@ describe('parseBridgeMessage', () => {
     expect(parseBridgeMessage('nope')).toBeNull();
     expect(parseBridgeMessage(JSON.stringify({ type: 'pose', cameraNumber: 1 }))).toBeNull();
     expect(parseBridgeMessage(JSON.stringify({ type: 'state' }))).toBeNull();
+  });
+});
+
+describe('Bridge-Mischer', () => {
+  const cams = [
+    { id: 'a', label: 'CAM 1' },
+    { id: 'b', label: 'CAM 2' },
+    { id: 'c', label: 'Totale', bridgeCameraNumber: 5 },
+  ];
+
+  it('liest einen Mischer aus switcherState und alle aus switchers', () => {
+    expect(parseBridgeMessage(JSON.stringify({ type: 'switcherState', switcherNumber: 2, state: { program: 1, preview: 5, inTransition: true } })))
+      .toEqual({ type: 'mixer', mixers: [{ switcherNumber: 2, program: 1, preview: 5, inTransition: true }] });
+    const list = parseBridgeMessage(JSON.stringify({ type: 'switchers', switchers: [{ switcherNumber: 1, state: { program: 2 } }, { switcherNumber: 3, state: null }] }));
+    expect(list).toEqual({ type: 'mixer', mixers: [{ switcherNumber: 1, program: 2, preview: 0, inTransition: false }] });
+  });
+
+  it('Eingang n ist die Kamera mit Bridge-Nummer n, in beide Richtungen', () => {
+    expect(bussesFromMixer(cams, { program: 5, preview: 2 })).toEqual({ programId: 'c', previewId: 'b' });
+    expect(bussesFromMixer(cams, { program: 0, preview: 9 })).toEqual({ programId: null, previewId: null });
+    expect(inputForCamera(cams, 'c')).toBe(5);
+    expect(inputForCamera(cams, null)).toBe(0);
+  });
+
+  it('meldet Kameranamen als Eingangsnamen, jede Nummer einmal', () => {
+    expect(mixerInputs([...cams, { label: 'CAM 2 Ersatz' }])).toEqual([
+      { id: 1, name: 'CAM 1' }, { id: 2, name: 'CAM 2' }, { id: 5, name: 'Totale' },
+    ]);
   });
 });

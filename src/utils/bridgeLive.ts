@@ -29,8 +29,17 @@ export interface LiveOptik {
   focalMax?: number;
 }
 
+/** Busse eines Bridge-Mischers in Eingangsnummern (0 = leer). */
+export interface MixerBus {
+  switcherNumber: number;
+  program: number;
+  preview: number;
+  inTransition: boolean;
+}
+
 export type BridgeMessage =
   | { type: 'pose'; cameraNumber: number; pose: BridgePose; hfovDeg?: number }
+  | { type: 'mixer'; mixers: MixerBus[] }
   | { type: 'surfaceInput'; cameraNumber?: number; joystick?: { pan: number; tilt: number } }
   | { type: 'cameras'; cameras: { cameraNumber: number; connected: boolean }[] };
 
@@ -59,6 +68,27 @@ export function parseBridgeMessage(raw: string): BridgeMessage | null {
       ...(zahl(o.cameraNumber) ? { cameraNumber: o.cameraNumber } : {}),
       ...(js && zahl(js.pan) && zahl(js.tilt) ? { joystick: { pan: js.pan, tilt: js.tilt } } : {}),
     };
+  }
+  // Ein Mischer (`switcherState`) oder alle (`switchers`): nur die Busse.
+  const bus = (num: unknown, st: unknown): MixerBus | null => {
+    const s = st as Record<string, unknown> | null;
+    if (!zahl(num) || !s || typeof s !== 'object') return null;
+    return {
+      switcherNumber: num,
+      program: zahl(s.program) ? s.program : 0,
+      preview: zahl(s.preview) ? s.preview : 0,
+      inTransition: s.inTransition === true,
+    };
+  };
+  if (o.type === 'switcherState') {
+    const b = bus(o.switcherNumber, o.state);
+    return b ? { type: 'mixer', mixers: [b] } : null;
+  }
+  if (o.type === 'switchers' && Array.isArray(o.switchers)) {
+    const mixers = (o.switchers as Record<string, unknown>[])
+      .map((x) => (x ? bus(x.switcherNumber, x.state) : null))
+      .filter((b): b is MixerBus => b !== null);
+    return { type: 'mixer', mixers };
   }
   if (o.type === 'cameras' && Array.isArray(o.cameras)) {
     return {
@@ -137,4 +167,35 @@ export function cameraIdForNumber(cameras: Pick<VenueCamera, 'id' | 'label' | 'b
   if (num === null || num === undefined) return null;
   const i = cameras.findIndex((c, idx) => bridgeNumberFor(c, idx) === num);
   return i >= 0 ? cameras[i].id : null;
+}
+
+/** Planer-Busse aus einem Bridge-Mischer: Eingang n = Bridge-Kamera n. */
+export function bussesFromMixer(
+  cameras: Pick<VenueCamera, 'id' | 'label' | 'bridgeCameraNumber'>[],
+  bus: Pick<MixerBus, 'program' | 'preview'>,
+): { programId: string | null; previewId: string | null } {
+  return {
+    programId: bus.program > 0 ? cameraIdForNumber(cameras, bus.program) : null,
+    previewId: bus.preview > 0 ? cameraIdForNumber(cameras, bus.preview) : null,
+  };
+}
+
+/** Bridge-Eingangsnummer einer Planer-Kamera (0 = keine). */
+export function inputForCamera(cameras: Pick<VenueCamera, 'id' | 'label' | 'bridgeCameraNumber'>[], id: string | null): number {
+  if (!id) return 0;
+  const i = cameras.findIndex((c) => c.id === id);
+  return i >= 0 ? bridgeNumberFor(cameras[i], i) : 0;
+}
+
+/** Eingangsnamen fuer den Mischer der Bridge: so beschriftet das Pult seine Tasten. */
+export function mixerInputs(cameras: Pick<VenueCamera, 'label' | 'bridgeCameraNumber'>[]): { id: number; name: string }[] {
+  const seen = new Set<number>();
+  const out: { id: number; name: string }[] = [];
+  cameras.forEach((c, i) => {
+    const id = bridgeNumberFor(c, i);
+    if (seen.has(id)) return;
+    seen.add(id);
+    out.push({ id, name: c.label });
+  });
+  return out.sort((a, b) => a.id - b.id);
 }
