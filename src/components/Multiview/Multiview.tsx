@@ -253,7 +253,7 @@ export default function Multiview() {
         <span ref={tcRef} className="font-mono text-sm text-bc-text-bright tabular-nums" />
         <div className="flex-1" />
         {follow && (
-          <span className="text-[10px] text-bc-dim" title={gesperrt ? t('multiview.readOnlyHint', 'The planner shows what this mixer does. Switching from here can be allowed in Settings → Camera bridge.') : undefined}>
+          <span className="text-[10px] text-bc-dim" title={gesperrt ? t('multiview.readOnlyHint', 'The planner shows what this mixer does. Switching from here can be allowed in Settings → Bridge & mixer.') : undefined}>
             {follow.bus.label ?? format(t('settings.bridge.mixer.n', 'Mixer {n}'), { n: follow.bus.switcherNumber })}
             {gesperrt ? ` · ${t('multiview.readOnly', 'view only')}` : ''}
           </span>

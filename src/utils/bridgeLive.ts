@@ -272,3 +272,28 @@ export function matchInputsByName(cameras: Pick<VenueCamera, 'id' | 'label'>[], 
   }
   return out;
 }
+
+/** Stand eines ATEM aus dem Hauptprozess (`electron/atem.cjs`). */
+export interface AtemStand {
+  host: string | null;
+  connected: boolean;
+  model: string | null;
+  program: number;
+  preview: number;
+  inTransition: boolean;
+  inputs: { id: number; name: string }[];
+}
+/** ATEM-Stand als Mischer-Bus; Bezeichnung = Modell, sonst Adresse. */
+export function atemAlsBus(a: AtemStand): MixerBus {
+  return {
+    switcherNumber: 0,
+    kind: 'atem',
+    label: a.model || a.host || 'ATEM',
+    connected: a.connected,
+    program: a.program,
+    preview: a.preview,
+    inTransition: a.inTransition,
+    inputs: a.inputs.filter((i) => i.id > 0),
+  };
+}
+

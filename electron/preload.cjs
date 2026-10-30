@@ -1,7 +1,7 @@
 // Bruecken zwischen Renderer und Hauptprozess: das Anmelde-Token der
 // Geraetebibliothek im Schluesselbund (safeStorage), die Projektdatei (#199:
-// Dialoge und Schreiben in eine vom Nutzer gewaehlte Datei) und die
-// GPU-Auskunft fuer die Einstellungen. Der Renderer bleibt sandboxed und ohne
+// Dialoge und Schreiben in eine vom Nutzer gewaehlte Datei), die
+// GPU-Auskunft fuer die Einstellungen und ein ATEM ohne Bridge (atem.cjs). Der Renderer bleibt sandboxed und ohne
 // Node.
 const { contextBridge, ipcRenderer } = require('electron');
 
@@ -23,4 +23,15 @@ contextBridge.exposeInMainWorld('multicamProjectFile', {
 
 contextBridge.exposeInMainWorld('multicamGpu', {
   info: () => ipcRenderer.invoke('gpu-info:get'),
+});
+
+contextBridge.exposeInMainWorld('multicamAtem', {
+  connect: (host) => ipcRenderer.invoke('atem:connect', String(host)),
+  disconnect: () => ipcRenderer.invoke('atem:disconnect'),
+  command: (cmd, source) => ipcRenderer.invoke('atem:command', String(cmd), source === undefined ? undefined : Number(source)),
+  onState: (cb) => {
+    const h = (_e, state) => cb(state);
+    ipcRenderer.on('atem:state', h);
+    return () => ipcRenderer.removeListener('atem:state', h);
+  },
 });

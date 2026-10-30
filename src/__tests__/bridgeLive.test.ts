@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { VenueCamera } from '../types';
-import { applyLive, bridgeNumberFor, bussesFromMixer, cameraIdForNumber, focalFromLive, inputForCamera, inputName, isVirtualMixer, liveUpdates, matchInputsByName, mixerInputs, parseBridgeMessage } from '../utils/bridgeLive';
+import { applyLive, atemAlsBus, bridgeNumberFor, bussesFromMixer, cameraIdForNumber, focalFromLive, inputForCamera, inputName, isVirtualMixer, liveUpdates, matchInputsByName, mixerInputs, parseBridgeMessage } from '../utils/bridgeLive';
 
 const cam = (over: Partial<VenueCamera> = {}): VenueCamera => ({
   id: 'a', label: 'CAM 1', cameraId: 'x', lensId: 'y', x: 0, y: 0, z: 1.5, pan: 30, tilt: 0,
@@ -120,5 +120,18 @@ describe('Bridge-Mischer', () => {
     expect(mixerInputs([...cams, { label: 'CAM 2 Ersatz' }])).toEqual([
       { id: 1, name: 'CAM 1' }, { id: 2, name: 'CAM 2' }, { id: 5, name: 'Totale' },
     ]);
+  });
+});
+
+describe('ATEM direkt', () => {
+  it('wird zum selben Mischer-Bus wie ein Bridge-Mischer; Schwarz (0) ist kein Eingang', () => {
+    expect(atemAlsBus({
+      host: '10.0.0.5', connected: true, model: 'ATEM Mini Pro', program: 2, preview: 3010, inTransition: false,
+      inputs: [{ id: 0, name: 'BLK' }, { id: 1, name: 'CAM1' }, { id: 3010, name: 'MP1' }],
+    })).toEqual({
+      switcherNumber: 0, kind: 'atem', label: 'ATEM Mini Pro', connected: true, program: 2, preview: 3010, inTransition: false,
+      inputs: [{ id: 1, name: 'CAM1' }, { id: 3010, name: 'MP1' }],
+    });
+    expect(atemAlsBus({ host: '10.0.0.5', connected: false, model: null, program: 0, preview: 0, inTransition: false, inputs: [] }).label).toBe('10.0.0.5');
   });
 });
