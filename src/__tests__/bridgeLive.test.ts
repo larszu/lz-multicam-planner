@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { VenueCamera } from '../types';
-import { applyLive, bridgeNumberFor, bussesFromMixer, cameraIdForNumber, focalFromLive, inputForCamera, liveUpdates, mixerInputs, parseBridgeMessage } from '../utils/bridgeLive';
+import { applyLive, bridgeNumberFor, bussesFromMixer, cameraIdForNumber, focalFromLive, inputForCamera, inputName, isVirtualMixer, liveUpdates, matchInputsByName, mixerInputs, parseBridgeMessage } from '../utils/bridgeLive';
 
 const cam = (over: Partial<VenueCamera> = {}): VenueCamera => ({
   id: 'a', label: 'CAM 1', cameraId: 'x', lensId: 'y', x: 0, y: 0, z: 1.5, pan: 30, tilt: 0,
@@ -73,8 +73,40 @@ describe('Bridge-Mischer', () => {
   it('liest einen Mischer aus switcherState und alle aus switchers', () => {
     expect(parseBridgeMessage(JSON.stringify({ type: 'switcherState', switcherNumber: 2, state: { program: 1, preview: 5, inTransition: true } })))
       .toEqual({ type: 'mixer', mixers: [{ switcherNumber: 2, program: 1, preview: 5, inTransition: true }] });
-    const list = parseBridgeMessage(JSON.stringify({ type: 'switchers', switchers: [{ switcherNumber: 1, state: { program: 2 } }, { switcherNumber: 3, state: null }] }));
-    expect(list).toEqual({ type: 'mixer', mixers: [{ switcherNumber: 1, program: 2, preview: 0, inTransition: false }] });
+    const list = parseBridgeMessage(JSON.stringify({ type: 'switchers', switchers: [
+      { switcherNumber: 1, config: { kind: 'atem', label: 'Halle' }, connected: true, state: { program: 2, inputs: [{ id: 1, name: 'Cam1' }, { id: 0, name: 'Black' }] } },
+      { switcherNumber: 3, config: {}, connected: false, state: null },
+    ] }));
+    expect(list).toEqual({ type: 'mixer', full: true, mixers: [
+      { switcherNumber: 1, program: 2, preview: 0, inTransition: false, connected: true, kind: 'atem', label: 'Halle', inputs: [{ id: 1, name: 'Cam1' }] },
+      { switcherNumber: 3, program: 0, preview: 0, inTransition: false, connected: false, kind: 'vis-catc' },
+    ] });
+  });
+
+  it('Kamera auf frei gewaehltem Eingang; 0 = nicht am Mischer', () => {
+    const belegt = [
+      { id: 'a', label: 'CAM 1', mixerInput: 4 },
+      { id: 'b', label: 'CAM 2', mixerInput: 0 },
+      { id: 'c', label: 'CAM 3' },
+    ];
+    expect(bussesFromMixer(belegt, { program: 4, preview: 3 })).toEqual({ programId: 'a', previewId: 'c' });
+    expect(bussesFromMixer(belegt, { program: 2, preview: 1 })).toEqual({ programId: null, previewId: null });
+    expect(inputForCamera(belegt, 'b')).toBe(0);
+    expect(mixerInputs(belegt)).toEqual([{ id: 3, name: 'CAM 3' }, { id: 4, name: 'CAM 1' }]);
+  });
+
+  it('ordnet nach Namen zu, nur eindeutig', () => {
+    const inputs = [{ id: 1, name: 'Cam1' }, { id: 2, name: 'Totale' }, { id: 5, name: 'cam-2' }, { id: 6, name: 'Bars' }, { id: 7, name: 'BARS' }];
+    expect(matchInputsByName([{ id: 'a', label: 'CAM 2' }, { id: 'b', label: 'Totale' }, { id: 'c', label: 'Bars' }, { id: 'd', label: 'CAM 9' }], inputs))
+      .toEqual({ a: 5, b: 2 });
+    expect(inputName(inputs, 6)).toBe('Bars');
+    expect(inputName(inputs, 3010)).toBe('3010');
+  });
+
+  it('nur der Mischer ohne Hardware nimmt Busse vom Planer an', () => {
+    expect(isVirtualMixer({ kind: 'virtual' })).toBe(true);
+    expect(isVirtualMixer({ kind: 'atem' })).toBe(false);
+    expect(isVirtualMixer(undefined)).toBe(false);
   });
 
   it('Eingang n ist die Kamera mit Bridge-Nummer n, in beide Richtungen', () => {

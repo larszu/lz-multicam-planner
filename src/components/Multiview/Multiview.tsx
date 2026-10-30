@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useStore } from '../../store/useStore';
-import { useBridgeLive } from '../../store/bridgeLive';
+import { mischerBefehl, useBridgeLive, useMixerFollow } from '../../store/bridgeLive';
+import { inputForCamera, inputName } from '../../utils/bridgeLive';
 import { renderCamera, wallSurfaces } from '../Preview/cameraViewRenderer';
 import LookToggle from '../Render3D/LookToggle';
 import { bereit3D, bildVersion3D, render3D, useBedarf3D, useBildVersion3D, useKameraLook, type BildRolle } from '../Render3D/kameraBild3d';
@@ -9,7 +10,7 @@ import { getCameraById, getEffectiveSensor } from '../../data/cameras';
 import { getLensById } from '../../data/lenses';
 import { computeFov } from '../../utils/fov';
 import { loadJSON, saveJSON } from '../../utils/storage';
-import { useTranslation } from '../../i18n';
+import { format, useTranslation } from '../../i18n';
 import type { VenueCamera } from '../../types';
 import { timecodeOfDay } from './timecode';
 
@@ -38,8 +39,15 @@ function lensLine(cam: VenueCamera): string {
 export default function Multiview() {
   const { t } = useTranslation();
   const cameras = useStore((s) => s.cameras);
-  const previewId = useStore((s) => s.selectedCameraId);
+  const selectedId = useStore((s) => s.selectedCameraId);
   const programId = useStore((s) => s.programCameraId);
+  // Echter Mischer der Bridge: Preview kommt vom Mischer, nicht aus der
+  // Auswahl im Plan; Tasten schalten ihn nur, wenn das erlaubt ist.
+  const follow = useMixerFollow(cameras);
+  const extern = follow?.extern === true;
+  const previewId = extern ? follow.previewId : selectedId;
+  const previewRef = useRef(previewId);
+  useEffect(() => { previewRef.current = previewId; }, [previewId]);
   const selectCamera = useStore((s) => s.selectCamera);
   const setProgramCamera = useStore((s) => s.setProgramCamera);
 
@@ -57,30 +65,49 @@ export default function Multiview() {
   const bufA = useRef<HTMLCanvasElement | null>(null);
   const bufB = useRef<HTMLCanvasElement | null>(null);
 
+  const externRef = useRef(extern);
+  useEffect(() => { externRef.current = extern; }, [extern]);
   const finishTake = useCallback((to: string, from: string | null) => {
     setProgramCamera(to);
-    // Wie am Mischer: die bisherige Program-Quelle rutscht auf Preview.
-    if (from) selectCamera(from);
+    // Wie am Mischer: die bisherige Program-Quelle rutscht auf Preview —
+    // am echten Mischer meldet er das selbst.
+    if (from && !externRef.current) selectCamera(from);
     mixRef.current = null;
     setMixTo(null);
   }, [selectCamera, setProgramCamera]);
 
-  const cut = useCallback(() => {
+  const schnitt = useCallback(() => {
     if (!previewId || mixRef.current) return;
     finishTake(previewId, programId);
   }, [finishTake, previewId, programId]);
 
-  const auto = useCallback(() => {
+  const blende = useCallback(() => {
     if (!previewId || mixRef.current) return;
-    if (autoSeconds <= 0 || !programId) { cut(); return; }
+    if (autoSeconds <= 0 || !programId) { schnitt(); return; }
     mixRef.current = { from: programId, to: previewId, start: performance.now(), durMs: autoSeconds * 1000 };
     setMixTo(previewId);
-  }, [autoSeconds, cut, previewId, programId]);
+  }, [autoSeconds, schnitt, previewId, programId]);
+
+  const drives = follow?.drives === true;
+  const gesperrt = extern && !drives;
+  const cut = useCallback(() => {
+    if (!extern) schnitt();
+    else if (drives) mischerBefehl('cut');
+  }, [drives, extern, schnitt]);
+  const auto = useCallback(() => {
+    if (!extern) blende();
+    else if (drives) mischerBefehl('auto');
+  }, [blende, drives, extern]);
+  const vorschau = useCallback((id: string) => {
+    selectCamera(id);
+    const n = inputForCamera(cameras, id);
+    if (drives && n > 0) mischerBefehl('preview', n);
+  }, [cameras, drives, selectCamera]);
 
   // AUTO an einem Pult der Bridge: dieselbe Blende wie mit dem eigenen Knopf.
   const autoRequest = useBridgeLive((s) => s.autoRequest);
-  const autoRef = useRef(auto);
-  useEffect(() => { autoRef.current = auto; }, [auto]);
+  const autoRef = useRef(blende);
+  useEffect(() => { autoRef.current = blende; }, [blende]);
   // Nur neue Anforderungen: beim Oeffnen der Multiview laeuft keine alte nach.
   const gesehenRef = useRef(autoRequest);
   useEffect(() => {
@@ -90,9 +117,11 @@ export default function Multiview() {
   }, [autoRequest]);
 
   const takeDirect = useCallback((id: string) => {
-    if (mixRef.current) return;
+    if (mixRef.current || gesperrt) return;
+    const n = inputForCamera(cameras, id);
+    if (extern) { if (n > 0) mischerBefehl('take', n); return; }
     setProgramCamera(id);
-  }, [setProgramCamera]);
+  }, [cameras, extern, gesperrt, setProgramCamera]);
 
   // Gerendert durch die 3D-Szene (Standard) oder die einfache Zeichnung (#168).
   const [look, setLook] = useKameraLook('multicam-mv-look');
@@ -134,13 +163,13 @@ export default function Multiview() {
       const pgmW = widthOf(pgm);
 
       const mix = mixRef.current;
-      const key = [r3, bildVersion3D(), wallSurfaces.version, s.cameras, s.persons, s.venue, s.walls, s.customCameras, s.customLenses, s.language, s.selectedCameraId, s.programCameraId, dpr, pvwW, pgmW, ...tileW];
+      const key = [r3, bildVersion3D(), wallSurfaces.version, s.cameras, s.persons, s.venue, s.walls, s.customCameras, s.customLenses, s.language, previewRef.current, s.programCameraId, dpr, pvwW, pgmW, ...tileW];
       if (key.length !== lastKey.length || key.some((v, i) => v !== lastKey[i])) {
         lastKey = key;
         offen = [];
         if (pvw && pvwW > 0) {
           offen.push(() => {
-            if (s.selectedCameraId) render(s.selectedCameraId, pvw, pvwW, dpr, 'gross');
+            if (previewRef.current) render(previewRef.current, pvw, pvwW, dpr, 'gross');
             else blank(pvw, pvwW, dpr);
           });
         }
@@ -193,11 +222,14 @@ export default function Multiview() {
     if (Number.isInteger(n) && n >= 1 && n <= 9 && cameras[n - 1]) {
       e.preventDefault();
       if (e.shiftKey) takeDirect(cameras[n - 1].id);
-      else selectCamera(cameras[n - 1].id);
+      else vorschau(cameras[n - 1].id);
     }
   };
 
-  const labelOf = (id: string | null) => cameras.find((c) => c.id === id)?.label ?? '—';
+  // Liegt auf dem Bus ein Eingang ohne Kamera (Farbbalken, Clip …), steht sein Name da.
+  const labelOf = (id: string | null, eingang?: number) =>
+    cameras.find((c) => c.id === id)?.label
+    ?? (extern && eingang ? inputName(follow.bus.inputs, eingang) : '—');
 
   if (cameras.length === 0) {
     return (
@@ -220,11 +252,17 @@ export default function Multiview() {
         <span className="text-[10px] uppercase tracking-wider text-bc-dim">TOD</span>
         <span ref={tcRef} className="font-mono text-sm text-bc-text-bright tabular-nums" />
         <div className="flex-1" />
+        {follow && (
+          <span className="text-[10px] text-bc-dim" title={gesperrt ? t('multiview.readOnlyHint', 'The planner shows what this mixer does. Switching from here can be allowed in Settings → Camera bridge.') : undefined}>
+            {follow.bus.label ?? format(t('settings.bridge.mixer.n', 'Mixer {n}'), { n: follow.bus.switcherNumber })}
+            {gesperrt ? ` · ${t('multiview.readOnly', 'view only')}` : ''}
+          </span>
+        )}
         <LookToggle value={look} onChange={setLook} laedt={laedt3D} />
         <button
           type="button"
           onClick={cut}
-          disabled={!previewId || mixTo !== null}
+          disabled={gesperrt || (!extern && !previewId) || mixTo !== null}
           title={t('multiview.cutHint', 'Cut preview to program (Space)')}
           className="border border-bc-border px-3 py-1 text-xs font-semibold hover:bg-bc-hover disabled:opacity-40"
         >
@@ -233,7 +271,7 @@ export default function Multiview() {
         <button
           type="button"
           onClick={auto}
-          disabled={!previewId || mixTo !== null}
+          disabled={gesperrt || (!extern && !previewId) || mixTo !== null}
           title={t('multiview.autoHint', 'Dissolve preview to program (Enter)')}
           className={`border px-3 py-1 text-xs font-semibold disabled:opacity-40 ${mixTo ? 'border-bc-red bg-bc-red text-bc-on-media' : 'border-bc-border hover:bg-bc-hover'}`}
         >
@@ -259,8 +297,8 @@ export default function Multiview() {
       </div>
 
       <div className="grid grid-cols-2 gap-1 p-1">
-        <BusWindow tally="pvw" title={`${t('multiview.preview', 'PREVIEW')} · ${labelOf(previewId)}`} canvasRef={pvwRef} />
-        <BusWindow tally="pgm" title={`${t('multiview.program', 'PROGRAM')} · ${labelOf(mixTo ?? programId)}`} canvasRef={pgmRef} />
+        <BusWindow tally="pvw" title={`${t('multiview.preview', 'PREVIEW')} · ${labelOf(previewId, follow?.bus.preview)}`} canvasRef={pvwRef} />
+        <BusWindow tally="pgm" title={`${t('multiview.program', 'PROGRAM')} · ${labelOf(mixTo ?? programId, follow?.bus.program)}`} canvasRef={pgmRef} />
       </div>
 
       <div className="grid gap-1 px-1 pb-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
@@ -271,7 +309,7 @@ export default function Multiview() {
             <button
               key={cam.id}
               type="button"
-              onClick={() => selectCamera(cam.id)}
+              onClick={() => vorschau(cam.id)}
               onDoubleClick={() => takeDirect(cam.id)}
               title={t('multiview.tileHint', 'Click: preview · Double-click: straight to program')}
               className={`relative block border-2 text-left ${onPgm ? 'border-bc-red' : onPvw ? 'border-bc-green' : 'border-bc-border'}`}

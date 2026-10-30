@@ -87,7 +87,7 @@ before the first rehearsal.
 - **Shotlist and rig:** capture shots, set transitions, play the sequence, export a storyboard — shotlists are saved in the project file; record and replay camera moves within the rig's real limits.
 - **Templates:** football stadium, stadium event, small and large concert, church, conference — or save your own.
 - **Live from a control panel:** with *Settings → Camera bridge* switched on, the planner connects to [LZ Camera Bridge](https://github.com/larszu/lz-camera-bridge) (default `ws://localhost:9700`, reconnects on its own, status in the status bar). Pan, tilt and zoom the bridge reports — for example from a Broadcast Pix joystick — turn the planned camera in 2D and 3D; the camera chosen on the panel gets a dashed ring in 2D and a green tally in 3D. Each planned camera follows the bridge camera with the number in its name (*CAM 2* → 2); a different number goes in the camera's *Bridge camera* field. The plan stays as it was until you click *Apply* on the camera marked *Live*.
-- **Multiview from a bridge mixer:** *Settings → Camera bridge → Multiview follows a bridge mixer* makes programme and preview come from that mixer in the bridge — typically its *virtual mixer*, switched from a control panel. CUT, AUTO and direct takes on the panel switch the multiview (AUTO dissolves here too); a cut in the planner goes back to the bridge, so tally and the panel's button names match. Input *n* is the camera with bridge number *n*. The bridge's switcher page opens the planner ready for this (`?bridge=ws://…:9700&mixer=1`). The browser build allows the bridge at `ws://localhost:9700`.
+- **Multiview from a bridge mixer:** *Settings → Camera bridge → Multiview follows a bridge mixer* shows programme and preview of any mixer the bridge drives — a real ATEM as well as its *virtual mixer*, switched from a control panel. *Cameras on mixer inputs* places each camera on an input, with the input names the mixer reports; *Assign by name* matches “CAM 1” to “Cam1”. Inputs without a camera (bars, clips) show their name in the bus window. A real mixer is only shown unless *Switch this mixer from the multiview* is on; the virtual mixer takes the planner's cuts and camera names back, so tally and the panel's buttons match. AUTO dissolves here too. The bridge's switcher page opens the planner ready for this (`?bridge=ws://…:9700&mixer=1`). The browser build allows the bridge at `ws://localhost:9700`.
 - **Hands over to the Cable Planner:** cameras, lenses and positions travel in the `.avplan` exchange file.
 
 ## Quick start
@@ -118,8 +118,12 @@ Live vom Pult: *Einstellungen → Kamera-Bridge* verbindet mit LZ Camera
 Bridge; Schwenk, Neigung und Zoom der Bridge (etwa vom Joystick) drehen die
 geplante Kamera mit derselben Nummer in 2D und 3D. Erst *Übernehmen* schreibt
 die Stellung in den Plan. Unter *Multiview folgt einem Bridge-Mischer* kommen
-Program und Preview vom Mischer der Bridge – CUT und AUTO am Pult schalten die
-Multiview, ein Schnitt im Planer geht zurück an die Bridge.
+Program und Preview vom Mischer der Bridge – auch von einem echten ATEM. Unter
+*Kameras auf Mischer-Eingängen* liegt jede Kamera auf dem Eingang, den man
+wählt (mit den Eingangsnamen des Mischers, *Nach Namen zuordnen* hilft). Einen
+echten Mischer zeigt der Planer nur, außer *Diesen Mischer aus der Multiview
+schalten* ist an; der Mischer ohne Hardware übernimmt Schnitte und
+Kameranamen vom Planer.
 
 Windows-Rechner mit zwei Grafikkarten: den Installer statt der portablen
 Fassung nehmen und die Programmdatei (angezeigt unter *Einstellungen →

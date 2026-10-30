@@ -29,17 +29,26 @@ export interface LiveOptik {
   focalMax?: number;
 }
 
+export interface MixerInput { id: number; name: string }
+
 /** Busse eines Bridge-Mischers in Eingangsnummern (0 = leer). */
 export interface MixerBus {
   switcherNumber: number;
   program: number;
   preview: number;
   inTransition: boolean;
+  /** Mischer-Typ der Bridge (`atem`, `virtual` …), wenn gemeldet. */
+  kind?: string;
+  label?: string;
+  connected?: boolean;
+  /** Eingangsnamen, wie der Mischer sie fuehrt (ATEM: Kurzname). */
+  inputs?: MixerInput[];
 }
 
 export type BridgeMessage =
   | { type: 'pose'; cameraNumber: number; pose: BridgePose; hfovDeg?: number }
-  | { type: 'mixer'; mixers: MixerBus[] }
+  /** `full`: die ganze Liste (`switchers`), sonst ein einzelner Stand. */
+  | { type: 'mixer'; mixers: MixerBus[]; full?: boolean }
   | { type: 'surfaceInput'; cameraNumber?: number; joystick?: { pan: number; tilt: number } }
   | { type: 'cameras'; cameras: { cameraNumber: number; connected: boolean }[] };
 
@@ -69,26 +78,46 @@ export function parseBridgeMessage(raw: string): BridgeMessage | null {
       ...(js && zahl(js.pan) && zahl(js.tilt) ? { joystick: { pan: js.pan, tilt: js.tilt } } : {}),
     };
   }
-  // Ein Mischer (`switcherState`) oder alle (`switchers`): nur die Busse.
-  const bus = (num: unknown, st: unknown): MixerBus | null => {
-    const s = st as Record<string, unknown> | null;
-    if (!zahl(num) || !s || typeof s !== 'object') return null;
+  // Ein Mischer (`switcherState`) oder alle (`switchers`, auch die offline).
+  const eingaenge = (v: unknown): MixerInput[] | undefined => {
+    if (!Array.isArray(v)) return undefined;
+    return (v as Record<string, unknown>[])
+      .filter((i) => i && zahl(i.id) && i.id > 0)
+      .map((i) => ({ id: i.id as number, name: typeof i.name === 'string' && i.name ? i.name : String(i.id) }));
+  };
+  const bus = (num: unknown, st: unknown, extra: Partial<MixerBus> = {}): MixerBus | null => {
+    if (!zahl(num)) return null;
+    const s = (st && typeof st === 'object' ? st : {}) as Record<string, unknown>;
+    const inputs = eingaenge(s.inputs);
+    const kind = extra.kind ?? (typeof s.kind === 'string' ? s.kind : undefined);
     return {
       switcherNumber: num,
       program: zahl(s.program) ? s.program : 0,
       preview: zahl(s.preview) ? s.preview : 0,
       inTransition: s.inTransition === true,
+      ...extra,
+      ...(kind ? { kind } : {}),
+      ...(inputs ? { inputs } : {}),
     };
   };
   if (o.type === 'switcherState') {
+    if (!o.state || typeof o.state !== 'object') return null;
     const b = bus(o.switcherNumber, o.state);
     return b ? { type: 'mixer', mixers: [b] } : null;
   }
   if (o.type === 'switchers' && Array.isArray(o.switchers)) {
     const mixers = (o.switchers as Record<string, unknown>[])
-      .map((x) => (x ? bus(x.switcherNumber, x.state) : null))
+      .map((x) => {
+        if (!x) return null;
+        const cfg = (x.config && typeof x.config === 'object' ? x.config : {}) as Record<string, unknown>;
+        return bus(x.switcherNumber, x.state, {
+          connected: x.connected === true,
+          kind: typeof cfg.kind === 'string' ? cfg.kind : 'vis-catc',
+          ...(typeof cfg.label === 'string' && cfg.label ? { label: cfg.label } : {}),
+        });
+      })
       .filter((b): b is MixerBus => b !== null);
-    return { type: 'mixer', mixers };
+    return { type: 'mixer', mixers, full: true };
   }
   if (o.type === 'cameras' && Array.isArray(o.cameras)) {
     return {
@@ -162,40 +191,84 @@ export function applyLive(
   return changed ? out : cameras;
 }
 
-/** Planer-Kamera-Id zu einer Bridge-Nummer (erste Treffer gewinnt). */
+/** Planer-Kamera-Id zu einer Bridge-Kameranummer (erste Treffer gewinnt). */
 export function cameraIdForNumber(cameras: Pick<VenueCamera, 'id' | 'label' | 'bridgeCameraNumber'>[], num: number | null | undefined): string | null {
   if (num === null || num === undefined) return null;
   const i = cameras.findIndex((c, idx) => bridgeNumberFor(c, idx) === num);
   return i >= 0 ? cameras[i].id : null;
 }
 
-/** Planer-Busse aus einem Bridge-Mischer: Eingang n = Bridge-Kamera n. */
-export function bussesFromMixer(
-  cameras: Pick<VenueCamera, 'id' | 'label' | 'bridgeCameraNumber'>[],
-  bus: Pick<MixerBus, 'program' | 'preview'>,
-): { programId: string | null; previewId: string | null } {
-  return {
-    programId: bus.program > 0 ? cameraIdForNumber(cameras, bus.program) : null,
-    previewId: bus.preview > 0 ? cameraIdForNumber(cameras, bus.preview) : null,
-  };
+/** Mischer-Eingang einer Planer-Kamera: Feld, sonst Bridge-Nummer; 0 = keiner. */
+export function mixerInputFor(cam: Pick<VenueCamera, 'label' | 'bridgeCameraNumber' | 'mixerInput'>, index: number): number {
+  if (cam.mixerInput !== undefined && cam.mixerInput >= 0) return cam.mixerInput;
+  return bridgeNumberFor(cam, index);
 }
 
-/** Bridge-Eingangsnummer einer Planer-Kamera (0 = keine). */
-export function inputForCamera(cameras: Pick<VenueCamera, 'id' | 'label' | 'bridgeCameraNumber'>[], id: string | null): number {
+type MixCam = Pick<VenueCamera, 'id' | 'label' | 'bridgeCameraNumber' | 'mixerInput'>;
+
+/** Planer-Kamera auf einem Mischer-Eingang (erste Treffer gewinnt). */
+export function cameraIdForInput(cameras: MixCam[], input: number): string | null {
+  if (input <= 0) return null;
+  const i = cameras.findIndex((c, idx) => mixerInputFor(c, idx) === input);
+  return i >= 0 ? cameras[i].id : null;
+}
+
+/** Planer-Busse aus einem Bridge-Mischer; ein Eingang ohne Kamera ist null. */
+export function bussesFromMixer(
+  cameras: MixCam[],
+  bus: Pick<MixerBus, 'program' | 'preview'>,
+): { programId: string | null; previewId: string | null } {
+  return { programId: cameraIdForInput(cameras, bus.program), previewId: cameraIdForInput(cameras, bus.preview) };
+}
+
+/** Mischer-Eingang einer Planer-Kamera (0 = keiner). */
+export function inputForCamera(cameras: MixCam[], id: string | null): number {
   if (!id) return 0;
   const i = cameras.findIndex((c) => c.id === id);
-  return i >= 0 ? bridgeNumberFor(cameras[i], i) : 0;
+  return i >= 0 ? mixerInputFor(cameras[i], i) : 0;
 }
 
 /** Eingangsnamen fuer den Mischer der Bridge: so beschriftet das Pult seine Tasten. */
-export function mixerInputs(cameras: Pick<VenueCamera, 'label' | 'bridgeCameraNumber'>[]): { id: number; name: string }[] {
+export function mixerInputs(cameras: Pick<VenueCamera, 'label' | 'bridgeCameraNumber' | 'mixerInput'>[]): MixerInput[] {
   const seen = new Set<number>();
-  const out: { id: number; name: string }[] = [];
+  const out: MixerInput[] = [];
   cameras.forEach((c, i) => {
-    const id = bridgeNumberFor(c, i);
-    if (seen.has(id)) return;
+    const id = mixerInputFor(c, i);
+    if (id <= 0 || seen.has(id)) return;
     seen.add(id);
     out.push({ id, name: c.label });
   });
   return out.sort((a, b) => a.id - b.id);
+}
+
+/** Name eines Mischer-Eingangs, sonst „Eingang n“-taugliche Nummer. */
+export function inputName(inputs: MixerInput[] | undefined, id: number): string {
+  return inputs?.find((i) => i.id === id)?.name ?? String(id);
+}
+
+/**
+ * Der Mischer der Bridge ohne Hardware nimmt Busse und Namen vom Planer an;
+ * jeder echte Mischer (ATEM …) wird nur gelesen — der Planer benennt dort
+ * nichts um und schaltet nur, wenn man es ausdruecklich erlaubt.
+ */
+export const isVirtualMixer = (bus: Pick<MixerBus, 'kind'> | undefined): boolean => bus?.kind === 'virtual';
+
+const schluessel = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g, '');
+
+/**
+ * Kameras den Eingaengen nach Namen zuordnen: „CAM 1“ = „Cam1“ = „cam-1“.
+ * Nur eindeutige Treffer; was nicht passt, behaelt seine Belegung.
+ */
+export function matchInputsByName(cameras: Pick<VenueCamera, 'id' | 'label'>[], inputs: MixerInput[]): Record<string, number> {
+  const nachName = new Map<string, number[]>();
+  for (const i of inputs) {
+    const k = schluessel(i.name);
+    if (k) nachName.set(k, [...(nachName.get(k) ?? []), i.id]);
+  }
+  const out: Record<string, number> = {};
+  for (const c of cameras) {
+    const treffer = nachName.get(schluessel(c.label));
+    if (treffer?.length === 1) out[c.id] = treffer[0];
+  }
+  return out;
 }
