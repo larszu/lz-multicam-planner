@@ -313,7 +313,7 @@ const DATA = {
     { "id": "electron-main", "label": "Window Manager", "layer": "main", "group": "Core", "purpose": "BrowserWindow (contextIsolation+sandbox). loadFile(dist/index.html). CSP-Header-Injection via session.onHeadersReceived. shell.openExternal nur https:/mailto:. will-navigate-Guard. KEIN Preload, KEINE IPC.", "file": "electron/main.cjs" },
 
     // ── Renderer: Layout ───────────────────────────────────
-    { "id": "app-root",          "label": "App Root",            "layer": "renderer", "group": "Layout",  "purpose": "FlexLayout-Docking mit 4 Panels (2D/3D/Preview/Calculator), Focus/Grid/Custom-Modi, Layout-Presets (localStorage), ErrorBoundary, Export-Prep-Hook.", "file": "src/App.tsx" },
+    { "id": "app-root",          "label": "App Root",            "layer": "renderer", "group": "Layout",  "purpose": "FlexLayout-Docking mit Panels (2D/3D/Multiview/Calculator/Shotlist; Kamerablick in 3D), Focus/Grid/Custom-Modi, Layout-Presets (localStorage), ErrorBoundary, Export-Prep-Hook.", "file": "src/App.tsx" },
     { "id": "header",            "label": "Header",              "layer": "renderer", "group": "Layout",  "purpose": "Toolbar: Layout-Modi, Presets, Save/Load .mcplan, Export-Menü (dispatch 'multicam-export'), Versions-/Unsaved-Anzeige.", "file": "src/components/Layout/Header.tsx" },
     { "id": "error-boundary",    "label": "Error Boundary",      "layer": "renderer", "group": "Layout",  "purpose": "React class-component error boundary am App-Root mit Reload-Button.", "file": "src/components/ErrorBoundary.tsx" },
 

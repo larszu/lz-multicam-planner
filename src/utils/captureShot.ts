@@ -1,17 +1,18 @@
 // "Shot aufnehmen" (#62 Punkt 5) — gemeinsame Aufnahme-Logik.
 //
-// Wird sowohl vom Button im Preview-Tab als auch vom Shotlist-Panel aufgerufen,
+// Wird sowohl vom Button im Kamerablick als auch vom Shotlist-Panel aufgerufen,
 // damit es nur EINE Definition davon gibt, was ein Shot beim Aufnehmen ist.
 import { useStore } from '../store/useStore';
 import { getExportRegistry } from '../store/exportRegistry';
 import { makeThumbnail } from './shotThumbnail';
 import { defaultShotName, shotStateFromCamera } from './shot';
+import { renderSelectedCameraView } from '../components/Preview/cameraViewRenderer';
 
 export interface CaptureShotResult {
   ok: boolean;
   shotId?: string;
   shotlistId?: string;
-  /** false, wenn kein Framegrab moeglich war (Preview-Tab nicht gemountet). */
+  /** false, wenn kein Framegrab moeglich war (keine Kamera gewaehlt oder ohne Objektiv). */
   hadThumbnail: boolean;
   /** Grund bei `ok: false` — fuer die Meldung an den Nutzer. */
   reason?: string;
@@ -22,10 +23,10 @@ export interface CaptureShotResult {
  * aktive Shotlist. Existiert noch keine Liste, wird eine angelegt, damit der
  * erste Klick sofort etwas bewirkt.
  *
- * Der Framegrab kommt aus dem Preview-Canvas ueber die Export-Registry. Ist
- * der Preview-Tab gerade nicht gemountet, gibt es kein Bild — der Shot wird
- * trotzdem gespeichert (die Kamera-Werte sind der eigentliche Inhalt) und der
- * Aufrufer kann das per `hadThumbnail` melden.
+ * Der Framegrab kommt aus dem Kamerablick ueber die Export-Registry; ist er
+ * nicht offen, wird die gewaehlte Kamera direkt gezeichnet. Gibt es kein Bild,
+ * wird der Shot trotzdem gespeichert (die Kamera-Werte sind der eigentliche
+ * Inhalt) und der Aufrufer kann das per `hadThumbnail` melden.
  */
 export function captureCurrentShot(): CaptureShotResult {
   const state = useStore.getState();
@@ -43,7 +44,7 @@ export function captureCurrentShot(): CaptureShotResult {
   // Render zeichnet dagegen denselben Zustand garantiert frisch und in fester
   // Groesse, egal welcher Tab gerade vorne ist.
   const registry = getExportRegistry();
-  const canvas = registry.renderPreviewOffscreen?.() ?? registry.capturePreviewCanvas?.() ?? null;
+  const canvas = registry.renderPreviewOffscreen?.() ?? registry.capturePreviewCanvas?.() ?? renderSelectedCameraView();
   const thumbnail = makeThumbnail(canvas) ?? undefined;
 
   const shotId = useStore.getState().addShot(shotlistId, {

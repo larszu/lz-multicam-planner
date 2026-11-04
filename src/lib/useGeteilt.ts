@@ -1,8 +1,7 @@
 // Ein gespeicherter Wert, den mehrere Instanzen einer Komponente TEILEN.
 //
-// Der Kamerablick steht zweimal in der App (Vorschau-Reiter und 3D-Ansicht).
 // Mit `useState(loadJSON(...))` hielte jede Instanz ihre eigene Kopie: ein
-// Preset, das im 3D-Blick entsteht, fehlte in der Vorschau — und das naechste
+// Preset, das in einer entsteht, fehlte in der anderen — und das naechste
 // Speichern dort wuerfe es weg. Hier gibt es den Wert einmal, gespeichert,
 // und jede Instanz sieht jede Aenderung.
 import { useCallback, useSyncExternalStore } from 'react';

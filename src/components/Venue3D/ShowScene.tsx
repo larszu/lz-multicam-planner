@@ -352,7 +352,8 @@ export function LedWalls({ walls, maxLichter }: { walls: VenueVideoWall[]; maxLi
 }
 
 /* ── Abdeckung am Boden: ein Keil je Kamera bis zum Schaerfepunkt ── */
-export function CoverageWedge({ cam, hFovDeg, index, emphasis }: { cam: VenueCamera; hFovDeg: number; index: number; emphasis: boolean }) {
+export function CoverageWedge({ cam, hFovDeg, index, emphasis, tallyColor = null }: { cam: VenueCamera; hFovDeg: number; index: number; emphasis: boolean; tallyColor?: string | null }) {
+  const farbe = tallyColor ?? cam.color;
   const [a, b, c] = coverageWedge(cam, hFovDeg);
   const y = 0.03 + index * 0.002;
   const fill = useMemo(() => {
@@ -376,10 +377,10 @@ export function CoverageWedge({ cam, hFovDeg, index, emphasis }: { cam: VenueCam
   return (
     <group>
       <mesh geometry={fill}>
-        <meshBasicMaterial color={cam.color} transparent opacity={emphasis ? 0.22 : 0.11} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
+        <meshBasicMaterial color={farbe} transparent opacity={emphasis || tallyColor ? 0.22 : 0.11} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
       </mesh>
       <lineSegments geometry={edges}>
-        <lineBasicMaterial color={cam.color} transparent opacity={emphasis ? 0.95 : 0.6} toneMapped={false} />
+        <lineBasicMaterial color={farbe} transparent opacity={emphasis || tallyColor ? 0.95 : 0.6} toneMapped={false} />
       </lineSegments>
     </group>
   );

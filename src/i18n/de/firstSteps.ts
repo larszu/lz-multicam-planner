@@ -7,5 +7,5 @@ export const firstSteps: Record<string, string> = {
   'firstSteps.hide': 'Ausblenden (im Hilfe-Menü wieder aufrufbar)',
   'firstSteps.target': 'Person auf die Bühne stellen',
   'firstSteps.title': 'Erste Schritte',
-  'firstSteps.view': 'Bild in der Vorschau prüfen',
+  'firstSteps.view': 'Bild im Kamerablick prüfen',
 };

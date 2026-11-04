@@ -10,7 +10,6 @@ export const header: Record<string, string> = {
   // ── Header: Tabs ──
   'header.tab.2dPlan': '2D-Plan',
   'header.tab.3dView': '3D-Ansicht',
-  'header.tab.preview': 'Vorschau',
   'header.tab.multiview': 'Multiview',
   'header.tab.calculator': 'Rechner',
 

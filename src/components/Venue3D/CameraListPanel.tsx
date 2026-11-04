@@ -14,7 +14,7 @@ export interface CameraRow {
   hFovDeg: number | null;
 }
 
-type ToggleKey = 'coverage' | 'labels' | 'audience' | 'operators' | 'showLight' | 'videoBoard' | 'floorPlan';
+type ToggleKey = 'coverage' | 'labels' | 'audience' | 'operators' | 'tally' | 'showLight' | 'videoBoard' | 'floorPlan';
 
 /**
  * Kameraliste rechts in der 3D-Ansicht. Ein Klick faehrt die Ansicht in den
@@ -59,6 +59,7 @@ export default function CameraListPanel({
     { key: 'labels', label: t('venue.toggle.labels', 'Labels') },
     { key: 'audience', label: t('venue.toggle.audience', 'Audience') },
     { key: 'operators', label: t('venue.toggle.operators', 'Camera operators') },
+    { key: 'tally', label: t('venue.toggle.tally', 'Tally (PVW green, PGM red)') },
     { key: 'showLight', label: t('venue.toggle.showLight', 'Show light'), disabled: prefs.quality === 'simple', why: t('venue.toggle.showLightSimple', 'Not in the simple view') },
     { key: 'videoBoard', label: t('venue.toggle.videoBoard', 'Video wall'), disabled: hasRoomWalls, why: t('venue.toggle.videoBoardRoom', 'The room has its own video walls (sidebar, Room)') },
     { key: 'floorPlan', label: t('venue.toggle.floorPlan', 'Floor plan'), disabled: !hasFloorPlan, why: t('venue.toggle.floorPlanNone', 'No floor plan loaded') },

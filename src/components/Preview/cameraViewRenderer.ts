@@ -1053,3 +1053,28 @@ export function renderCamera(camId: string, canvas: HTMLCanvasElement, cssW: num
   });
   return projected !== undefined && canvas.width > 0;
 }
+
+const BILD_OVERLAYS: CameraViewOverlays = { grid: true, safeAreas: true, thirds: false, crosshair: true };
+
+/**
+ * Bild der gewaehlten Kamera mit Bedien-Overlays, ohne offenen Kamerablick —
+ * fuer Shot-Framegrab und Export, wenn die 3D-Ansicht gerade nicht im
+ * Kamerablick steht.
+ */
+export function renderSelectedCameraView(cssW = 640): HTMLCanvasElement | null {
+  const s = useStore.getState();
+  const cam = s.cameras.find((c) => c.id === s.selectedCameraId);
+  if (!cam) return null;
+  const canvas = document.createElement('canvas');
+  const projected = drawCameraView({
+    canvas,
+    cssW,
+    dpr: 1,
+    cam,
+    bare: false,
+    scene: { venue: s.venue, persons: s.persons, walls: s.walls, cameras: s.cameras, customCameras: s.customCameras, customLenses: s.customLenses },
+    overlays: BILD_OVERLAYS,
+    t: (key, en) => translate(s.language, key, en),
+  });
+  return projected !== undefined && canvas.width > 0 && canvas.height > 0 ? canvas : null;
+}
