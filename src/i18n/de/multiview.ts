@@ -10,4 +10,12 @@ export const multiview: Record<string, string> = {
   'multiview.program': 'PROGRAM',
   'multiview.tileHint': 'Klick: Preview · Doppelklick: direkt auf Program',
   'multiview.title': 'Multiview',
+  'multiview.fps': 'Bildrate für das PNG',
+  'multiview.png.tile': 'Kachel',
+  'multiview.pngHint': 'Die ganze Wand als PNG speichern — Fußzeile mit Projekt, Datum, Bildrate und Auflösung je Kachel',
+  'multiview.testPattern': 'Testbild',
+  'multiview.testPatternHint': 'Testbild statt Szene auf allen Kacheln — der Gitter-Knopf an einer Kachel schaltet nur diese',
+  'multiview.testPatternTile': 'Testbild auf dieser Kachel',
+  'multiview.tileRes': 'Auflösung der Kacheln',
+  'multiview.tileResHint': 'Kacheln in geringerer Auflösung rechnen, damit viele Kameras flüssig bleiben',
 };

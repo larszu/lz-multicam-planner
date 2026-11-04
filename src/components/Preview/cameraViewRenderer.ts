@@ -12,6 +12,7 @@
 // Die Vorschau ruft sie fuer ihr Bild, das Multiview fuer jede Kachel —
 // keiner braucht den anderen.
 // ───────────────────────────────────────────────────────────────────────────
+import { zeichneRahmenmaske, type Rahmenmaske } from '../../utils/rahmenmaske';
 import { useStore } from '../../store/useStore';
 import { defaultWallHeight, resolveWallHeights, type ResolvedWall } from '../../utils/wallHeight';
 import { getCameraById, getEffectiveSensor } from '../../data/cameras';
@@ -38,7 +39,7 @@ type TFn = (key: string, en: string) => string;
 
 export interface ProjectedPerson { id: string; sx: number; sy: number; topSy: number; dist: number }
 
-export interface CameraViewOverlays { grid: boolean; safeAreas: boolean; thirds: boolean; crosshair: boolean }
+export interface CameraViewOverlays { grid: boolean; safeAreas: boolean; thirds: boolean; crosshair: boolean; maske?: Rahmenmaske }
 
 export interface CameraViewScene {
   venue: Venue;
@@ -942,6 +943,8 @@ export function drawCameraView(args: DrawCameraViewArgs): ProjectedPerson[] | un
     ctx.strokeRect(tsM, tsM * (H / W), W - tsM * 2, H - tsM * 2 * (H / W));
     ctx.setLineDash([]);
   }
+
+  if (!bare && args.overlays.maske) zeichneRahmenmaske(ctx, W, H, args.overlays.maske);
 
   // Rule of thirds
   if (!bare && showThirds) {

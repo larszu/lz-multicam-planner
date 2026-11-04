@@ -475,6 +475,8 @@ export interface VenueCamera {
    */
   invertPreviewH?: boolean;
   invertPreviewV?: boolean;
+  /** Schaerfebereich dieser Kamera in 2D und 3D ausblenden, wenn er sonst gezeigt wird. */
+  dofHidden?: boolean;
   /**
    * Focus lock: when set, the preview keeps the focus distance pinned to the
    * named ReferencePerson. Re-pans and re-tilts but the distance follows the

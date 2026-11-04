@@ -128,4 +128,7 @@ export const venue: Record<string, string> = {
   'venue.subplan.confirm': 'Diesen Bereich als neuen Teilplan mit eigenen Kameras öffnen? Wände, Bühnen und Publikum darin kommen mit. Das aktuelle Projekt wird ersetzt — vorher speichern, um den ganzen Gebäudeplan zu behalten.',
   'venue.subplan.name': 'Raum',
   'venue.subplan.hint': 'Ein Rechteck um den Raum aufziehen, der einen eigenen Plan bekommt.',
+  'venue.list.dofCamera': 'Schärfentiefe dieser Kamera',
+  'venue.toggle.dof': 'Schärfentiefe',
+  'venue.toggle.dofTitle': 'Schärfebereich jeder Kamera als Körper: Nahgrenze, Fokusebene, Ferngrenze, hyperfokale Distanz',
 };

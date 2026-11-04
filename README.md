@@ -54,9 +54,11 @@ it — framed to the sensor, following pan, tilt and zoom.
   <img src="docs/img/preview-light.webp" alt="Rendered camera preview of a church stage with safe areas and lens data">
 </picture>
 <b>Camera view.</b> The camera's picture with its focal length, aperture
-and focus, plus safe areas, thirds and a data readout — *3D view → Camera
-view*. Fold out the camera control underneath and
-save the shot to a shotlist.
+and focus, plus safe areas, thirds, frame masks (9:16, 4:5, 1:1, 2.39) and a
+data readout — *3D view → Camera view*. The viewfinder label under the picture
+names camera, format, aperture, crop, lens and focal length; ‹ › steps through
+the lenses that fit and the picture follows; save it as a PNG for the client.
+Fold out the camera control underneath and save the shot to a shotlist.
 </td>
 <td width="50%" valign="top">
 <picture>
@@ -64,8 +66,9 @@ save the shot to a shotlist.
   <img src="docs/img/multiview-light.webp" alt="Multiview with large preview and program windows and one tile per camera">
 </picture>
 <b>Multiview like a vision mixer.</b> Every camera as a live tile, large
-Preview and Program, CUT (Space) and AUTO (Enter). The director sees the show
-before the first rehearsal.
+Preview and Program, CUT (Space) and AUTO (Enter). Test pattern per tile,
+lower tile resolution for many cameras, the whole wall as a PNG with frame
+rate. The director sees the show before the first rehearsal.
 </td>
 </tr>
 </table>
@@ -81,7 +84,8 @@ before the first rehearsal.
 - **Floor plan to walls:** a vector PDF or DXF gives walls, doors, windows, stages and scale without AI; scans go to Claude, ChatGPT, Gemini, Mistral or Grok with your own API key. The detected walls lie on the plan they came from, and *Move plan by dragging* lines the image up with them afterwards.
 - **One room out of a building plan:** *Floor plan → New sub-plan from an area…* crops a room into a new project with its own cameras; walls, stages and audience inside it come along at the same scale. Keep the building plan as its own file and make one sub-plan per room.
 - **One picture everywhere:** 3D view, camera view and multiview render the same scene with the same light and tone mapping; the angle of view comes from sensor, focal length, extender and squeeze, shown 16:9 whatever the window shape.
-- **Depth of field from the camera data:** focus distance, aperture, focal length and sensor — the sharp zone in the picture matches the DoF numbers beside it.
+- **Depth of field from the camera data:** focus distance, aperture, focal length and sensor — the sharp zone in the picture matches the DoF numbers beside it. In 3D (*Depth of field* in the camera list) it is a body between near and far limit with the focus plane and hyperfocal distance marked; the same switch draws it as a band in the 2D plan.
+- **One colour and number per camera:** list, 2D plan, the number marker over each camera in 3D, multiview tile, viewfinder label and camera card all carry the same colour and number.
 - **Show light you can set:** brightness, colour mood, haze, number and kind of fixtures — generated from your stages, stored in the project.
 - **Daylight and real camera bodies in 3D:** sun, sky and weather from date, time and place; each camera drawn as its body, lens and rig.
 - **Select, copy, paste:** click to select, Shift/Ctrl/⌘-click to add, Shift-drag a frame in the 2D plan; drag one to move them all, `Del` deletes, `Ctrl/⌘+C` / `Ctrl/⌘+V` copies with new ids, 1 m offset per paste — each one undo step. A person dropped on or next to a free chair sits down on it, at the chair's seat height and facing its way, and moves with it.
