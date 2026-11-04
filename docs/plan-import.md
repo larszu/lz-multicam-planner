@@ -74,10 +74,24 @@ the drawing follows the plan as it lies, X and Y calibrated separately if they
 are. Pages exported with a page rotation (`/Rotate`, common for landscape
 sheets) are read the same way the page is rendered.
 
-To line the plan up afterwards, *Background → Move plan by dragging* lets the
+To line the plan up afterwards, *Floor plan → Move plan by dragging* lets the
 image be dragged on the 2D plan; walls, stages and cameras stay put. *Done* or
 `Esc` locks it again, so normal work cannot shift it by accident. *Offset X/Y*
 still set it to the decimetre.
+
+## Sub-plans: one project per room
+
+A building plan often carries several halls that each get their own cameras.
+*Floor plan → New sub-plan from an area…* takes a rectangle dragged on the 2D
+plan and opens it as a new, unsaved project: the plan image is cropped at its
+own pixels (no loss), the scale stays, and walls, stages, audience areas,
+video walls and objects whose centre lies inside come along, moved so the room
+starts one metre from the corner. Cameras do not — they are planned per room.
+
+Run *Detect walls and stages* on the whole sheet first: the cropped image no
+longer matches the PDF or DXF, so on the sub-plan only the AI path is left.
+Keep the building plan as its own file and save each sub-plan under its own
+name.
 
 ## Measured on five real plans
 

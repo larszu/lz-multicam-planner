@@ -2140,6 +2140,8 @@ export default function Sidebar() {
   const selectCamera = useStore((s) => s.selectCamera);
   const planAusrichten = useStore((s) => s.planAusrichten);
   const setPlanAusrichten = useStore((s) => s.setPlanAusrichten);
+  const teilplanZeichnen = useStore((s) => s.teilplanZeichnen);
+  const setTeilplanZeichnen = useStore((s) => s.setTeilplanZeichnen);
   // Akkordeon: offen ist die Karte der ausgewaehlten Kamera. Klappt der Nutzer
   // sie trotzdem zu, merkt sich das genau diese eine Id — dadurch braucht es
   // keinen Effekt, der bei jeder Auswahl State nachzieht.
@@ -2447,6 +2449,15 @@ export default function Sidebar() {
                   className={`w-full py-1 text-xs border ${planAusrichten ? 'border-bc-accent bg-bc-accent/20 text-bc-accent' : 'border-bc-border bg-bc-panel-raised text-bc-text hover:text-bc-text-bright'}`}
                 >
                   {planAusrichten ? t('sidebar.planAlign.stop', 'Done moving the plan') : t('sidebar.planAlign.start', 'Move plan by dragging')}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={teilplanZeichnen}
+                  onClick={() => { if (!teilplanZeichnen) useStore.getState().setActiveTab('2d'); setTeilplanZeichnen(!teilplanZeichnen); }}
+                  title={t('sidebar.subplan.title', 'Crop one room out of a building plan into a new project with its own cameras. Keep the building plan as its own file and make one sub-plan per room.')}
+                  className={`w-full py-1 text-xs border ${teilplanZeichnen ? 'border-bc-accent bg-bc-accent/20 text-bc-accent' : 'border-bc-border bg-bc-panel-raised text-bc-text hover:text-bc-text-bright'}`}
+                >
+                  {teilplanZeichnen ? t('sidebar.subplan.stop', 'Cancel sub-plan') : t('sidebar.subplan.start', 'New sub-plan from an area…')}
                 </button>
                 <button
                   onClick={() => setBackgroundPlan(null)}

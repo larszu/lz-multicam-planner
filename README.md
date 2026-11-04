@@ -79,6 +79,7 @@ before the first rehearsal.
 
 - **Camera and lens catalogue:** 377 cameras from 36 brands, 835 lenses from 37 brands, 49 camera rigs — almost all with a link to the manufacturer's datasheet. Adapters, extenders and your own devices included.
 - **Floor plan to walls:** a vector PDF or DXF gives walls, doors, windows, stages and scale without AI; scans go to Claude, ChatGPT, Gemini, Mistral or Grok with your own API key. The detected walls lie on the plan they came from, and *Move plan by dragging* lines the image up with them afterwards.
+- **One room out of a building plan:** *Floor plan → New sub-plan from an area…* crops a room into a new project with its own cameras; walls, stages and audience inside it come along at the same scale. Keep the building plan as its own file and make one sub-plan per room.
 - **One picture everywhere:** 3D view, camera view and multiview render the same scene with the same light and tone mapping; the angle of view comes from sensor, focal length, extender and squeeze, shown 16:9 whatever the window shape.
 - **Depth of field from the camera data:** focus distance, aperture, focal length and sensor — the sharp zone in the picture matches the DoF numbers beside it.
 - **Show light you can set:** brightness, colour mood, haze, number and kind of fixtures — generated from your stages, stored in the project.
