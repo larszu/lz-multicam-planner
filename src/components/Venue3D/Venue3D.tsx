@@ -45,6 +45,7 @@ import { WEBGL_POWER_PREFERENCE } from '../../utils/gpuInfo';
 import Kamerablick from '../Preview/Kamerablick';
 import { tallyBus, tallyFarbe, tallyLampe, type TallyBus } from '../../utils/tally';
 import { KAMERABLICK_WUNSCH_EVENT, kamerablickGeoeffnet, kamerablickWunschAbholen } from './kamerablickWunsch';
+import { useProjektHimmel } from '../../lib/useProjektHimmel';
 
 /** Fahrt der Blickkamera (Ansichts-Knoepfe, Klick in der Kameraliste). */
 export const FLY_EVENT = 'multicam-3d-fly';
@@ -1096,6 +1097,7 @@ export default function Venue3D() {
   const simple = prefs.quality === 'simple';
   const show = prefs.showLight && !simple;
   const tag = show && prefs.daylight;
+  const [sky] = useProjektHimmel();
   const [tagBelichtung, setTagBelichtung] = useState(1);
   const look = useMemo(() => renderLook(show, tag ? tagBelichtung : undefined), [show, tag, tagBelichtung]);
   // Viele Kameras in der Planungsansicht: einfache Modelle, sonst stockt das
@@ -1184,7 +1186,7 @@ export default function Venue3D() {
             daten={kulisse}
             show={show}
             tag={tag}
-            sky={prefs.sky}
+            sky={sky}
             simple={simple}
             werte={werte}
             audience={prefs.audience}

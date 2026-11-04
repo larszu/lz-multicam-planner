@@ -144,4 +144,10 @@ export const header: Record<string, string> = {
   // #221 / #222 / #223 / #235
   'header.export.cameraMap.desc': 'Plan mit allen Kameras, Optiken, Stativen und Fahrwegen — SVG, PNG oder PDF',
   'header.export.cameraMap': 'Kamerakarte…',
+  'header.exchange.lightSection': 'Light Planner',
+  'header.lightPlanImport': 'Lichtplan importieren…',
+  'header.lightPlanImport.note': '.lightplan.json oder .avplan — Lichtkegel in 3D, Gegenlicht-Warnung',
+  'header.lightPlanImport.notJson': 'Diese Datei lässt sich nicht lesen (kein JSON).',
+  'header.lightPlanImport.noFixtures': 'Kein Lichtplan gefunden: Die Datei enthält keine Leuchten. Eine Projektdatei aus dem LZ Light Planner (.lightplan.json) oder ein Gesamtprojekt (.avplan) verwenden.',
+  'header.lightPlanRemove': 'Lichtplan entfernen',
 };

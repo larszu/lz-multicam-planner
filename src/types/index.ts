@@ -1,6 +1,7 @@
 import type { RaumErweiterung, VenueWallOpening } from '../avplan/floorplan';
 import type { SourceIdentity } from '../utils/sourceIdentity';
 import type { LedVideoWall } from '../utils/ledWand';
+import type { HimmelPrefs } from '../utils/tageslicht';
 
 // ── Sensor ──
 export interface SensorSize {
@@ -878,6 +879,8 @@ export interface Venue extends RaumErweiterung {
   videoWalls?: LedVideoWall[];
   /** Pixel limit of the LED processor, to check the canvas against. */
   ledProcessorMaxPx?: number;
+  /** Place, date and time for daylight (#226); missing = the last values chosen on this computer. */
+  sky?: HimmelPrefs;
 }
 
 /** Colour look of the show light. */

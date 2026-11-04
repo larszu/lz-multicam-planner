@@ -114,6 +114,9 @@ export const venue: Record<string, string> = {
   'venue.sky.place.custom': 'Koordinaten',
   'venue.sky.north': 'Norden (°)',
   'venue.sky.north.title': 'Wohin Norden im Grundriss zeigt, im Uhrzeigersinn von der Oberkante (90° = rechts)',
+  'venue.sky.sunNow': 'Sonne {az}° · {el}° hoch',
+  'venue.sky.sunDown': 'Sonne unter dem Horizont',
+  'venue.sky.shadow': 'Schatten {m} m je Meter Höhe',
   'venue.sky.lat': 'Breite',
   'venue.sky.lon': 'Länge',
   // Die vier Bearbeiten-Knöpfe an der Kamera im 3D-Raum (XY / Z / Pan / Tilt).

@@ -7,6 +7,7 @@ import type { Stage, Venue } from '../types';
 import { stageTopZ } from './stageBody';
 import { showLichtAus } from './showRig';
 import { ledAusDatei } from './ledWand';
+import { himmelAusDatei } from './tageslicht';
 import { audienceSeats, type AudienceInput } from './view3dScene';
 
 const RAUM_SCHLUESSEL = ['ceilingHeightM', 'floorMaterial', 'wallMaterial', 'seatingBlocks', 'videoWalls'] as const;
@@ -20,11 +21,14 @@ export function venueAusDatei(roh: Venue, stages: Stage[]): Venue {
   const basis: Record<string, unknown> = { ...roh };
   for (const k of RAUM_SCHLUESSEL) delete basis[k];
   delete basis.showLight;
+  delete basis.sky;
   const raum = raumAus(roh);
   const v: Venue = { ...(basis as unknown as Venue), stages, ...raum, ...(raum.videoWalls ? { videoWalls: raum.videoWalls.map(ledAusDatei) } : {}) };
   if (typeof roh.ledProcessorMaxPx !== 'number' || !(roh.ledProcessorMaxPx > 0)) delete v.ledProcessorMaxPx;
   // Showlicht nur, wenn die Datei eines hat — sonst gelten die Standards.
   if (roh.showLight && typeof roh.showLight === 'object') v.showLight = showLichtAus(roh.showLight);
+  const sky = himmelAusDatei(roh.sky);
+  if (sky) v.sky = sky;
   return v;
 }
 

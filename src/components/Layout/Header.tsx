@@ -1,10 +1,11 @@
 import { useStore, APP_VERSION, hatZwischenablage } from '../../store/useStore';
 import { auswahlGroesse, bereinigt } from '../../utils/auswahl';
-import { FiCamera, FiBox, FiSliders, FiSave, FiUpload, FiDownload, FiX, FiCheck, FiMap, FiMapPin, FiPlus, FiSettings, FiRotateCcw, FiRotateCw, FiCopy, FiClipboard, FiTrash2 } from 'react-icons/fi';
+import { FiCamera, FiBox, FiSliders, FiSave, FiUpload, FiDownload, FiX, FiCheck, FiMap, FiMapPin, FiPlus, FiSettings, FiRotateCcw, FiRotateCw, FiCopy, FiClipboard, FiTrash2, FiSun } from 'react-icons/fi';
 import { history, useHistoryState } from '../../store/history';
 import { toVenueExchange, parseVenueExchange } from '../../utils/venueExchange';
 import { cameraListOf, buildAvPlanExport } from '../../store/avplanExport';
 import { parseAvPlan } from '../../utils/avplan';
+import { lichtplanAusText } from '../../utils/foreignView';
 import { useRef, useCallback, useState, useEffect, useMemo } from 'react';
 import type { ExportMode } from '../Export/ExportPanel';
 import { editModeOf, type EditMode } from '../../types';
@@ -77,6 +78,7 @@ export default function Header({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const venueInputRef = useRef<HTMLInputElement>(null);
   const avplanInputRef = useRef<HTMLInputElement>(null);
+  const lichtplanInputRef = useRef<HTMLInputElement>(null);
   const unsaved = projectVersion !== lastSavedVersion;
   const [savePresetName, setSavePresetName] = useState('');
   const [showSaveInput, setShowSaveInput] = useState(false);
@@ -235,6 +237,20 @@ export default function Header({
     if (avplanInputRef.current) avplanInputRef.current.value = '';
   }, [t]);
 
+  const handleLichtplanFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        useStore.getState().setLichtplan(lichtplanAusText(await file.text()));
+      } catch (err) {
+        alert(err instanceof Error && err.message === 'json'
+          ? t('header.lightPlanImport.notJson', 'This file cannot be read (not JSON).')
+          : t('header.lightPlanImport.noFixtures', 'No light plan found: the file has no fixtures. Use a project file from LZ Light Planner (.lightplan.json) or a full project (.avplan).'));
+      }
+    }
+    if (lichtplanInputRef.current) lichtplanInputRef.current.value = '';
+  }, [t]);
+
   const handleImportVenue = useCallback(() => {
     venueInputRef.current?.click();
   }, []);
@@ -369,14 +385,28 @@ export default function Header({
               <MenuItem icon={<FiCamera size={13} />} onClick={() => { close(); handleExportCameras(); }}>
                 {t('header.camerasExport', 'Export cameras → Cable Planner')}
               </MenuItem>
+
+              <MenuHeading>{t('header.exchange.lightSection', 'Light Planner')}</MenuHeading>
+              <MenuItem
+                icon={<FiSun size={13} />}
+                onClick={() => { close(); lichtplanInputRef.current?.click(); }}
+                note={t('header.lightPlanImport.note', '.lightplan.json or .avplan — beams in 3D, backlight warning')}
+              >
+                {t('header.lightPlanImport', 'Import light plan…')}
+              </MenuItem>
               {hasForeignLighting && (
-                <MenuItem
-                  icon={<FiSliders size={13} />}
-                  checked={showForeign}
-                  onClick={() => { close(); toggleShowForeign(); }}
-                >
-                  {showForeign ? t('header.foreignLamps.hide', 'Hide foreign lamps') : t('header.foreignLamps.show', 'Show foreign lamps')}
-                </MenuItem>
+                <>
+                  <MenuItem
+                    icon={<FiSliders size={13} />}
+                    checked={showForeign}
+                    onClick={() => { close(); toggleShowForeign(); }}
+                  >
+                    {showForeign ? t('header.foreignLamps.hide', 'Hide foreign lamps') : t('header.foreignLamps.show', 'Show foreign lamps')}
+                  </MenuItem>
+                  <MenuItem icon={<FiTrash2 size={13} />} onClick={() => { close(); useStore.getState().setLichtplan(undefined); }}>
+                    {t('header.lightPlanRemove', 'Remove light plan')}
+                  </MenuItem>
+                </>
               )}
 
               <MenuSeparator />
@@ -618,6 +648,7 @@ export default function Header({
         <input ref={fileInputRef} type="file" accept=".mcplan,.json" className="hidden" onChange={handleFileChange} />
         <input ref={venueInputRef} type="file" accept=".venue.json,.json" className="hidden" onChange={handleVenueFileChange} />
         <input ref={avplanInputRef} type="file" accept=".avplan,.json" className="hidden" onChange={handleAvplanFileChange} />
+        <input ref={lichtplanInputRef} type="file" accept=".lightplan.json,.avplan,.json" className="hidden" aria-label={t('header.lightPlanImport', 'Import light plan…')} onChange={handleLichtplanFileChange} />
       </header>
 
       {/* Die Modul-Reiter — eine EIGENE Zeile, nicht die Menueleiste. Sie

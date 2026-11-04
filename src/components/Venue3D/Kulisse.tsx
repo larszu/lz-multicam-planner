@@ -89,7 +89,7 @@ export function Kulisse({ daten, show, tageslicht = false, simple, werte, audien
             glas
               ? <Scheibe key={`${w.id}-${i}`} st={st} farbe={w.color} />
               : (
-                <mesh key={`${w.id}-${i}`} position={[st.x, st.unten + st.hoehe / 2, st.y]} rotation={[0, -st.winkel, 0]}>
+                <mesh key={`${w.id}-${i}`} position={[st.x, st.unten + st.hoehe / 2, st.y]} rotation={[0, -st.winkel, 0]} castShadow receiveShadow>
                   <boxGeometry args={[st.laenge, st.hoehe, dicke]} />
                   {venue.wallMaterial
                     ? <WallSurfaceMaterial art={venue.wallMaterial} laengeM={st.laenge} hoeheM={st.hoehe} farbe={w.color} />

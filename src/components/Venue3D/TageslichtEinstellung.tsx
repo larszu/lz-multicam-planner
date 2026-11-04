@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import { useTranslation } from '../../i18n';
+import { format, useTranslation } from '../../i18n';
 import { ORTE, WETTER, type OrtArt, type WetterArt } from '../../avplan/scene3d';
-import { himmelTag, uhrzeit, zeitMarken, type HimmelPrefs } from '../../utils/tageslicht';
+import { himmelTag, schattenProMeter, sonneJetzt, uhrzeit, zeitMarken, type HimmelPrefs } from '../../utils/tageslicht';
 import Regler from '../ui/Regler';
 
 const feld = 'w-full border border-bc-border bg-bc-panel-raised px-2 py-1 text-bc-text-bright';
@@ -21,6 +21,8 @@ export default function TageslichtEinstellung({ sky, onSky }: { sky: HimmelPrefs
   const { t } = useTranslation();
   const marken = useMemo(() => zeitMarken(sky), [sky]);
   const tag = himmelTag(sky);
+  const sonne = sonneJetzt(sky);
+  const schatten = schattenProMeter(sonne.elevationDeg);
   const datumWert = `${tag.getFullYear()}-${String(tag.getMonth() + 1).padStart(2, '0')}-${String(tag.getDate()).padStart(2, '0')}`;
   const wetterName: Record<WetterArt, string> = {
     klar: t('venue.sky.weather.clear', 'Clear'),
@@ -67,6 +69,14 @@ export default function TageslichtEinstellung({ sky, onSky }: { sky: HimmelPrefs
           <span><span className="mr-1 inline-block h-2 w-2 rounded-bc-full bg-bc-yellow" aria-hidden />{t('venue.sky.golden', 'Golden hour')}</span>
           <span><span className="mr-1 inline-block h-2 w-2 rounded-bc-full bg-bc-accent" aria-hidden />{t('venue.sky.blue', 'Blue hour')}</span>
         </span>
+        <p className="tabular-nums text-bc-text">
+          {sonne.elevationDeg > 0
+            ? format(t('venue.sky.sunNow', 'Sun {az}° · {el}° high'), { az: Math.round(sonne.azimutDeg), el: Math.round(sonne.elevationDeg) })
+            : t('venue.sky.sunDown', 'Sun below the horizon')}
+          {schatten !== null && (
+            <span className="text-bc-muted">{' · '}{format(t('venue.sky.shadow', 'Shadow {m} m per metre of height'), { m: schatten < 10 ? schatten.toFixed(1) : String(Math.round(schatten)) })}</span>
+          )}
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
