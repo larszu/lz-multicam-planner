@@ -262,16 +262,17 @@ export function StageBodyReal({ stage }: { stage: Stage }) {
 }
 
 /* ── Publikum, Sitze, Tribuenen ── */
-export function CrowdAndSeating({ venue, cameras, persons, walls, max }: {
+export function CrowdAndSeating({ venue, cameras, persons, walls, max, freiFuellen }: {
   venue: Venue;
+  freiFuellen: boolean;
   cameras: { x: number; y: number }[];
   persons: { x: number; y: number }[];
   walls: { x1: number; y1: number; x2: number; y2: number }[];
   max: number;
 }) {
   const bild = useMemo(() => publikumsBild({
-    widthM: venue.widthM, depthM: venue.heightM, stages: venue.stages, cameras, persons, walls, blocks: venue.seatingBlocks,
-  }), [venue.widthM, venue.heightM, venue.stages, venue.seatingBlocks, cameras, persons, walls]);
+    widthM: venue.widthM, depthM: venue.heightM, stages: venue.stages, cameras, persons, walls, blocks: venue.seatingBlocks, freiFuellen,
+  }), [venue.widthM, venue.heightM, venue.stages, venue.seatingBlocks, cameras, persons, walls, freiFuellen]);
   const obj = useMemo(() => {
     const g = new THREE.Group();
     if (bild.menschen.length) g.add(erzeugePublikum(bild.menschen, { max }));

@@ -198,3 +198,26 @@ export function Note({ tone, children }: { tone: 'info' | 'warn'; children: Reac
     </p>
   );
 }
+
+const zahlAus = (v: string, fallback: number) => {
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+/** Kleines Zahlenfeld mit Beschriftung darueber, auf [min, max] begrenzt. */
+export function Zahl({ label, value, step, min, max, onChange, title }: { label: string; value: number; step: number; min: number; max: number; onChange: (v: number) => void; title?: string }) {
+  return (
+    <label title={title}>
+      <span className="text-bc-dim">{label}</span>
+      <input
+        type="number"
+        className="w-full bg-bc-panel border border-bc-border px-1 py-0.5 text-bc-text-bright text-xs tabular-nums"
+        value={value}
+        step={step}
+        min={min}
+        max={max}
+        onChange={(e) => onChange(Math.min(max, Math.max(min, zahlAus(e.target.value, value))))}
+      />
+    </label>
+  );
+}

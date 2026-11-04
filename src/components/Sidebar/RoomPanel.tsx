@@ -8,31 +8,26 @@
 import { FiPlus, FiTrash2 } from 'react-icons/fi';
 import { useStore } from '../../store/useStore';
 import { useTranslation, format } from '../../i18n';
+import { Zahl } from './fields';
 import { RAUM_BOEDEN, RAUM_WAENDE, sitzblockNormal, sitzblockPlaetze, videowandNormal, type RaumBoden, type RaumWand, type VenueSeatingBlock } from '../../avplan/floorplan';
 
 const rund = (v: number) => Math.round(v * 100) / 100;
-
-const zahl = (v: string, fallback: number) => {
-  const n = parseFloat(v);
-  return Number.isFinite(n) ? n : fallback;
-};
-
-const feld = 'w-full bg-bc-panel border border-bc-border px-1 py-0.5 text-bc-text-bright text-xs tabular-nums';
-
-function Zahl({ label, value, step, min, max, onChange, title }: { label: string; value: number; step: number; min: number; max: number; onChange: (v: number) => void; title?: string }) {
-  return (
-    <label title={title}>
-      <span className="text-bc-dim">{label}</span>
-      <input type="number" className={feld} value={value} step={step} min={min} max={max} onChange={(e) => onChange(Math.min(max, Math.max(min, zahl(e.target.value, value))))} />
-    </label>
-  );
-}
 
 export default function RoomPanel() {
   const { t } = useTranslation();
   const venue = useStore((s) => s.venue);
   const setVenue = useStore((s) => s.setVenue);
-  const addSeatingBlock = useStore((s) => s.addSeatingBlock);
+  const publikumZeichnen = useStore((s) => s.publikumZeichnen);
+  const setPublikumZeichnen = useStore((s) => s.setPublikumZeichnen);
+  const setActiveTab = useStore((s) => s.setActiveTab);
+  const zeichnen = (art: 'seated' | 'standing') => {
+    if (publikumZeichnen === art) {
+      setPublikumZeichnen(null);
+      return;
+    }
+    setActiveTab('2d');
+    setPublikumZeichnen(art);
+  };
   const updateSeatingBlock = useStore((s) => s.updateSeatingBlock);
   const removeSeatingBlock = useStore((s) => s.removeSeatingBlock);
   const addVideoWall = useStore((s) => s.addVideoWall);
@@ -76,7 +71,7 @@ export default function RoomPanel() {
 
   return (
     <div className="space-y-2 text-xs" style={{ padding: '0 14px 12px' }}>
-      <p className="text-[11px] text-bc-muted">{t('room.hint', 'Optional — only for the 3D view. Without audience areas, the free floor fills with people on its own.')}</p>
+      <p className="text-[11px] text-bc-muted">{t('room.hint', 'Optional — only for the 3D view. Draw audience areas on the 2D plan; with a floor plan or walls, people appear only there. An empty room without either fills its free floor on its own.')}</p>
 
       <div className="grid grid-cols-2 gap-2">
         <label>
@@ -162,12 +157,18 @@ export default function RoomPanel() {
         );
       })}
       <div className="grid grid-cols-2 gap-1">
-        <button onClick={() => addSeatingBlock(false)} className="flex items-center justify-center gap-1 px-2 py-1 bg-bc-accent/20 text-bc-accent text-xs hover:bg-bc-accent/30">
-          <FiPlus size={12} /> {t('room.addSeated', 'Seated area')}
-        </button>
-        <button onClick={() => addSeatingBlock(true)} className="flex items-center justify-center gap-1 px-2 py-1 bg-bc-accent/20 text-bc-accent text-xs hover:bg-bc-accent/30">
-          <FiPlus size={12} /> {t('room.addStanding', 'Standing area')}
-        </button>
+        {([['seated', t('room.addSeated', 'Seated area')], ['standing', t('room.addStanding', 'Standing area')]] as const).map(([art, label]) => (
+          <button
+            key={art}
+            type="button"
+            aria-pressed={publikumZeichnen === art}
+            onClick={() => zeichnen(art)}
+            title={t('room.draw.title', 'Drag a rectangle on the 2D plan — a click without dragging places the area in front of the main stage')}
+            className={`flex items-center justify-center gap-1 px-2 py-1 text-xs ${publikumZeichnen === art ? 'bg-bc-accent text-bc-accent-text' : 'bg-bc-accent/20 text-bc-accent hover:bg-bc-accent/30'}`}
+          >
+            <FiPlus size={12} /> {label}
+          </button>
+        ))}
       </div>
 
       <div className="pt-1 text-[13px] font-semibold text-bc-text-bright">{t('room.videoWalls', 'Video walls')}</div>

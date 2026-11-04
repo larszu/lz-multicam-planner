@@ -32,6 +32,7 @@ import { clampHeight, clampTrack, rigLimits } from '../../utils/rigLimits';
 import { rigYaw } from '../../utils/camera';
 import { defaultWallHeight } from '../../utils/wallHeight';
 import { WallHeightField } from './WallHeightField';
+import { WandOeffnungen } from './WandOeffnungen';
 import { DEFAULT_PATTERN_ROWS, PATTERN_ROWS_MAX, PATTERN_ROWS_MIN } from '../../utils/wallSurface';
 import { FieldRow, Group, Note, Readout, ValueSlider } from './fields';
 import Regler from '../ui/Regler';
@@ -2159,7 +2160,7 @@ export default function Sidebar() {
   const [camerasOpen, setCamerasOpen] = useState(true);
   const [wallsOpen, setWallsOpen] = useState(false);
   const [bgOpen, setBgOpen] = useState(false);
-  const [wallDrawMode, setWallDrawMode] = useState(false);
+  const [wallDrawMode, setWallDrawMode] = useState<false | 'wall' | 'glass'>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [calibAxis, setCalibAxis] = useState<'x' | 'y' | null>(null);
   const [calibDistX, setCalibDistX] = useState('10');
@@ -2208,7 +2209,7 @@ export default function Sidebar() {
   }, []);
 
   useEffect(() => {
-    window.dispatchEvent(new CustomEvent('multicam-wall-draw', { detail: { active: wallDrawMode } }));
+    window.dispatchEvent(new CustomEvent('multicam-wall-draw', { detail: { active: !!wallDrawMode, kind: wallDrawMode || 'wall' } }));
   }, [wallDrawMode]);
 
   return (
@@ -2598,12 +2599,21 @@ export default function Sidebar() {
                 onChange={(v) => v !== undefined && setVenue({ ...venue, defaultWallHeightM: v })}
               />
             </label>
-            <button
-              onClick={() => setWallDrawMode((active) => !active)}
-              className={`flex items-center gap-1 px-2 py-1 text-xs w-full justify-center ${wallDrawMode ? 'bg-bc-yellow/20 text-bc-yellow-text hover:bg-bc-yellow/30' : 'bg-bc-dark text-bc-text hover:text-bc-text-bright border border-bc-border'}`}
-            >
-              {wallDrawMode ? t('sidebar.stopDrawing', 'Stop drawing') : t('sidebar.drawWalls', 'Draw walls')}
-            </button>
+            <div className="grid grid-cols-2 gap-1">
+              {(['wall', 'glass'] as const).map((art) => (
+                <button
+                  key={art}
+                  type="button"
+                  aria-pressed={wallDrawMode === art}
+                  onClick={() => setWallDrawMode((m) => (m === art ? false : art))}
+                  className={`flex items-center gap-1 px-2 py-1 text-xs justify-center ${wallDrawMode === art ? 'bg-bc-yellow/20 text-bc-yellow-text hover:bg-bc-yellow/30' : 'bg-bc-dark text-bc-text hover:text-bc-text-bright border border-bc-border'}`}
+                >
+                  {wallDrawMode === art
+                    ? t('sidebar.stopDrawing', 'Stop drawing')
+                    : art === 'wall' ? t('sidebar.drawWalls', 'Draw walls') : t('sidebar.drawGlass', 'Draw glass front')}
+                </button>
+              ))}
+            </div>
             {wallDrawMode && (
               <div className="border border-bc-border bg-bc-panel-raised px-2 py-1.5 text-[10px] text-bc-muted leading-relaxed">
                 {t('sidebar.wallDrawHelp', 'Click once to place the start point, click again to finish the wall. Hold Shift to snap the angle. Right-click a wall to delete it.')}
@@ -2685,6 +2695,8 @@ export default function Sidebar() {
                     {t('sidebar.all', 'All')}
                   </button>
                 </div>
+
+                <WandOeffnungen wall={w} onChange={(u) => updateWall(w.id, u)} />
 
                 {/* Wie das Muster auf der Wand liegt (#74). Die Anzahl haengt
                     jetzt an der Wand statt am Zoom. */}

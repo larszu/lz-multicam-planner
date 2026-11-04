@@ -14,6 +14,8 @@ export function useKulissenDaten(videoBoard: boolean) {
   const persons = useStore((s) => s.persons);
   const rohWalls = useStore((s) => s.walls);
   const walls = useMemo(() => resolveWallHeights(rohWalls, defaultWallHeight(venue)), [rohWalls, venue]);
+  const hatPlan = useStore((s) => !!s.backgroundPlan);
+  const freiFuellen = !hatPlan && rohWalls.length === 0;
 
   const diag = Math.hypot(venue.widthM, venue.heightM);
   // Nur die STANDORTE, als Zeichenkette verglichen: ein Schwenk, ein Zoom
@@ -43,7 +45,7 @@ export function useKulissenDaten(videoBoard: boolean) {
   const farDist = Math.max(500, diag * 6);
   const personBlick = (x: number, y: number) => (Math.atan2(boardLook.y - y, boardLook.x - x) * 180) / Math.PI;
 
-  return { venue, cameras, persons, walls, diag, audienceCams, audiencePersons, boardLook, draussen, ledWaende, farDist, personBlick };
+  return { venue, cameras, persons, walls, freiFuellen, diag, audienceCams, audiencePersons, boardLook, draussen, ledWaende, farDist, personBlick };
 }
 
 const NACHLAUF_MS = 250;
