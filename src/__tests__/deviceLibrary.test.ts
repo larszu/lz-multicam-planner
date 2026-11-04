@@ -236,7 +236,6 @@ describe('store against a mocked server', () => {
       .mockResolvedValueOnce(json({ user: { id: 'u', email: 'a@b.de', username: 'l' } }, { 'set-auth-token': 'T' }))
       .mockResolvedValueOnce(json({ planner: 'multicam', results: [
         { localId: eigeneKamera.id, state: 'edit-proposed', slug: 'sony-pxw-fx9', moderation: 'pending' },
-        { localId: 'custom-lens-1', state: 'blocked', findings: [{ kind: 'no-source', blocking: true }] },
       ] }))
       .mockResolvedValueOnce(json(antwort(0, [])));
     await useDeviceLibrary.getState().signIn('a@b.de', 'pw');
@@ -250,7 +249,9 @@ describe('store against a mocked server', () => {
       core: { manufacturer: 'Sony', model: 'PXW-FX9 (eigene)', category: 'Camera', sourceUrl: fx9.manufacturerUrl, description: fx9.notes },
       facet: cameraToFacet(eigeneKamera),
     })));
-    expect(body.items[1].core.sourceUrl).toBeUndefined();
+    // Die Optik ohne Datenblattlink blockiert schon lokal und geht nicht mit:
+    // ein Eintrag, den die Route ablehnt, liesse sonst die ganze Anfrage scheitern.
+    expect(body.items).toHaveLength(1);
     expect(fetchMock.mock.calls[2][0]).toContain('/api/sync?planner=multicam');
 
     const r = useDeviceLibrary.getState().uploads.records;
@@ -313,6 +314,54 @@ describe('store against a mocked server', () => {
     expect(useDeviceLibrary.getState().error).toBe('exists');
     expect(messageText('exists')).toMatch(/already in the library/);
     expect(messageText('guidelines-outdated')).toMatch(/guidelines/);
+  });
+
+  it('a server error keeps status and code and says what they mean (#156)', async () => {
+    const { useDeviceLibrary, registerOwnItems } = await import('../library/store');
+    const { serverReasonText } = await import('../library/messages');
+    const en = (_k: string, e: string) => e;
+    useDeviceLibrary.getState().setAutoUpload(false);
+    registerOwnItems(() => [{ kind: 'camera', camera: eigeneKamera }]);
+    anmelden();
+    await useDeviceLibrary.getState().signIn('a@b.de', 'pw');
+    fetchMock.mockResolvedValueOnce(json({ error: 'storage-full' }, {}, 507));
+    await useDeviceLibrary.getState().uploadOwn({ force: true });
+    const st = useDeviceLibrary.getState();
+    expect(st.error).toBe('server');
+    expect(st.signedIn).toBe(true);
+    expect(st.errorDetail).toEqual({ status: 507, code: 'storage-full' });
+    expect(serverReasonText(en, st.errorDetail!)).toMatch(/run out of storage.*\(HTTP 507 · storage-full\)$/);
+
+    fetchMock.mockResolvedValueOnce(new Response('Bad Gateway', { status: 502 }));
+    await useDeviceLibrary.getState().uploadOwn({ force: true });
+    expect(useDeviceLibrary.getState().errorDetail).toEqual({ status: 502, code: '' });
+    expect(serverReasonText(en, { status: 502, code: '' })).toMatch(/temporarily unavailable.*\(HTTP 502\)$/);
+    expect(serverReasonText(en, { status: 404, code: 'not-found' })).toMatch(/older version/);
+    expect(serverReasonText(en, { status: 400, code: 'invalid' })).toMatch(/invalid/);
+    expect(serverReasonText(en, { status: 500, code: 'server' })).toMatch(/internal error.*\(HTTP 500 · server\)$/);
+  });
+
+  it('an entry the route would refuse is blocked locally and does not sink the others', async () => {
+    const { useDeviceLibrary, registerOwnItems } = await import('../library/store');
+    const ohneHersteller: Camera = { ...eigeneKamera, id: 'custom-cam-leer', manufacturer: '  ' };
+    const langeNotiz: Camera = { ...eigeneKamera, id: 'custom-cam-lang', model: 'Lang', notes: 'x'.repeat(2001) };
+    useDeviceLibrary.getState().setAutoUpload(false);
+    registerOwnItems(() => [{ kind: 'camera', camera: ohneHersteller }, { kind: 'camera', camera: eigeneKamera }, { kind: 'camera', camera: langeNotiz }]);
+    anmelden();
+    await useDeviceLibrary.getState().signIn('a@b.de', 'pw');
+    fetchMock.mockResolvedValueOnce(json({ results: [{ localId: eigeneKamera.id, state: 'created', slug: 's', moderation: 'pending' }] }));
+    await useDeviceLibrary.getState().uploadOwn({ force: true });
+    const body = JSON.parse(String((fetchMock.mock.calls[2][1] as RequestInit).body));
+    expect(body.items.map((i: { localId: string }) => i.localId)).toEqual([eigeneKamera.id]);
+    const r = useDeviceLibrary.getState().uploads.records;
+    expect(r['custom-cam-leer']).toMatchObject({ state: 'blocked', findings: ['no-manufacturer'] });
+    expect(r['custom-cam-lang']).toMatchObject({ state: 'blocked', findings: ['description-too-long'] });
+    expect(r[eigeneKamera.id]).toMatchObject({ state: 'created' });
+
+    fetchMock.mockClear();
+    await useDeviceLibrary.getState().uploadOwn({ force: true, only: ['custom-cam-leer'] });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(useDeviceLibrary.getState().error).toBeNull();
   });
 
   it('a changed server forgets the token; bad addresses are refused', async () => {

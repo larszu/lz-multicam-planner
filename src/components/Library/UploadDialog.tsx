@@ -8,7 +8,7 @@ import { deviceUrl } from '../../utils/deviceLibraryClient';
 import { useDeviceLibrary } from '../../library/store';
 import { useStore } from '../../store/useStore';
 import type { LibraryItem } from '../../library/facet';
-import { findingText, uploadStateText } from '../../library/uploadText';
+import { findingText, itemErrorText, uploadStateText } from '../../library/uploadText';
 import LibraryErrorLine from './LibraryErrorLine';
 import { openSettings } from '../Settings/openSettings';
 
@@ -41,7 +41,7 @@ export default function UploadDialog({ item, onClose }: { item: LibraryItem; onC
       else useStore.getState().updateCustomLens(entry.id, { manufacturerUrl: url });
     }
     await lib.uploadOwn({ only: [entry.id], force: true });
-    setSent(true);
+    setSent(!useDeviceLibrary.getState().error);
   };
 
   return (
@@ -131,7 +131,7 @@ export default function UploadDialog({ item, onClose }: { item: LibraryItem; onC
                 {record.state === 'blocked' && record.findings?.length
                   ? ` (${record.findings.map((k) => findingText(t, k)).join(', ')})`
                   : ''}
-                {record.state === 'error' && record.error ? ` (${record.error})` : ''}
+                {record.state === 'error' && record.error ? ` (${itemErrorText(t, record.error)})` : ''}
               </p>
               {record.slug && (
                 <a href={deviceUrl(lib.server, record.slug)} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-bc-accent hover:underline">
@@ -141,7 +141,7 @@ export default function UploadDialog({ item, onClose }: { item: LibraryItem; onC
             </div>
           )}
 
-          {lib.error && <LibraryErrorLine code={lib.error} detail={lib.errorDetail ?? undefined} />}
+          {lib.error && <LibraryErrorLine code={lib.error} detail={lib.errorDetail} />}
         </div>
       </div>
     </div>

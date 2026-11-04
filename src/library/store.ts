@@ -37,10 +37,10 @@ import {
 } from '../utils/deviceLibraryClient';
 import { loadJSON, saveJSON } from '../utils/storage';
 import type { LibraryItem } from './facet';
-import { applyUploadResults, emptyLedger, pendingUploads, pruneLedger, readLedger, type UploadLedger } from './upload';
+import { applyUploadResults, emptyLedger, localFindings, pendingUploads, pruneLedger, readLedger, type UploadLedger } from './upload';
 import { setLibraryCatalog } from './registry';
 import { emptyCache, mergeSync, readCache, writeCache, type LibraryCache, type SyncStats } from './sync';
-import type { LibraryFehler } from './messages';
+import type { LibraryFehler, ServerDetail } from './messages';
 import { clearToken, loadToken, saveToken } from './tokenStore';
 
 const SERVER_KEY = 'multicam-device-library-server';
@@ -84,7 +84,7 @@ interface LibraryState {
   error: LibraryFehler | null;
   /** HTTP-Status und Code des Servers zu `error: 'server'` (#156) — ohne ihn
    *  sagte die Meldung nur „spaeter erneut versuchen". */
-  errorDetail: string | null;
+  errorDetail: ServerDetail | null;
   /** Token nur fuer diese Sitzung gemerkt (kein Schluesselbund / Speicher voll). */
   sessionOnly: boolean;
   cache: LibraryCache;
@@ -147,13 +147,12 @@ export const useDeviceLibrary = create<LibraryState>()((set, get) => {
     await get().syncAll();
   };
 
-  const fehlerDetail = (e: unknown): string | null => {
+  const fehlerDetail = (e: unknown): ServerDetail | null => {
     if (e instanceof LibraryError) {
-      if (e.code !== 'server') return null;
-      const teile = [e.status ? `HTTP ${e.status}` : '', e.message && e.message !== e.code ? e.message : ''].filter(Boolean);
-      return teile.length ? teile.join(' · ') : null;
+      if (e.code !== 'server' || e.message === 'server-empty') return null;
+      return { status: e.status, code: e.message !== e.code ? e.message : '' };
     }
-    return e instanceof Error ? e.message : null;
+    return e instanceof Error ? { status: 0, code: e.message } : null;
   };
 
   const abgemeldetWenn = async (e: unknown): Promise<LibraryFehler> => {
@@ -189,13 +188,13 @@ export const useDeviceLibrary = create<LibraryState>()((set, get) => {
         const user = await currentUser(get().server, token);
         if (!user) {
           await vergiss();
-          set({ phase: 'idle', error: 'not-signed-in' });
+          set({ phase: 'idle', error: 'not-signed-in', errorDetail: null });
           return;
         }
         set({ user, phase: 'idle', error: null });
       } catch (e) {
         // Offline: angemeldet bleiben, der Cache traegt weiter.
-        set({ phase: 'idle', error: e instanceof LibraryError ? e.code : 'offline' });
+        set({ phase: 'idle', error: e instanceof LibraryError ? e.code : 'offline', errorDetail: null });
         return;
       }
       await get().syncAll();
@@ -227,7 +226,7 @@ export const useDeviceLibrary = create<LibraryState>()((set, get) => {
         set({ phase: 'second-factor' });
         return;
       }
-      set({ phase: 'idle', error: r.code });
+      set({ phase: 'idle', error: r.code, errorDetail: null });
     },
 
     verifyCode: async (code) => {
@@ -283,11 +282,17 @@ export const useDeviceLibrary = create<LibraryState>()((set, get) => {
       const ids = new Set(alle.map((i) => (i.kind === 'camera' ? i.camera.id : i.lens.id)));
       const ledger = pruneLedger(get().uploads, ids);
       const auswahl = opts.only ? alle.filter((i) => opts.only!.includes(i.kind === 'camera' ? i.camera.id : i.lens.id)) : alle;
-      const offen = pendingUploads(auswahl, ledger, opts.force);
+      const alleOffen = pendingUploads(auswahl, ledger, opts.force);
+      const vorab = alleOffen.flatMap((u) => {
+        const findings = localFindings(u.core);
+        return findings.length ? [{ localId: u.localId, state: 'blocked' as const, findings }] : [];
+      });
+      const lokal = vorab.length ? applyUploadResults(ledger, alleOffen, vorab, new Date().toISOString()) : ledger;
+      const offen = alleOffen.filter((u) => !vorab.some((v) => v.localId === u.localId));
       if (offen.length === 0) {
-        if (ledger !== get().uploads) {
-          saveJSON(LEDGER_KEY, ledger);
-          set({ uploads: ledger });
+        if (lokal !== get().uploads) {
+          saveJSON(LEDGER_KEY, lokal);
+          set({ uploads: lokal, ...(vorab.length ? { error: null, errorDetail: null } : {}) });
         }
         return;
       }
@@ -299,11 +304,12 @@ export const useDeviceLibrary = create<LibraryState>()((set, get) => {
           'multicam',
           offen.map(({ hash: _h, ...item }) => item),
         );
-        const uploads = applyUploadResults(ledger, offen, ergebnis, new Date().toISOString());
+        const uploads = applyUploadResults(lokal, offen, ergebnis, new Date().toISOString());
         saveJSON(LEDGER_KEY, uploads);
         set({ uploads, phase: 'idle' });
       } catch (e) {
-        set({ phase: 'idle', error: await abgemeldetWenn(e), errorDetail: fehlerDetail(e) });
+        if (lokal !== ledger) saveJSON(LEDGER_KEY, lokal);
+        set({ uploads: lokal, phase: 'idle', error: await abgemeldetWenn(e), errorDetail: fehlerDetail(e) });
       }
     },
 

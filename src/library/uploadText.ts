@@ -34,7 +34,31 @@ export function findingText(t: T, kind: string): string {
       return t('library.finding.noManufacturer', 'manufacturer missing');
     case 'no-model':
       return t('library.finding.noModel', 'model missing');
+    case 'manufacturer-too-long':
+      return t('library.finding.manufacturerTooLong', 'manufacturer longer than 120 characters');
+    case 'model-too-long':
+      return t('library.finding.modelTooLong', 'model longer than 160 characters');
+    case 'description-too-long':
+      return t('library.finding.notesTooLong', 'notes longer than 2000 characters');
+    case 'sourceUrl-too-long':
+      return t('library.finding.sourceTooLong', 'datasheet link longer than 500 characters');
     default:
       return kind;
+  }
+}
+
+/** Fehler-Kennung eines einzelnen Eintrags (`state: 'error'`) in Worten. */
+export function itemErrorText(t: T, code: string): string {
+  switch (code) {
+    case 'hidden':
+      return t('library.itemError.hidden', 'the library has hidden this device');
+    case 'pending-by-other':
+      return t('library.itemError.pendingByOther', 'another proposal for this device is still waiting for moderation — try again once it is decided');
+    case 'pending-exists':
+      return t('library.itemError.pendingExists', 'your earlier proposal for this device is still waiting for moderation');
+    case 'exists':
+      return t('library.itemError.exists', 'manufacturer and model already belong to another device');
+    default:
+      return code;
   }
 }
