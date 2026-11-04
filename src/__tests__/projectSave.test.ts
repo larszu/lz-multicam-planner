@@ -23,7 +23,7 @@ function electronBridge() {
   const calls = { saveAs: 0, write: [] as string[], open: 0 };
   const bridge = {
     saveAs: vi.fn(async (name: string) => { calls.saveAs++; return { path: `/tmp/${name}`, name }; }),
-    write: vi.fn(async (p: string) => { calls.write.push(p); return true; }),
+    write: vi.fn(async (p: string, _text: string) => { calls.write.push(p); return true; }),
     open: vi.fn(async () => {
       calls.open++;
       return { path: '/tmp/halle.mcplan', name: 'halle.mcplan', text: JSON.stringify({ formatVersion: 1, appVersion: 'x', projectVersion: 7, savedAt: '', venue: { name: 'Halle', widthM: 20, heightM: 10, stages: [] }, cameras: [], persons: [], walls: [], backgroundPlan: null }) };
@@ -150,5 +150,46 @@ describe('ungespeichert', () => {
     const m = await laden({ multicamProjectFile: bridge });
     await m.openProjectWithTarget();
     expect(m.useStore.getState().hasUnsavedChanges()).toBe(false);
+  });
+});
+
+describe('Revision statt Aenderungszaehler (#251)', () => {
+  it('jedes Speichern zaehlt die Revision um eins hoch, Aenderungen dazwischen nicht', async () => {
+    const { bridge } = electronBridge();
+    const m = await laden({ multicamProjectFile: bridge });
+    expect(m.useStore.getState().savedRevision).toBe(0);
+    for (let i = 0; i < 20; i++) m.useStore.getState().addWall();
+    await m.saveProject(texts);
+    expect(m.useStore.getState().savedRevision).toBe(1);
+    for (let i = 0; i < 20; i++) m.useStore.getState().addWall();
+    await m.saveProject(texts);
+    const s = m.useStore.getState();
+    expect(s.savedRevision).toBe(2);
+    expect(s.savedAt).not.toBeNull();
+    expect(JSON.parse(bridge.write.mock.calls[0][1]).revision).toBe(2);
+  });
+
+  it('der vorgeschlagene Dateiname traegt keinen Zaehler', async () => {
+    const { bridge } = electronBridge();
+    const m = await laden({ multicamProjectFile: bridge });
+    m.useStore.getState().setVenue({ ...m.useStore.getState().venue, name: 'Saal' });
+    for (let i = 0; i < 5; i++) m.useStore.getState().addWall();
+    await m.saveProjectAs(texts);
+    expect(bridge.saveAs.mock.calls[0][0]).toBe('Saal.mcplan');
+  });
+
+  it('Oeffnen uebernimmt die Revision der Datei; Neu setzt sie zurueck', async () => {
+    const { bridge } = electronBridge();
+    bridge.open.mockResolvedValueOnce({
+      path: '/tmp/a.mcplan', name: 'a.mcplan',
+      text: JSON.stringify({ formatVersion: 1, appVersion: 'x', projectVersion: 812, revision: 4, savedAt: '2026-11-04T13:32:00.000Z', venue: { name: 'A', widthM: 20, heightM: 10, stages: [] }, cameras: [], persons: [], walls: [], backgroundPlan: null }),
+    });
+    const m = await laden({ multicamProjectFile: bridge });
+    await m.openProjectWithTarget();
+    expect(m.useStore.getState().savedRevision).toBe(4);
+    expect(m.useStore.getState().savedAt).toBe('2026-11-04T13:32:00.000Z');
+    m.useStore.getState().newProject();
+    expect(m.useStore.getState().savedRevision).toBe(0);
+    expect(m.useStore.getState().savedAt).toBeNull();
   });
 });

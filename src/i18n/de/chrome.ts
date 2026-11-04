@@ -68,6 +68,11 @@ export const chrome: Record<string, string> = {
   'settings.gpu.integratedHint': 'Die App läuft auf der integrierten Grafik, obwohl eine eigene Grafikkarte eingebaut ist. In den Windows-Einstellungen unter System → Anzeige → Grafik die Programmdatei oben auf „Hohe Leistung“ stellen und die App neu starten. Die portable Fassung läuft aus einem temporären Ordner – damit die Einstellung bleibt, den Installer nehmen.',
 
   // ── Die Statusleiste (ADR-007 Abschnitt 6: Meldungen links, Zähler rechts) ──
+  'project.stand.never': 'Noch nicht gespeichert',
+  'project.stand.revision': 'Revision {rev}',
+  'project.stand.revisionAt': 'Revision {rev} · gespeichert {when}',
+  'project.stand.savedAt': 'Gespeichert {when}',
+  'project.stand.withChanges': '{stand} + ungespeicherte Änderungen',
   'status.cameras': '{count} Kameras',
   'status.people': '{count} Personen & Objekte',
   'status.walls': '{count} Wände',

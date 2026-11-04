@@ -87,13 +87,18 @@ function setNotice(text: string | null) {
 const ensureExtension = (name: string) => (/\.mcplan$/i.test(name) ? name : `${name}.mcplan`);
 
 function serialise(): { project: ProjectFile; text: string } {
-  const project = buildProjectFile(useStore.getState());
+  const s = useStore.getState();
+  const project = buildProjectFile({ ...s, savedRevision: s.savedRevision + 1 });
   return { project, text: JSON.stringify(project, null, 2) };
 }
 
 /** Die gespeicherte Version gilt als gesichert — nicht die von jetzt: wer
  *  waehrend eines langsamen Schreibens weiterarbeitet, bleibt „ungesichert". */
-const markSaved = (project: ProjectFile) => useStore.setState({ lastSavedVersion: project.projectVersion });
+const markSaved = (project: ProjectFile) => useStore.setState({
+  lastSavedVersion: project.projectVersion,
+  savedRevision: project.revision ?? 0,
+  savedAt: project.savedAt,
+});
 
 function download(name: string, text: string) {
   const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));

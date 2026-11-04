@@ -112,6 +112,23 @@ describe('automatische Sicherung', () => {
     expect(s.hasUnsavedChanges()).toBe(true);
   });
 
+  it('die Sicherung behaelt Revision und Zeitpunkt des letzten Speicherns, nicht ihren eigenen (#251)', async () => {
+    const erst = await laden();
+    const lauf = erst.startAutosave();
+    erst.useStore.getState().applyProjectFile(plan({ revision: 3, savedAt: '2026-11-01T10:00:00.000Z' }));
+    vi.setSystemTime(new Date('2026-11-04T18:00:00.000Z'));
+    erst.useStore.getState().addCamera();
+    vi.advanceTimersByTime(erst.AUTOSAVE_DELAY_MS);
+    lauf.stop();
+
+    vi.resetModules();
+    const dann = await laden();
+    expect(dann.restoreAutosave()).toBe(true);
+    const s = dann.useStore.getState();
+    expect(s.savedRevision).toBe(3);
+    expect(s.savedAt).toBe('2026-11-01T10:00:00.000Z');
+  });
+
   it('Öffnen einer Datei ersetzt die Sicherung', async () => {
     const { useStore, startAutosave, AUTOSAVE_DELAY_MS } = await laden();
     startAutosave();

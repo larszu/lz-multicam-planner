@@ -11,7 +11,7 @@ import RigStructure from './RigStructure';
 import * as THREE from 'three';
 import { getExportRegistry } from '../../store/exportRegistry';
 import { FingerNavigation, umsehen } from '../../lib/fingerNavigation';
-import type { FramingState } from '../../store/exportRegistry';
+import { EXPORT_3D_SIZE, withTemporaryView } from '../../utils/exportCapture';
 import { Suspense, useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import LoadingIndicator from '../Layout/LoadingIndicator';
 import type { BackgroundPlan, Stage } from '../../types';
@@ -27,7 +27,7 @@ import { useIstHell } from '../../lib/useIstHell';
 import { CoverageWedge, ScenePipeline } from './ShowScene';
 import { SzenenGrund } from '../Render3D/SzenenGrund';
 import { pipelineQualitaet, renderLook } from '../Render3D/renderLook';
-import { entsorgeKameraCache, stufenWerte, type Detail, type Stufe, type StufenWerte } from '../../avplan/scene3d';
+import { entsorgeKameraCache, stufenWerte, type SzenenPipeline, type Detail, type Stufe, type StufenWerte } from '../../avplan/scene3d';
 import { kameraModell, type KameraModell } from '../../utils/kameraModell';
 import { Bediener } from './KameraModell';
 import { useKameraRig } from './useKameraRig';
@@ -192,7 +192,14 @@ function VenueWalls({ widthM, heightM }: { widthM: number; heightM: number }) {
  * Scroll    = move forward/back (dolly)
  * Ctrl      = sprint (2×)
  */
-function FPSControls({ mouseLookEnabled, defaultPitch, onManualMove }: { mouseLookEnabled: boolean; defaultPitch: number; onManualMove?: () => void }) {
+function FPSControls({ mouseLookEnabled, defaultPitch, exportFraming, pipeline, onManualMove }: {
+  mouseLookEnabled: boolean;
+  defaultPitch: number;
+  /** Feste Ansicht fuer das 3D-Bild im Export — die Startansicht der Halle. */
+  exportFraming: { pos: [number, number, number]; pitch: number };
+  pipeline?: React.MutableRefObject<SzenenPipeline | null>;
+  onManualMove?: () => void;
+}) {
   const { camera, gl, size } = useThree();
   // Die Ansicht rendert nur auf Anforderung (frameloop="demand"): die
   // Steuerung fordert Bilder an, solange sich etwas bewegt.
@@ -258,40 +265,57 @@ function FPSControls({ mouseLookEnabled, defaultPitch, onManualMove }: { mouseLo
     return () => window.removeEventListener(FLY_EVENT, onFly);
   }, [camera, size.width, size.height, invalidate]);
 
+  const advance = useThree((s) => s.advance);
+  const exportRef = useRef(exportFraming);
+  useEffect(() => { exportRef.current = exportFraming; }, [exportFraming]);
   useEffect(() => {
     const registry = getExportRegistry();
-    registry.framing3D = {
-      save: (): FramingState => ({
-        pos: camera.position.toArray() as [number, number, number],
-        yaw: yaw.current,
-        pitch: pitch.current,
-      }),
-      apply: (state: FramingState) => {
-        camera.position.fromArray(state.pos);
-        yaw.current = state.yaw;
-        pitch.current = state.pitch;
-        invalidate();
-      },
-      fitVenue: (widthM: number, heightM: number) => {
-        const diag = Math.sqrt(widthM * widthM + heightM * heightM);
-        const camX = widthM / 2;
-        const camY = diag * 0.55;
-        const camZ = heightM + diag * 0.4;
-        const targetX = widthM / 2;
-        const targetY = 0;
-        const targetZ = heightM / 2;
-        const dx = targetX - camX;
-        const dy = targetY - camY;
-        const dz = targetZ - camZ;
-        const horizDist = Math.sqrt(dx * dx + dz * dz);
-        camera.position.set(camX, camY, camZ);
-        yaw.current = Math.atan2(-dx, -dz);
-        pitch.current = Math.atan2(dy, horizDist);
-        invalidate();
-      },
+    registry.capture3DExport = () => {
+      const persp = camera as THREE.PerspectiveCamera;
+      const { width, height } = EXPORT_3D_SIZE;
+      const framing = exportRef.current;
+      const out = withTemporaryView(
+        () => {
+          const vorher = {
+            pos: camera.position.clone(), yaw: yaw.current, pitch: pitch.current,
+            fov: persp.fov, aspect: persp.aspect, fly: fly.current,
+            size: gl.getSize(new THREE.Vector2()),
+          };
+          fly.current = null;
+          gl.setSize(width, height, false);
+          pipeline?.current?.setGroesse(width, height);
+          camera.position.set(...framing.pos);
+          yaw.current = 0;
+          pitch.current = framing.pitch;
+          persp.fov = VIEW3D_FOV_DEG;
+          persp.aspect = width / height;
+          persp.updateProjectionMatrix();
+          return () => {
+            camera.position.copy(vorher.pos);
+            yaw.current = vorher.yaw;
+            pitch.current = vorher.pitch;
+            persp.fov = vorher.fov;
+            persp.aspect = vorher.aspect;
+            persp.updateProjectionMatrix();
+            fly.current = vorher.fly;
+            gl.setSize(vorher.size.x, vorher.size.y, false);
+            pipeline?.current?.setGroesse(vorher.size.x, vorher.size.y);
+          };
+        },
+        () => {
+          advance(performance.now());
+          const c = document.createElement('canvas');
+          c.width = width;
+          c.height = height;
+          c.getContext('2d')?.drawImage(gl.domElement, 0, 0, width, height);
+          return c;
+        },
+      );
+      advance(performance.now());
+      return out;
     };
-    return () => { registry.framing3D = null; };
-  }, [camera, invalidate]);
+    return () => { registry.capture3DExport = null; };
+  }, [camera, gl, advance, pipeline]);
 
   useEffect(() => {
     const canvas = gl.domElement;
@@ -1013,6 +1037,8 @@ export default function Venue3D() {
   const minCamY = tribuenenHoehe > 0 ? tribuenenHoehe + 10 : 0;
   const [camX, camY, camZ] = defaultCameraPos(venue.widthM, venue.heightM, minCamY);
   const startPitch = defaultPitchRad(venue.widthM, venue.heightM, minCamY);
+  const exportFraming = useMemo(() => ({ pos: [camX, camY, camZ] as [number, number, number], pitch: startPitch }), [camX, camY, camZ, startPitch]);
+  const pipelineRef = useRef<SzenenPipeline | null>(null);
 
   const flyTo = useCallback((detail: FlyDetail) => {
     window.dispatchEvent(new CustomEvent<FlyDetail>(FLY_EVENT, { detail }));
@@ -1153,9 +1179,9 @@ export default function Venue3D() {
           <ErsterFrame onBereit={setBereit} />
           {/* Die freie Ansicht zeigt die Halle, nicht das Bild einer Kamera —
               Tiefenunschaerfe gehoert in den Kamerablick (Preview/Kamerablick). */}
-          {!simple && <ScenePipeline quality={pipelineQualitaet(prefs.quality)} look={look} dof={null} onWerte={onWerte} />}
+          {!simple && <ScenePipeline quality={pipelineQualitaet(prefs.quality)} look={look} dof={null} onWerte={onWerte} griff={pipelineRef} />}
           <PerspectiveCamera makeDefault position={[camX, camY, camZ]} fov={VIEW3D_FOV_DEG} near={0.1} far={farDist} />
-          <FPSControls mouseLookEnabled={unlockedCameraId === null} defaultPitch={startPitch} />
+          <FPSControls mouseLookEnabled={unlockedCameraId === null} defaultPitch={startPitch} exportFraming={exportFraming} pipeline={pipelineRef} />
 
           <SzenenGrund
             daten={kulisse}

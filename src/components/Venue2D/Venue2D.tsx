@@ -12,6 +12,7 @@ import { dragIsOwn, dropToParked, planVerschoben } from '../../utils/venueDrag';
 import { stageColor, stageTopZ } from '../../utils/stageBody';
 import { alphaSuffix, shadeHex } from '../../utils/color';
 import RigOverlay, { RIG_HANDLE_RADIUS } from './RigOverlay';
+import { capturePlanAtWorldScale } from '../../utils/exportCapture';
 import { getExportRegistry } from '../../store/exportRegistry';
 import React, { useRef, useCallback, useEffect, useState, useMemo } from 'react';
 import type Konva from 'konva';
@@ -240,13 +241,7 @@ export default function Venue2D() {
       const stage = stageRef.current;
       if (!stage) return null;
       try {
-        return stage.toCanvas({
-          x: 0,
-          y: 0,
-          width: worldW,
-          height: worldH,
-          pixelRatio: 2,
-        }) as HTMLCanvasElement;
+        return capturePlanAtWorldScale(stage, worldW, worldH);
       } catch {
         return null;
       }

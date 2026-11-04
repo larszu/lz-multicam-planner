@@ -17,12 +17,12 @@ import RigControlPanel from './components/RigControl/RigControlPanel';
 import TemplateSelector from './components/Templates/TemplateSelector';
 import ExportPanel from './components/Export/ExportPanel';
 import ErrorBoundary from './components/ErrorBoundary';
-import { getExportRegistry } from './store/exportRegistry';
 import { loadJSON, saveJSON } from './utils/storage';
 import { Suspense, lazy, useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { FiChevronLeft, FiChevronRight, FiMaximize2, FiMinimize2, FiMinus, FiX } from 'react-icons/fi';
 import { InventoryDialog } from './inventory/InventoryDialog';
 import { Layout, Model, TabNode, Actions } from 'flexlayout-react';
+import { getExportRegistry } from './store/exportRegistry';
 import type { IJsonModel, ITabSetRenderValues, TabSetNode, BorderNode, ILayoutApi } from 'flexlayout-react';
 import 'flexlayout-react/style/dark.css';
 import { useTranslation, format } from './i18n';
@@ -440,6 +440,18 @@ export default function App() {
     }
   }, [t]);
 
+  useEffect(() => {
+    const registry = getExportRegistry();
+    registry.reveal3DForExport = () => {
+      const tab = model.getNodeById('tab-3d');
+      if (!(tab instanceof TabNode) || tab.isVisible()) return null;
+      const vorher = (tab.getParent() as TabSetNode | undefined)?.getSelectedNode()?.getId();
+      model.doAction(Actions.selectTab('tab-3d'));
+      return () => { if (vorher) model.doAction(Actions.selectTab(vorher)); };
+    };
+    return () => { registry.reveal3DForExport = null; };
+  }, [model]);
+
   // ── Responsive: auto-collapse sidebar on small screens ──
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)');
@@ -448,37 +460,6 @@ export default function App() {
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
   }, [setSidebarCollapsed]);
-
-  useEffect(() => {
-    const registry = getExportRegistry();
-    registry.prepareForExport = async () => {
-      const previousMode = layoutMode;
-      const previousFocusTab = focusTabId;
-      const previousModelJson = model.toJson();
-      if (previousMode !== 'grid') {
-        applyLayoutJson(createGridLayoutJson(t));
-        setLayoutMode('grid');
-        await new Promise<void>((resolve) => {
-          requestAnimationFrame(() => requestAnimationFrame(() => {
-            setTimeout(resolve, 700);
-          }));
-        });
-      }
-      return {
-        restore: () => {
-          if (previousMode === 'focus') {
-            setLayoutMode('focus');
-            setFocusTabId(previousFocusTab);
-            applyLayoutJson(createFocusLayoutJson(t, previousFocusTab));
-          } else if (previousMode === 'custom') {
-            setLayoutMode('custom');
-            applyLayoutJson(previousModelJson);
-          }
-        },
-      };
-    };
-    return () => { registry.prepareForExport = null; };
-  }, [applyLayoutJson, focusTabId, layoutMode, model, t]);
 
   return (
     <ErrorBoundary>

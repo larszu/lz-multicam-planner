@@ -96,7 +96,7 @@ before the first rehearsal.
 2. Start from a template (sidebar → *Templates*) or upload your floor plan.
 3. *Add* a camera, choose body and lens, drag it into position.
 4. Check the shot in *3D view → Camera view*; switch between cameras in *Multiview*. In 3D the Preview camera is green and the Program camera red; the *Tally* switch in the 3D camera list turns that off.
-5. Save the project (`.mcplan`, `Ctrl/⌘+S`) or export a PNG sheet with plan, 3D view, camera view and data. *Save* writes back to the file you opened or saved last and only asks the first time; *Save as…* (`Ctrl/⌘+Shift+S`) always asks for a name and location. The desktop app, Chrome and Edge save in place; other browsers download a new copy each time.
+5. Save the project (`.mcplan`, `Ctrl/⌘+S`) or export a PNG sheet with plan, 3D view, camera view and data. *Save* writes back to the file you opened or saved last and only asks the first time; *Save as…* (`Ctrl/⌘+Shift+S`) always asks for a name and location. The desktop app, Chrome and Edge save in place; other browsers download a new copy each time. Every save counts up the project's revision; the status bar and the PNG sheet show it with the time of the last save (*Revision 3 · saved 04.11.2026 14:32*), next to the app version. The PNG sheet always shows the 3D view from the start position and the whole floor plan, whatever you are zoomed into — the views on screen stay where they are.
 
 ### Windows: dedicated graphics card
 
