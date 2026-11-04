@@ -25,6 +25,7 @@ import { useTranslation, format } from '../../i18n';
 import { mountTypeLabel } from '../../i18n/mount';
 import { amZiel, shotSizeLabel, zielPunkt } from '../../utils/kameraZiel';
 import { renderSelectedCameraView } from '../Preview/cameraViewRenderer';
+import { bedarf3DAnfordern, bereit3D, warteAuf3D } from '../Render3D/kameraBild3d';
 
 export type ExportMode = 'current' | 'all' | 'widetele' | 'all-widetele';
 
@@ -615,6 +616,11 @@ export default function ExportPanel() {
       await waitForPaint(600);
     }
 
+    // Das Kamerabild kommt aus demselben Renderer wie im Kamerablick; der
+    // lebt nur, solange ihn jemand braucht — fuer den Export also hier.
+    const frei3D = bedarf3DAnfordern();
+    if (!bereit3D() && await warteAuf3D()) await waitForPaint(800);
+
     const originalSelected = state.selectedCameraId;
     // Weit/Tele stellt die Brennweite kurz um und zurueck; das ist keine
     // Aenderung am Projekt und darf es nicht „ungespeichert" machen.
@@ -656,6 +662,7 @@ export default function ExportPanel() {
       useStore.getState().selectCamera(originalSelected);
       if (wantsWideTele) useStore.setState({ projectVersion: versionBefore });
       hide3D?.();
+      frei3D();
       setExporting(false);
       setExportProgress({ current: 0, total: 0 });
     }

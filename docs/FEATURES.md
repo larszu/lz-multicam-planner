@@ -240,6 +240,7 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 
 ### 3D Venue View
 - **Views:** *Top* (plan from above, stage at the top like in the 2D plan) and *Perspective* glide there instead of jumping. *Camera view* shows the selected camera's picture with all its controls (see *Camera view*); *Top* or *Perspective* bring the free 3D view back
+- **Fix view:** in *Top* and *Perspective*, *Fix view* keeps the section you are looking at in the project; *Back to fixed view* glides back to it, and *Top* / *Perspective* open there instead of the start view. The × releases it. The PNG sheet shows the fixed perspective (or the fixed top view) instead of the start view. The 3D view keeps its last position when you switch to the 2D plan, another tab or another layout
 - **Camera list** on the right: number, camera, lens and range @ current focal length, rig and horizontal FOV. **Click a camera to look through its lens** — opens the camera view for it. On a narrow window the list steps aside in the camera view; ‹ › switch cameras there
 - **Coverage** wedges on the floor from each camera to its focus point, with a sight line; the selected camera also shows its 3D FOV pyramid
 - **Number markers:** a disc in the camera's colour with its number floats over each camera, turned to the viewer and the same size on screen at any distance, with the name below. Same number and colour as in the list, the multiview tiles, the viewfinder label and the camera card. *Labels* switches them off; a click on a marker selects the camera
@@ -345,7 +346,7 @@ One view answers *what does this camera see?* — **Camera view** in the 3D view
 - Layout modes: Focus (single tab) and Grid (2D and 3D on the left; Multiview and Calculator stacked on the right). In Grid mode drag a module from the tab bar onto the layout to dock it somewhere else — also one that is already open
 - Customizable layout presets (save/load/delete)
 - Venue templates: football stadium, stadium event, small and large concert, church, conference, custom (save your own) — each with fitting audience areas and video walls
-- Export: Combined 1920px PNG containing 2D plan, 3D view, camera preview, and technical data sheet
+- Export: Combined 1920px PNG containing 2D plan, 3D view, camera preview, and technical data sheet. 3D view and camera preview are rendered through the same scene and pipeline as the 3D view on screen (daylight, audience, camera gear, materials, shadows, light beams, LED content); the simple drawing only when *Simple* is chosen for the camera view. Shot frame grabs and the storyboard use the same picture
 
 ### Desktop App
 - Windows installer (NSIS) and portable build, macOS DMG and ZIP (Apple silicon and Intel) with Electron — downloads on the [releases page](https://github.com/larszu/lz-multicam-planner/releases/latest)

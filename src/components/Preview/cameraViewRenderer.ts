@@ -25,6 +25,7 @@ import type { StageFace } from '../../utils/stageBody';
 import { groundHeightAt, stageColor, stageFaces, stageLabelAnchor, stageOpacity } from '../../utils/stageBody';
 import { alphaSuffix, shadeHex } from '../../utils/color';
 import { format, translate } from '../../i18n';
+import { getKameraLook, render3D } from '../Render3D/kameraBild3d';
 import {
   DEFAULT_PATTERN_ROWS,
   paintWallSurface,
@@ -1062,6 +1063,10 @@ export function renderSelectedCameraView(cssW = 640): HTMLCanvasElement | null {
   const cam = s.cameras.find((c) => c.id === s.selectedCameraId);
   if (!cam) return null;
   const canvas = document.createElement('canvas');
+  // Dasselbe gerenderte Bild wie im Kamerablick (dieselbe Szene, dieselbe
+  // Pipeline) — die 2D-Zeichnung nur, wenn der Nutzer sie gewaehlt hat oder
+  // der Renderer nicht da ist.
+  const bild = kameraBildGerendert(cam.id, cssW);
   const projected = drawCameraView({
     canvas,
     cssW,
@@ -1071,6 +1076,20 @@ export function renderSelectedCameraView(cssW = 640): HTMLCanvasElement | null {
     scene: { venue: s.venue, persons: s.persons, walls: s.walls, cameras: s.cameras, customCameras: s.customCameras, customLenses: s.customLenses },
     overlays: BILD_OVERLAYS,
     t: (key, en) => translate(s.language, key, en),
+    hintergrund: bild,
   });
   return projected !== undefined && canvas.width > 0 && canvas.height > 0 ? canvas : null;
+}
+
+/** Schluessel der Darstellungswahl des Kamerablicks (gerendert / einfach). */
+export const KAMERABLICK_LOOK_KEY = 'multicam-preview-look';
+
+/**
+ * Das gerenderte Bild einer Kamera aus dem gemeinsamen Renderer, oder `null`,
+ * wenn der Kamerablick auf „einfach" steht oder der Renderer nicht bereit ist.
+ */
+export function kameraBildGerendert(camId: string, cssW: number): HTMLCanvasElement | null {
+  if (getKameraLook(KAMERABLICK_LOOK_KEY) !== 'rendered') return null;
+  const c = document.createElement('canvas');
+  return render3D(camId, c, cssW, 1, 'gross') ? c : null;
 }

@@ -17,7 +17,7 @@ import { Suspense, useMemo, useRef, useEffect, useState, useCallback } from 'rea
 import LoadingIndicator from '../Layout/LoadingIndicator';
 import type { BackgroundPlan, Stage } from '../../types';
 import { FLAT_STAGE_M, groundHeightAt, stageColor, stageOpacity, stageTopZ } from '../../utils/stageBody';
-import { FiLock, FiUnlock } from 'react-icons/fi';
+import { FiCornerUpLeft, FiLock, FiMapPin, FiUnlock, FiX } from 'react-icons/fi';
 import { VIEW3D_FOV_DEG, defaultCameraPos, defaultPitchRad } from '../../utils/view3d';
 import { useTranslation } from '../../i18n';
 import { easeOut, shortestAngleDelta, topFraming, type Framing } from '../../utils/view3dScene';
@@ -46,6 +46,7 @@ import Kamerablick from '../Preview/Kamerablick';
 import { tallyBus, tallyFarbe, tallyLampe, type TallyBus } from '../../utils/tally';
 import { KAMERABLICK_WUNSCH_EVENT, kamerablickGeoeffnet, kamerablickWunschAbholen } from './kamerablickWunsch';
 import { useProjektHimmel } from '../../lib/useProjektHimmel';
+import { exportAnsicht, fovFuerSeitenverhaeltnis, gleicheAnsicht, type Ansicht3D, type Ansicht3DModus } from '../../utils/ansicht3d';
 
 /** Fahrt der Blickkamera (Ansichts-Knoepfe, Klick in der Kameraliste). */
 export const FLY_EVENT = 'multicam-3d-fly';
@@ -197,13 +198,17 @@ function VenueWalls({ widthM, heightM }: { widthM: number; heightM: number }) {
  * Scroll    = move forward/back (dolly)
  * Ctrl      = sprint (2×)
  */
-function FPSControls({ mouseLookEnabled, defaultPitch, exportFraming, pipeline, onManualMove }: {
+function FPSControls({ mouseLookEnabled, defaultPitch, exportFraming, pipeline, onManualMove, modus, poseRef }: {
   mouseLookEnabled: boolean;
   defaultPitch: number;
-  /** Feste Ansicht fuer das 3D-Bild im Export — die Startansicht der Halle. */
-  exportFraming: { pos: [number, number, number]; pitch: number };
+  /** Ausschnitt fuer das 3D-Bild im Export: fixiert, sonst die Startansicht. */
+  exportFraming: Ansicht3D;
   pipeline?: React.MutableRefObject<SzenenPipeline | null>;
   onManualMove?: () => void;
+  /** Freier Modus, unter dem der Blickpunkt im Store gemerkt wird. */
+  modus: Ansicht3DModus;
+  /** Liest den Blickpunkt in diesem Moment — fuer „Ansicht fixieren". */
+  poseRef?: React.MutableRefObject<(() => Ansicht3D) | null>;
 }) {
   const { camera, gl, size } = useThree();
   // Die Ansicht rendert nur auf Anforderung (frameloop="demand"): die
@@ -237,12 +242,68 @@ function FPSControls({ mouseLookEnabled, defaultPitch, exportFraming, pipeline, 
   // Sync yaw from initial camera orientation; die Neigung kommt aus der
   // Hallengroesse (utils/view3d.ts), damit die hintere Hallenkante immer oben
   // im Bild sitzt statt in der Mitte.
+  //
+  // Beim Einhaengen (auch nach dem Wechsel zu 2D, einem anderen Reiter oder
+  // Layout, oder einer neuen Qualitaetsstufe) kommt der zuletzt gesehene
+  // Blickpunkt aus dem Store zurueck; ohne ihn die Startansicht.
+  const modusRef = useRef(modus);
+  useEffect(() => { modusRef.current = modus; }, [modus]);
+  const gemerkt = useRef<Ansicht3D | null>(null);
+  const lesePose = useCallback((): Ansicht3D => {
+    const persp = camera as THREE.PerspectiveCamera;
+    return {
+      pos: [camera.position.x, camera.position.y, camera.position.z],
+      yaw: yaw.current,
+      pitch: pitch.current,
+      fovDeg: persp.fov,
+      aspect: persp.aspect,
+    };
+  }, [camera]);
+  const merke = useCallback(() => {
+    const a = lesePose();
+    if (gleicheAnsicht(a, gemerkt.current)) return;
+    gemerkt.current = a;
+    const st = useStore.getState();
+    st.merkeBlick3D({ ansicht: { ...st.blick3d.ansicht, [modusRef.current]: a } });
+  }, [lesePose]);
   useEffect(() => {
-    const dir = new THREE.Vector3();
-    camera.getWorldDirection(dir);
-    yaw.current = Math.atan2(-dir.x, -dir.z);
+    if (!poseRef) return;
+    poseRef.current = lesePose;
+    return () => { if (poseRef.current === lesePose) poseRef.current = null; };
+  }, [poseRef, lesePose]);
+  useEffect(() => {
+    const persp = camera as THREE.PerspectiveCamera;
+    const zuletzt = useStore.getState().blick3d.ansicht[modusRef.current];
+    if (zuletzt) {
+      camera.position.set(...zuletzt.pos);
+      yaw.current = zuletzt.yaw;
+      pitch.current = zuletzt.pitch;
+      persp.fov = zuletzt.fovDeg;
+      persp.updateProjectionMatrix();
+      gemerkt.current = zuletzt;
+    } else {
+      const dir = new THREE.Vector3();
+      camera.getWorldDirection(dir);
+      yaw.current = Math.atan2(-dir.x, -dir.z);
+      pitch.current = defaultPitch;
+    }
+    invalidate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [camera]);
+  const ersteNeigung = useRef(true);
+  useEffect(() => {
+    if (ersteNeigung.current) { ersteNeigung.current = false; return; }
     pitch.current = defaultPitch;
-  }, [camera, defaultPitch]);
+  }, [defaultPitch]);
+  // Nach einer Bewegung kurz warten und dann merken — nicht in jedem Bild.
+  // Steht beim Aushaengen noch etwas aus, wird es sofort gemerkt.
+  const merkTimer = useRef(0);
+  const merkRef = useRef(merke);
+  useEffect(() => { merkRef.current = merke; }, [merke]);
+  useEffect(() => () => {
+    if (merkTimer.current) merkRef.current();
+    window.clearTimeout(merkTimer.current);
+  }, []);
 
   useEffect(() => {
     const persp = camera as THREE.PerspectiveCamera;
@@ -290,9 +351,9 @@ function FPSControls({ mouseLookEnabled, defaultPitch, exportFraming, pipeline, 
           gl.setSize(width, height, false);
           pipeline?.current?.setGroesse(width, height);
           camera.position.set(...framing.pos);
-          yaw.current = 0;
+          yaw.current = framing.yaw;
           pitch.current = framing.pitch;
-          persp.fov = VIEW3D_FOV_DEG;
+          persp.fov = fovFuerSeitenverhaeltnis(framing, width / height);
           persp.aspect = width / height;
           persp.updateProjectionMatrix();
           return () => {
@@ -516,6 +577,8 @@ function FPSControls({ mouseLookEnabled, defaultPitch, exportFraming, pipeline, 
     camera.rotation.set(pitch.current, yaw.current, 0);
     // Fahrt oder gedrueckte Taste: naechstes Bild anfordern.
     if (fly.current || keys.current.size > 0) invalidate();
+    window.clearTimeout(merkTimer.current);
+    merkTimer.current = window.setTimeout(() => { merkTimer.current = 0; merkRef.current(); }, 300);
   });
 
   return null;
@@ -1004,7 +1067,15 @@ export default function Venue3D() {
     previewId: follow?.extern ? follow.previewId : selectedCameraId,
   }), [prefs.tally, programCameraId, follow?.extern, follow?.previewId, selectedCameraId]);
   const schmal = useSchmal();
-  const [preset, setPreset] = useState<ViewPreset>('perspective');
+  // Modus und Blickpunkt leben im Store: der Wechsel zu 2D, ein anderer
+  // Reiter oder ein neues Layout haengt diese Komponente aus.
+  const preset = useStore((s) => s.blick3d.preset);
+  const freierModus = useStore((s) => s.blick3d.frei);
+  const setPreset = useCallback((p: ViewPreset) => {
+    useStore.getState().merkeBlick3D(p === 'camera' ? { preset: p } : { preset: p, frei: p });
+  }, []);
+  const fixiert = useStore((s) => s.venue.views3d);
+  const poseRef = useRef<(() => Ansicht3D) | null>(null);
   const [werte, setWerte] = useState<StufenWerte>(() => stufenWerte('high'));
   const [stufe, setStufe] = useState<Stufe>('high');
   const onWerte = useCallback((w: StufenWerte, st: Stufe) => { setWerte(w); setStufe(st); }, []);
@@ -1024,22 +1095,37 @@ export default function Venue3D() {
   const minCamY = tribuenenHoehe > 0 ? tribuenenHoehe + 10 : 0;
   const [camX, camY, camZ] = defaultCameraPos(venue.widthM, venue.heightM, minCamY);
   const startPitch = defaultPitchRad(venue.widthM, venue.heightM, minCamY);
-  const exportFraming = useMemo(() => ({ pos: [camX, camY, camZ] as [number, number, number], pitch: startPitch }), [camX, camY, camZ, startPitch]);
+  const exportFraming = useMemo(
+    () => exportAnsicht(fixiert, { pos: [camX, camY, camZ], yaw: 0, pitch: startPitch, fovDeg: VIEW3D_FOV_DEG }),
+    [fixiert, camX, camY, camZ, startPitch],
+  );
   const pipelineRef = useRef<SzenenPipeline | null>(null);
 
   const flyTo = useCallback((detail: FlyDetail) => {
     window.dispatchEvent(new CustomEvent<FlyDetail>(FLY_EVENT, { detail }));
   }, []);
 
+  // „Draufsicht" und „Perspektive" fahren in den fixierten Ausschnitt, ohne ihn in die Startansicht.
   const goPerspective = useCallback(() => {
     setPreset('perspective');
-    flyTo({ framing: { pos: [camX, camY, camZ], yaw: 0, pitch: startPitch, fovDeg: VIEW3D_FOV_DEG } });
-  }, [camX, camY, camZ, startPitch, flyTo]);
+    flyTo({ framing: fixiert?.perspective ?? { pos: [camX, camY, camZ], yaw: 0, pitch: startPitch, fovDeg: VIEW3D_FOV_DEG } });
+  }, [camX, camY, camZ, startPitch, flyTo, setPreset, fixiert]);
 
   const goTop = useCallback(() => {
     setPreset('top');
-    flyTo({ topOf: { widthM: venue.widthM, depthM: venue.heightM } });
-  }, [venue.widthM, venue.heightM, flyTo]);
+    if (fixiert?.top) flyTo({ framing: fixiert.top });
+    else flyTo({ topOf: { widthM: venue.widthM, depthM: venue.heightM } });
+  }, [venue.widthM, venue.heightM, flyTo, setPreset, fixiert]);
+
+  const fixiereJetzt = useCallback(() => {
+    const lies = poseRef.current;
+    if (lies) useStore.getState().fixiereAnsicht3D(freierModus, lies());
+  }, [freierModus]);
+  const zurFixierten = useCallback(() => {
+    const a = useStore.getState().venue.views3d?.[freierModus];
+    if (a) flyTo({ framing: a });
+  }, [freierModus, flyTo]);
+  const loeseFixierung = useCallback(() => useStore.getState().fixiereAnsicht3D(freierModus, undefined), [freierModus]);
 
   // Kamerablick: Bild, Overlays, Objektiv, Presets, Kamerasteuerung — der
   // einzige Kamerablick der App (#243). Die 3D-Szene bleibt dahinter geladen,
@@ -1047,7 +1133,7 @@ export default function Venue3D() {
   const goCamera = useCallback((id: string) => {
     if (useStore.getState().selectedCameraId !== id) selectCamera(id);
     setPreset('camera');
-  }, [selectCamera]);
+  }, [selectCamera, setPreset]);
   const kamerablick = preset === 'camera' && !!selectedCameraId;
 
   useEffect(() => {
@@ -1147,7 +1233,46 @@ export default function Venue3D() {
   return (
     <div className="flex w-full h-full" style={{ minHeight: 500 }}>
       <div className="relative flex-1 min-w-0 h-full overflow-hidden">
-        {!kamerablick && <div className="absolute top-3 left-3 z-10">{ansichtWahl}</div>}
+        {!kamerablick && (
+          <div className="absolute top-3 left-3 right-3 z-10 flex flex-wrap items-center gap-2 pointer-events-none [&>*]:pointer-events-auto">
+            {ansichtWahl}
+            <div className="bc-seg shadow-bc-2" role="group" aria-label={t('venue.view.fixGroup', 'Fixed view')}>
+              <button
+                type="button"
+                onClick={fixiereJetzt}
+                aria-pressed={!!fixiert?.[freierModus]}
+                title={freierModus === 'top'
+                  ? t('venue.view.fixTopHint', 'Keep this top view section; the export uses it')
+                  : t('venue.view.fixPerspectiveHint', 'Keep this perspective section; the export uses it')}
+                className="flex items-center gap-1.5 whitespace-nowrap px-3 text-xs font-semibold"
+              >
+                <FiMapPin size={13} aria-hidden />
+                {t('venue.view.fix', 'Fix view')}
+              </button>
+              <button
+                type="button"
+                onClick={zurFixierten}
+                disabled={!fixiert?.[freierModus]}
+                title={t('venue.view.backToFixedHint', 'Back to the fixed section of this view')}
+                className="flex items-center gap-1.5 whitespace-nowrap px-3 text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <FiCornerUpLeft size={13} aria-hidden />
+                {t('venue.view.backToFixed', 'Back to fixed view')}
+              </button>
+              {fixiert?.[freierModus] && (
+                <button
+                  type="button"
+                  onClick={loeseFixierung}
+                  aria-label={t('venue.view.unfix', 'Release fixed view')}
+                  title={t('venue.view.unfix', 'Release fixed view')}
+                  className="flex items-center px-2 text-xs"
+                >
+                  <FiX size={13} aria-hidden />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {kamerablick && (
           <div className="absolute inset-0 z-20 bg-bc-panel">
@@ -1180,7 +1305,7 @@ export default function Venue3D() {
               Tiefenunschaerfe gehoert in den Kamerablick (Preview/Kamerablick). */}
           {!simple && <ScenePipeline quality={pipelineQualitaet(prefs.quality)} look={look} dof={null} onWerte={onWerte} griff={pipelineRef} />}
           <PerspectiveCamera makeDefault position={[camX, camY, camZ]} fov={VIEW3D_FOV_DEG} near={0.1} far={farDist} />
-          <FPSControls mouseLookEnabled={unlockedCameraId === null} defaultPitch={startPitch} exportFraming={exportFraming} pipeline={pipelineRef} />
+          <FPSControls mouseLookEnabled={unlockedCameraId === null} defaultPitch={startPitch} exportFraming={exportFraming} pipeline={pipelineRef} modus={freierModus} poseRef={poseRef} />
 
           <SzenenGrund
             daten={kulisse}

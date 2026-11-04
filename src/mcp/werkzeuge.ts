@@ -327,8 +327,11 @@ export const WERKZEUGE: Record<string, Werkzeug> = {
     const cam = kamera(a.cameraId);
     const breite = Math.min(1920, Math.max(160, Math.round(optNum(a.width, 'width') ?? 960)));
     const { renderCamera } = await import('../components/Preview/cameraViewRenderer');
+    const { render3D } = await import('../components/Render3D/kameraBild3d');
     const canvas = document.createElement('canvas');
-    return canvasPng(renderCamera(cam.id, canvas, breite) ? canvas : null, `camera view ${cam.label}`);
+    // Gerendert wie im Kamerablick, wenn der Renderer laeuft; sonst die Zeichnung.
+    const ok = render3D(cam.id, canvas, breite, 1, 'gross') || renderCamera(cam.id, canvas, breite);
+    return canvasPng(ok ? canvas : null, `camera view ${cam.label}`);
   },
 
   render_top_view: () => canvasPng(getExportRegistry().capture2DExport?.() ?? null, 'top view'),

@@ -43,7 +43,7 @@ import Regler from '../ui/Regler';
 import { TRANSITION_CYCLE, TRANSITION_PRESET_SECONDS, runCameraTransition } from '../../utils/cameraTransition';
 import { captureCurrentShot } from '../../utils/captureShot';
 import { profileForMount } from '../../utils/motionProfile';
-import { drawCameraView, wallSurfaces, type ProjectedPerson } from './cameraViewRenderer';
+import { KAMERABLICK_LOOK_KEY, drawCameraView, wallSurfaces, type ProjectedPerson } from './cameraViewRenderer';
 import LookToggle from '../Render3D/LookToggle';
 import { bereit3D, render3D, useBedarf3D, useBildVersion3D, useKameraLook } from '../Render3D/kameraBild3d';
 import { assignPreset, groupPresets, hasPose, type PreviewPreset } from '../../utils/previewPreset';
@@ -129,7 +129,7 @@ export default function Kamerablick({ kopf }: KamerablickProps) {
   useEffect(() => () => { transitionCancel.current?.(); }, []);
 
   const [imageTick, setImageTick] = useState(0);
-  const [look, setLook] = useKameraLook('multicam-preview-look');
+  const [look, setLook] = useKameraLook(KAMERABLICK_LOOK_KEY);
   useBedarf3D(look === 'rendered');
   const bildVersion = useBildVersion3D();
   const bildPuffer = useRef<HTMLCanvasElement | null>(null);
@@ -158,7 +158,9 @@ export default function Kamerablick({ kopf }: KamerablickProps) {
     const { customCameras, customLenses } = useStore.getState();
     const cssW = target ? target.cssW : wrap!.getBoundingClientRect().width;
     const dpr = target ? 1 : (window.devicePixelRatio || 1);
-    const gerendert = !target && look === 'rendered' && cssW > 0
+    // Auch der Offscreen-Weg (Export, Shot-Framegrab) nimmt das gerenderte
+    // Bild — sonst zeigte der Export die einfache Zeichnung.
+    const gerendert = look === 'rendered' && cssW > 0
       && render3D(cam.id, (bildPuffer.current ??= document.createElement('canvas')), cssW, dpr, 'gross');
     const projected = drawCameraView({
       canvas,
