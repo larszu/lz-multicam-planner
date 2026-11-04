@@ -1066,6 +1066,17 @@ export default function Venue3D() {
     return () => window.removeEventListener(KAMERABLICK_WUNSCH_EVENT, abholen);
   }, [goCamera]);
   useEffect(() => { if (kamerablick) kamerablickGeoeffnet(); }, [kamerablick]);
+  useEffect(() => {
+    if (!kamerablick) return;
+    const zurueck = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+      goPerspective();
+    };
+    window.addEventListener('keydown', zurueck);
+    return () => window.removeEventListener('keydown', zurueck);
+  }, [kamerablick, goPerspective]);
 
   const pickCamera = useCallback((id: string) => goCamera(id), [goCamera]);
 

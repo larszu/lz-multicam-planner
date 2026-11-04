@@ -23,6 +23,8 @@ export interface RigLimits {
   rig?: CameraRig;
   minHeightM: number;
   maxHeightM: number;
+  /** Starting height on this rig, inside min/max (#228). */
+  standardHeightM: number;
   /** Empfohlener Hoehen-Schritt (Pedestal-Pump, Jib-Stufe). */
   pumpM: number;
   /**
@@ -61,11 +63,15 @@ export function rigLimits(cam: Pick<VenueCamera, 'mountType' | 'rigId' | 'trackL
   const trackM = custom ? (cam.trackLengthM as number) : trackFromRig;
   const onRail = RAIL_TYPES.has(type);
 
+  const minHeightM = fits?.minHeightM ?? base.min;
+  const maxHeightM = fits?.maxHeightM ?? base.max;
+
   return {
     type,
     rig: fits,
-    minHeightM: fits?.minHeightM ?? base.min,
-    maxHeightM: fits?.maxHeightM ?? base.max,
+    minHeightM,
+    maxHeightM,
+    standardHeightM: Math.max(minHeightM, Math.min(maxHeightM, base.standard)),
     pumpM: base.pump > 0 ? base.pump : 0.05,
     trackM,
     travelM: onRail ? trackM / 2 : trackM,

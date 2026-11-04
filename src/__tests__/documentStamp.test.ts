@@ -267,8 +267,8 @@ describe('Verdrahtet', () => {
   it('beide Storyboard-Wege bekommen einen Stempel', () => {
     const panel = shotlistPanelSrc;
     expect(panel).toMatch(/storyboardFingerprint\(list\)/);
-    expect(panel).toMatch(/exportStoryboardPng\(list, venue\.name, stempel\(\)\)/);
-    expect(panel).toMatch(/printStoryboard\(list, venue\.name, stempel\(\)\)/);
+    expect(panel).toMatch(/exportStoryboardPng\(list, venue\.name, stempel\(\)[,)]/);
+    expect(panel).toMatch(/printStoryboard\(list, venue\.name, stempel\(\)[,)]/);
   });
 
   it('der Kontaktbogen zeichnet sie ebenfalls', () => {

@@ -30,6 +30,14 @@ export function shotOpticsLabel(shot: Shot): string {
   return `${Math.round(focalLength)}mm · f/${aperture.toFixed(1)} · ${focusDistance.toFixed(1)}m`;
 }
 
+/** Montage und Objektivhoehe einer Kachel, z. B. "H 1.60m · Tripod" (#228). */
+export function shotStandLabel(shot: Shot, rig?: string): string {
+  return `H ${shot.state.z.toFixed(2)}m${rig ? ` · ${rig}` : ''}`;
+}
+
+/** Montage je Shot, vom Aufrufer aus der Kamera aufgeloest. */
+export type RigOf = (shot: Shot) => string | undefined;
+
 /** Badge-Text der Fahrtdauer, z. B. "Schnell (3s)" bzw. "OFF". */
 export function shotTransitionLabel(shot: Shot): string {
   const secs = transitionSeconds(shot.transition, shot.transitionSeconds);
@@ -72,6 +80,7 @@ export async function renderStoryboardSheet(
   shotlist: Shotlist,
   venueName?: string,
   stamp?: DocumentStamp,
+  rigOf?: RigOf,
 ): Promise<HTMLCanvasElement> {
   const { shots } = shotlist;
   const { width, height } = contactSheetSize(shots.length);
@@ -160,7 +169,7 @@ export async function renderStoryboardSheet(
     ty += 21;
     ctx.fillStyle = '#6f7787';
     ctx.font = '13px system-ui, sans-serif';
-    ctx.fillText(clip(ctx, `Fahrt: ${shotTransitionLabel(shot)}`, TILE_W - 24), x + 12, ty);
+    ctx.fillText(clip(ctx, `Fahrt: ${shotTransitionLabel(shot)} · ${shotStandLabel(shot, rigOf?.(shot))}`, TILE_W - 24), x + 12, ty);
 
     if (shot.note) {
       ty += 20;
@@ -178,8 +187,9 @@ export async function exportStoryboardPng(
   shotlist: Shotlist,
   venueName?: string,
   stamp?: DocumentStamp,
+  rigOf?: RigOf,
 ): Promise<void> {
-  const canvas = await renderStoryboardSheet(shotlist, venueName, stamp);
+  const canvas = await renderStoryboardSheet(shotlist, venueName, stamp, rigOf);
   const url = canvas.toDataURL('image/png');
   const a = document.createElement('a');
   const safe = (shotlist.name || 'shotlist').replace(/[^\w-]+/g, '_');
@@ -207,6 +217,7 @@ export function buildStoryboardHtml(
   shotlist: Shotlist,
   venueName?: string,
   stamp?: DocumentStamp,
+  rigOf?: RigOf,
 ): string {
   const tiles = shotlist.shots
     .map((shot, i) => {
@@ -219,7 +230,7 @@ export function buildStoryboardHtml(
   <figcaption>
     <div class="name">${esc(shot.name || `Shot ${i + 1}`)}</div>
     <div class="meta">${esc(shotOpticsLabel(shot))}</div>
-    <div class="meta dim">Fahrt: ${esc(shotTransitionLabel(shot))}</div>
+    <div class="meta dim">Fahrt: ${esc(shotTransitionLabel(shot))} · ${esc(shotStandLabel(shot, rigOf?.(shot)))}</div>
     ${note}
   </figcaption>
 </figure>`;
@@ -315,6 +326,6 @@ export function printHtml(html: string): void {
   else frame.onload = fire;
 }
 
-export function printStoryboard(shotlist: Shotlist, venueName?: string, stamp?: DocumentStamp): void {
-  printHtml(buildStoryboardHtml(shotlist, venueName, stamp));
+export function printStoryboard(shotlist: Shotlist, venueName?: string, stamp?: DocumentStamp, rigOf?: RigOf): void {
+  printHtml(buildStoryboardHtml(shotlist, venueName, stamp, rigOf));
 }

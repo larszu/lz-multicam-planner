@@ -13,6 +13,7 @@
 // (Bild+Regler oben, Rig-Pult unten), und in einem kleinen Fenster war der
 // untere nicht erreichbar. Die Kamerasteuerung (Rig-Pult) ist aufklappbar.
 // ───────────────────────────────────────────────────────────────────────────
+import { istFestbrennweite } from '../../utils/kameraZiel';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import {
   FiCamera,
@@ -312,7 +313,8 @@ export default function Kamerablick({ kopf }: KamerablickProps) {
   const dof = cam && sensor ? computeDof(sensor, cam.focalLength, cam.aperture, cam.focusDistance, cam.extenderActive) : null;
 
   const zoomMin = manualZoom ? manualMin : (lensDef?.focalLengthMin ?? 4);
-  const zoomMax = manualZoom ? manualMax : (lensDef?.focalLengthMax ?? 300);
+  const zoomFest = !manualZoom && istFestbrennweite(lensDef);
+  const zoomMax = manualZoom ? manualMax : Math.max(zoomFest ? zoomMin + 1 : zoomMin, lensDef?.focalLengthMax ?? 300);
   useEffect(() => { zoomGrenzen.current = { min: zoomMin, max: zoomMax }; }, [zoomMin, zoomMax]);
 
   const kopfzeile = (
@@ -571,7 +573,10 @@ export default function Kamerablick({ kopf }: KamerablickProps) {
                 dezimalen={1}
                 onChange={(v) => update({ focalLength: v })}
                 onStep={(dir) => update({ focalLength: stepAlong(cam.focalLength, dir, zoomMin, zoomMax, zoomTicks) })}
-                title={t('preview.focal.title2', 'Focal length — logarithmic, snaps to the marks (Shift = free).')}
+                disabled={zoomFest}
+                title={zoomFest
+                  ? t('sidebar.cam.focalLength.prime', 'Prime lens — the focal length is fixed.')
+                  : t('preview.focal.title2', 'Focal length — logarithmic, snaps to the marks (Shift = free).')}
                 rechts={
                   <>
                     {manualZoom && grenzFeld(manualMin, (v) => setManualMin(Math.max(1, Math.min(manualMax - 1, v))), t('preview.manualMin', 'Manual minimum focal length (mm)'))}
@@ -747,7 +752,7 @@ function Einblendungen({ ov, look, onOv, invertH, invertV, onInvert }: {
   useEffect(() => {
     if (!offen) return;
     const zu = (e: PointerEvent) => { if (!ref.current?.contains(e.target as Node)) setOffen(false); };
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOffen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); setOffen(false); } };
     document.addEventListener('pointerdown', zu);
     document.addEventListener('keydown', esc);
     return () => { document.removeEventListener('pointerdown', zu); document.removeEventListener('keydown', esc); };
