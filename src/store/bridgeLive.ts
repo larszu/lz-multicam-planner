@@ -310,7 +310,7 @@ export function optikOf(cam: VenueCamera): LiveOptik {
   const camDef = getCameraById(cam.cameraId, customCameras);
   const lens = getLensById(cam.lensId, customLenses);
   if (!lens) return {};
-  const sensor = camDef ? getEffectiveSensor(camDef, lens, cam.useSpeedbooster, cam.sensorModeIndex, cam.activeMount) : undefined;
+  const sensor = camDef ? getEffectiveSensor(camDef, lens, cam.useSpeedbooster, cam.sensorModeIndex, cam.activeMount, cam.lensAdapterId) : undefined;
   return { sensorWidthMm: sensor?.widthMm, focalMin: lens.focalLengthMin, focalMax: lens.focalLengthMax };
 }
 

@@ -34,7 +34,7 @@ const TYPES = [
   { value: 'eng', label: 'ENG' },
 ] as const;
 
-type ModeRow = { name: string; widthMm: string; heightMm: string };
+type ModeRow = { name: string; widthMm: string; heightMm: string; pixelsW?: string; pixelsH?: string };
 
 interface CustomCameraFormProps {
   /** Populated for edit mode, undefined for create mode. */
@@ -90,7 +90,12 @@ export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, tit
   const [sensorName, setSensorName] = useState<string>(initialPreset === '__custom__' ? (initial?.sensor.name ?? '') : '');
 
   const [modes, setModes] = useState<ModeRow[]>(
-    (initial?.sensorModes ?? []).map((m) => ({ name: m.name, widthMm: String(m.widthMm), heightMm: String(m.heightMm) })),
+    (initial?.sensorModes ?? []).map((m) => ({
+      name: m.name,
+      widthMm: String(m.widthMm),
+      heightMm: String(m.heightMm),
+      ...(m.pixelsW && m.pixelsH ? { pixelsW: String(m.pixelsW), pixelsH: String(m.pixelsH) } : {}),
+    })),
   );
 
   const ai = useAiSettings();
@@ -130,11 +135,14 @@ export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, tit
       const w = parseFloat(m.widthMm);
       const h = parseFloat(m.heightMm);
       if (!w || !h) continue;
+      const pw = parseInt(m.pixelsW ?? '', 10);
+      const ph = parseInt(m.pixelsH ?? '', 10);
       parsedModes.push({
         name: m.name.trim() || `${w}×${h}mm`,
         widthMm: w,
         heightMm: h,
         cropFactor: diagToCropFactor(w, h),
+        ...(pw > 0 && ph > 0 ? { pixelsW: pw, pixelsH: ph } : {}),
       });
     }
 
@@ -514,6 +522,24 @@ export function CustomCameraForm({ initial, onSubmit, onCancel, submitLabel, tit
               >
                 <FiTrash2 size={11} />
               </button>
+              <input
+                type="number"
+                step="1"
+                placeholder={t('sidebar.form.wPx', 'W px')}
+                aria-label={t('sidebar.form.wPx.aria', 'Format width in pixels')}
+                className="col-span-6 bg-bc-panel border border-bc-border px-1 py-0.5 text-bc-text-bright text-[11px]"
+                value={m.pixelsW ?? ''}
+                onChange={(e) => patchMode(i, { pixelsW: e.target.value })}
+              />
+              <input
+                type="number"
+                step="1"
+                placeholder={t('sidebar.form.hPx', 'H px')}
+                aria-label={t('sidebar.form.hPx.aria', 'Format height in pixels')}
+                className="col-span-6 bg-bc-panel border border-bc-border px-1 py-0.5 text-bc-text-bright text-[11px]"
+                value={m.pixelsH ?? ''}
+                onChange={(e) => patchMode(i, { pixelsH: e.target.value })}
+              />
               {cf > 0 && (
                 <span className="col-span-12 text-[11px] text-bc-dim -mt-0.5">
                   → {t('sidebar.form.cropFactor', 'crop factor')} ×{cf.toFixed(2)}

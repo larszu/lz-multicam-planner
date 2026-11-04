@@ -1,5 +1,6 @@
 import type { Camera, SensorSize, AdapterInfo, Lens } from '../types';
 import { libraryCameras } from '../library/registry.ts';
+import { activeLensAdapter, adapterInfoOf } from './lensAdapters.ts';
 
 // ── Standard sensor sizes ──
 export const SENSORS: Record<string, SensorSize> = {
@@ -672,7 +673,10 @@ export function getSpeedBooster(camera: Camera, activeMount?: string): AdapterIn
  *     exists for the active lens mount → body mount combo (see SPEED_BOOSTERS),
  *     it supersedes the body's plain mountAdapter entry.
  */
-export function getAdapterInfo(camera: Camera, _lens: Lens, useSpeedbooster = false, activeMount?: string): AdapterInfo | null {
+export function getAdapterInfo(camera: Camera, lens: Lens, useSpeedbooster = false, activeMount?: string, lensAdapterId?: string, sensorModeIndex?: number): AdapterInfo | null {
+  const converter = activeLensAdapter(camera, lens, lensAdapterId);
+  if (converter) return adapterInfoOf(converter, bodySensor(camera, sensorModeIndex));
+
   const effectiveMount = activeMount ?? camera.mount;
 
   if (useSpeedbooster) {
@@ -690,9 +694,14 @@ export function getAdapterInfo(camera: Camera, _lens: Lens, useSpeedbooster = fa
  *   2. Camera hardware sensor mode (URSA B4 crop, VENICE window, FX9 S35 etc.)
  *   3. Camera default sensor
  */
-export function getEffectiveSensor(camera: Camera, lens: Lens, useSpeedbooster = false, sensorModeIndex?: number, activeMount?: string): SensorSize {
-  const adapter = getAdapterInfo(camera, lens, useSpeedbooster, activeMount);
+export function getEffectiveSensor(camera: Camera, lens: Lens, useSpeedbooster = false, sensorModeIndex?: number, activeMount?: string, lensAdapterId?: string): SensorSize {
+  const adapter = getAdapterInfo(camera, lens, useSpeedbooster, activeMount, lensAdapterId, sensorModeIndex);
   if (adapter?.cropSensor) return adapter.cropSensor;
+  return bodySensor(camera, sensorModeIndex);
+}
+
+/** Das gewaehlte Aufnahmeformat des Bodys, ohne Adapter. Standard: voller Sensor. */
+export function bodySensor(camera: Camera, sensorModeIndex?: number): SensorSize {
   if (
     sensorModeIndex !== undefined &&
     sensorModeIndex >= 0 &&
@@ -707,8 +716,8 @@ export function getEffectiveSensor(camera: Camera, lens: Lens, useSpeedbooster =
 /**
  * Get effective aperture accounting for adapter light loss.
  */
-export function getEffectiveAperture(camera: Camera, lens: Lens, aperture: number, useSpeedbooster = false, activeMount?: string): number {
-  const adapter = getAdapterInfo(camera, lens, useSpeedbooster, activeMount);
+export function getEffectiveAperture(camera: Camera, lens: Lens, aperture: number, useSpeedbooster = false, activeMount?: string, lensAdapterId?: string): number {
+  const adapter = getAdapterInfo(camera, lens, useSpeedbooster, activeMount, lensAdapterId);
   if (!adapter || adapter.lightLossStops === 0) return aperture;
   // Each stop doubles the area, so T-number increases by 2^(stops/2)
   // Negative lightLossStops = gain (speedbooster)
@@ -763,9 +772,14 @@ export interface CoverageResult {
  * on a Super-35 body without the right relay adapter, for example, leave
  * massive black corners; this catches that mid-setup.
  */
-export function getCoverageStatus(camera: Camera, lens: Lens, useSpeedbooster = false, activeMount?: string, sensorModeIndex?: number): CoverageResult {
+export function getCoverageStatus(camera: Camera, lens: Lens, useSpeedbooster = false, activeMount?: string, sensorModeIndex?: number, lensAdapterId?: string): CoverageResult {
   if (lens.mount === 'integrated') return { status: 'ok', ratio: 1 };
-  const adapter = getAdapterInfo(camera, lens, useSpeedbooster, activeMount);
+  const adapter = getAdapterInfo(camera, lens, useSpeedbooster, activeMount, lensAdapterId, sensorModeIndex);
+  if (adapter?.magnification && adapter.imageCircleMm) {
+    const lensCircle = (lens.imageCircle ? IMAGE_CIRCLE_KIND_MM[lens.imageCircle] : MOUNT_IMAGE_CIRCLE_MM[lens.mount]) ?? adapter.imageCircleMm;
+    const body = bodySensor(camera, sensorModeIndex);
+    return coverageVerdict(Math.min(adapter.imageCircleMm, lensCircle * adapter.magnification), Math.hypot(body.widthMm, body.heightMm));
+  }
   // Adapter with a cropSensor (B4 relay, Speedbooster) re-projects the lens
   // onto its own sensor area. The effective image circle is then bounded by
   // that adapter's crop, not by the bare lens.
@@ -780,7 +794,10 @@ export function getCoverageStatus(camera: Camera, lens: Lens, useSpeedbooster = 
     circle = Math.min(circle, adapterDiag);
   }
   const sensor = getEffectiveSensor(camera, lens, useSpeedbooster, sensorModeIndex, activeMount);
-  const sensorDiag = Math.hypot(sensor.widthMm, sensor.heightMm);
+  return coverageVerdict(circle, Math.hypot(sensor.widthMm, sensor.heightMm));
+}
+
+function coverageVerdict(circle: number, sensorDiag: number): CoverageResult {
   if (sensorDiag <= 0) return { status: 'ok', ratio: 1 };
   const ratio = circle / sensorDiag;
   if (ratio >= 1.0) return { status: 'ok', ratio };

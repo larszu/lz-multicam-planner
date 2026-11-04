@@ -1,4 +1,4 @@
-export type SettingsSection = 'general' | 'library' | 'ai' | 'bridge';
+export type SettingsSection = 'general' | 'library' | 'ai' | 'bridge' | 'mcp';
 
 /** Oeffnet die Einstellungen von ueberall — die Kopfzeile haelt den Dialog. */
 export const OPEN_SETTINGS_EVENT = 'multicam:open-settings';

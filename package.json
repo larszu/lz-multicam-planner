@@ -133,6 +133,7 @@
     }
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "atem-connection": "^3.10.3",
@@ -146,6 +147,7 @@
     "suncalc": "^1.9.0",
     "three": "^0.185.0",
     "troika-three-text": "^0.52.4",
+    "zod": "^4.6.7",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

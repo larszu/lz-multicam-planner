@@ -578,7 +578,7 @@ function FovPyramid({ cam, isSelected, look }: { cam: ReturnType<typeof useStore
   // Alle Hooks muessen unbedingt (in gleicher Reihenfolge bei jedem Render)
   // laufen — daher null-safe ableiten und erst NACH den Hooks early-returnen.
   const sensor = camDef && lensDef
-    ? getEffectiveSensor(camDef, lensDef, cam.useSpeedbooster, cam.sensorModeIndex, cam.activeMount)
+    ? getEffectiveSensor(camDef, lensDef, cam.useSpeedbooster, cam.sensorModeIndex, cam.activeMount, cam.lensAdapterId)
     : null;
   const fov = sensor ? computeFov(sensor, cam.focalLength, cam.focusDistance, cam.extenderActive, lensDef?.squeeze ?? 1) : null;
   const fovMin = sensor && lensDef ? computeFov(sensor, lensDef.focalLengthMax, cam.focusDistance, cam.extenderActive, lensDef.squeeze ?? 1) : null;

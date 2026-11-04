@@ -11,6 +11,9 @@ import { normaliseCardExtras } from '../utils/cameraCardExtras';
 import { normaliseCoverage } from '../utils/lensReach';
 import { normalisePaint } from '../utils/paintState';
 import { normaliseControlPath } from '../utils/shadingCapability';
+import { normaliseControlRoute } from '../utils/steuerweg';
+import { normaliseFrameMask } from '../utils/rahmenmaske';
+import { getLensAdapter } from '../data/lensAdapters';
 import { normaliseMatchGroup } from '../utils/paintRegistry';
 import {
   fromVenueExchange,
@@ -1564,6 +1567,9 @@ export const useStore = create<AppState>((set, get) => ({
         // Tabelle nach, die ihn nicht kennt, und die Karte behauptete eine
         // Kann-Liste aus `undefined`.
         ...normaliseControlPath(c),
+        ...normaliseControlRoute(c),
+        ...normaliseFrameMask(c),
+        lensAdapterId: getLensAdapter(c.lensAdapterId)?.id,
         // Bedarf 47 — die Abgleich-Gruppe. Ein leerer Name faellt weg statt
         // als `''` eine Gruppe zu bilden, in der jede Position ohne Gruppe
         // laege — und die dann reihenweise „nicht abgleichbar" meldete.

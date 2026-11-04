@@ -2,6 +2,7 @@ const { app, BrowserWindow, shell, session, ipcMain, safeStorage, dialog } = req
 const path = require('path');
 const fs = require('fs');
 const { registerAtem, closeAtem } = require('./atem.cjs');
+const { registerMcp, stopMcp } = require('./mcp.cjs');
 
 // productName changed from "MultiCam Planner" to "LZ Multicam Planner"; Electron
 // derives userData from it. Pin the old folder so the stored device-library
@@ -131,7 +132,8 @@ ipcMain.on('project-file:document-state', (event, state) => {
 });
 
 registerAtem();
-app.on('before-quit', () => { void closeAtem(); });
+registerMcp();
+app.on('before-quit', () => { void closeAtem(); stopMcp(); });
 
 const ALLOWED_EXTERNAL_PROTOCOLS = ['https:', 'mailto:'];
 
