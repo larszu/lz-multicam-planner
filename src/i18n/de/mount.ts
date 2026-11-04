@@ -67,4 +67,8 @@ export const mount: Record<string, string> = {
   'motion.hint.handheld': 'Nie ganz ruhig — feines Zittern überlagert die Fahrt.',
   'motion.hint.steadicam': 'Schwebend, läuft leicht über und pendelt sich ein.',
   'motion.hint.fixed': 'Starr — nur Zoom/Fokus, keine Fahrt.',
+  // #221 / #222 / #223 / #235
+  'path.arc': 'Bogen',
+  'path.line': 'Gerade',
+  'path.swing': 'Schwenk',
 };

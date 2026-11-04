@@ -34,3 +34,8 @@ export function planQuelleFuer(bild: string | undefined): PlanQuelle | null {
 export function setPlanSeite(seite: number, bild: string) {
   if (quelle) quelle = { ...quelle, seite, bild };
 }
+
+/** Das Planbild wurde neu gezeichnet (DXF-Ebenen) — die Quelle gehoert weiter dazu. */
+export function setPlanBild(alt: string, neu: string) {
+  if (quelle && quelle.bild === alt) quelle = { ...quelle, bild: neu };
+}

@@ -30,10 +30,12 @@ import {
 } from '../../utils/cameraCardExtras';
 import { FiPlus, FiTrash2, FiCopy, FiChevronDown, FiChevronUp, FiEye, FiEyeOff, FiUpload, FiUser, FiMap, FiMaximize2, FiLock, FiUnlock, FiStar, FiEdit2, FiRotateCcw, FiHome, FiImage, FiColumns, FiUsers, FiVideo, FiTarget, FiClipboard, FiCamera } from 'react-icons/fi';
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import type { StageObjectType, Camera, CameraMountType, VenueCamera, WallFit, WallPattern } from '../../types';
+import type { StageObjectType, Camera, CameraMountType, TravelShape, VenueCamera, WallFit, WallPattern } from '../../types';
 
 import { rigsForType, trackSectionPlan } from '../../data/rigs';
-import { clampHeight, clampTrack, rigLimits } from '../../utils/rigLimits';
+import { clampHeight, clampTrack, DEFAULT_SWING_DEG, rigLimits, travelShapes } from '../../utils/rigLimits';
+import { pathLengthM, pathSweepDeg } from '../../utils/travelPath';
+import { DxfEbenenListe, PlanDrehen, PlanQuelleZeile } from './PlanWerkzeuge';
 import { rigYaw } from '../../utils/camera';
 import { defaultWallHeight } from '../../utils/wallHeight';
 import { WallHeightField } from './WallHeightField';
@@ -1294,6 +1296,9 @@ function CameraCard({
                         mountType: newMount,
                         rigId: undefined,
                         trackLengthM: undefined,
+                        travelShape: undefined,
+                        travelRadiusM: undefined,
+                        swingDeg: undefined,
                         z: next.standardHeightM,
                         trackOffset: next.trackM > 0 ? 0 : undefined,
                       });
@@ -1436,6 +1441,83 @@ function CameraCard({
                         title={t('sidebar.cam.parkTitle', 'Park rig at zero')}
                       >{t('sidebar.cam.park', 'park')}</button>
                     }
+                  />
+                )}
+
+                {/* Form des Fahrwegs (#235) — gerade, Bogen oder Kranschwenk */}
+                {travelShapes(limits.type, limits.travelM).length > 1 && (
+                  <FieldRow label={t('sidebar.cam.path.label', 'Path')} htmlFor={`path-${cam.id}`}>
+                    <select
+                      id={`path-${cam.id}`}
+                      className="block w-full border border-bc-border bg-bc-panel-raised text-bc-text-bright"
+                      style={{ padding: '3px 6px' }}
+                      value={limits.pathShape}
+                      title={t('sidebar.cam.path.title', 'Shape of the track: the camera moves along it and its field of view moves with it.')}
+                      onChange={(e) => {
+                        const shape = e.target.value as TravelShape;
+                        const next = rigLimits({ ...cam, travelShape: shape, travelRadiusM: undefined });
+                        updateCamera(cam.id, {
+                          travelShape: shape === 'line' ? undefined : shape,
+                          travelRadiusM: undefined,
+                          trackOffset: clampTrack(next, cam.trackOffset ?? 0),
+                        });
+                      }}
+                    >
+                      {travelShapes(limits.type, limits.travelM).map((sh) => (
+                        <option key={sh} value={sh}>
+                          {sh === 'line' ? t('sidebar.cam.path.line', 'Straight') : sh === 'arc' ? t('sidebar.cam.path.arc', 'Curve') : t('sidebar.cam.path.swing', 'Crane swing')}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="block mt-0.5 text-[10px] text-bc-dim leading-snug">
+                      {format(t('sidebar.cam.path.summary', '{len} m from end 1 to end 2'), { len: pathLengthM(limits).toFixed(1) })}
+                      {limits.pathShape !== 'line' ? ` · ${Math.round(pathSweepDeg(limits))}°` : ''}
+                    </span>
+                  </FieldRow>
+                )}
+                {limits.pathShape !== 'line' && limits.pathRadiusM !== undefined && (
+                  <ValueSlider
+                    label={limits.pathShape === 'swing' ? t('sidebar.cam.path.reach', 'Arm reach') : t('sidebar.cam.path.radius', 'Curve radius')}
+                    value={Math.abs(limits.pathRadiusM)}
+                    min={0.5}
+                    max={limits.pathShape === 'swing' ? 15 : 50}
+                    step={0.1}
+                    decimals={1}
+                    unit="m"
+                    title={limits.pathShape === 'swing'
+                      ? t('sidebar.cam.path.reach.title', 'Horizontal distance from the crane pivot to the camera head.')
+                      : t('sidebar.cam.path.radius.title', 'Radius of the curved track; the smaller, the tighter the curve.')}
+                    onChange={(v) => {
+                      const r = (limits.pathRadiusM ?? 1) < 0 ? -v : v;
+                      const next = rigLimits({ ...cam, travelRadiusM: r });
+                      updateCamera(cam.id, { travelRadiusM: r, trackOffset: clampTrack(next, cam.trackOffset ?? 0) });
+                    }}
+                    right={limits.pathShape === 'arc' ? (
+                      <button
+                        onClick={() => updateCamera(cam.id, { travelRadiusM: -(limits.pathRadiusM ?? 1) })}
+                        style={{ padding: '2px 5px' }}
+                        className="shrink-0 border border-bc-border text-[10px] text-bc-dim hover:text-bc-text-bright"
+                        title={t('sidebar.cam.path.flip.title', 'Bend the curve to the other side')}
+                      >{t('sidebar.cam.path.flip', 'flip')}</button>
+                    ) : undefined}
+                  />
+                )}
+                {limits.pathShape === 'swing' && (
+                  <ValueSlider
+                    label={t('sidebar.cam.path.sweep', 'Swing range')}
+                    value={Math.max(5, Math.min(360, cam.swingDeg ?? DEFAULT_SWING_DEG))}
+                    min={5}
+                    max={360}
+                    step={5}
+                    decimals={0}
+                    unit="°"
+                    standard={DEFAULT_SWING_DEG}
+                    hint={format(t('sidebar.cam.path.heightRange', 'height {min}–{max} m'), { min: limits.minHeightM.toFixed(1), max: limits.maxHeightM.toFixed(1) })}
+                    title={t('sidebar.cam.path.sweep.title', 'How far the arm swings around its pivot, centred on the rig orientation.')}
+                    onChange={(v) => {
+                      const next = rigLimits({ ...cam, swingDeg: v });
+                      updateCamera(cam.id, { swingDeg: v, trackOffset: clampTrack(next, cam.trackOffset ?? 0) });
+                    }}
                   />
                 )}
               </>
@@ -2511,6 +2593,8 @@ export default function Sidebar() {
                   marken={[5, 50, 100]}
                   onChange={(v) => setBackgroundPlan({ ...backgroundPlan, opacity: v / 100 })}
                 />
+                <PlanQuelleZeile plan={backgroundPlan} onChange={setBackgroundPlan} />
+                {!backgroundPlan.locked && (<>
                 {/* mm/px auf log-Bahn: ein Plan liegt zwischen 1 und 500 mm/px,
                     linear waeren alle ueblichen Massstaebe im ersten Prozent. */}
                 <Regler
@@ -2616,6 +2700,7 @@ export default function Sidebar() {
                     {t('sidebar.autoResize', 'Auto-resize venue to match floor plan')}
                   </label>
                 </div>
+                <PlanDrehen plan={backgroundPlan} onChange={setBackgroundPlan} />
                 <div className="grid grid-cols-2 gap-2">
                   <label>
                     <span className="text-bc-muted">{t('sidebar.offsetX', 'Offset X (m)')}</span>
@@ -2639,6 +2724,8 @@ export default function Sidebar() {
                 >
                   {planAusrichten ? t('sidebar.planAlign.stop', 'Done moving the plan') : t('sidebar.planAlign.start', 'Move plan by dragging')}
                 </button>
+                </>)}
+                <DxfEbenenListe plan={backgroundPlan} onChange={setBackgroundPlan} />
                 <button
                   type="button"
                   aria-pressed={teilplanZeichnen}

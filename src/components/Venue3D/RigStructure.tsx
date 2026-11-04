@@ -11,10 +11,12 @@
 // Damit gilt lokal: x = Blickrichtung (f), y = Hoehe (h), z = quer (l) — genau
 // die Achsen des Rig-Frames.
 import * as THREE from 'three';
+import { useEffect, useMemo } from 'react';
 import type { VenueCamera } from '../../types';
 import { rigYaw } from '../../utils/camera';
 import { rigLimits } from '../../utils/rigLimits';
 import { rigSkeleton, type RigRole, type RigSegment } from '../../utils/rigGeometry';
+import { pathPolyline } from '../../utils/travelPath';
 
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -96,6 +98,29 @@ export default function RigStructure({ cam, isSelected }: { cam: VenueCamera; is
           <meshBasicMaterial color={cam.color} opacity={0.12} transparent depthWrite={false} />
         </mesh>
       )}
+    </group>
+  );
+}
+
+/** Gebogener Fahrweg als Linie am Boden (#235); gerade Strecken zeigt das Rig selbst. */
+export function TravelPathFloor({ cam }: { cam: VenueCamera }) {
+  const limits = rigLimits(cam);
+  const { pathShape, pathRadiusM, travelM } = limits;
+  const linie = useMemo(() => {
+    if (pathShape === 'line') return null;
+    const punkte = pathPolyline({ pathShape, pathRadiusM, travelM });
+    if (punkte.length < 2) return null;
+    const geo = new THREE.BufferGeometry().setFromPoints(punkte.map((p) => new THREE.Vector3(p.f, 0.02, p.l)));
+    return new THREE.Line(geo, new THREE.LineBasicMaterial({ color: cam.color, transparent: true, opacity: 0.8 }));
+  }, [cam.color, pathShape, pathRadiusM, travelM]);
+  useEffect(() => () => {
+    linie?.geometry.dispose();
+    (linie?.material as THREE.Material | undefined)?.dispose();
+  }, [linie]);
+  if (!linie) return null;
+  return (
+    <group position={[cam.x, 0, cam.y]} rotation={[0, THREE.MathUtils.degToRad(-rigYaw(cam)), 0]}>
+      <primitive object={linie} />
     </group>
   );
 }

@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import type { Camera, CameraMountType, Lens, VenueCamera } from '../types';
 import type { Detail, HalterungArt, KameraRig, KameraRigOptionen, KoerperArt, ObjektivArt, Tally } from '../avplan/scene3d';
+import { pathShift } from './travelPath';
 import { rigLimits } from './rigLimits';
 import { rigYaw } from './camera';
 
@@ -110,7 +111,15 @@ export function kameraModell(cam: VenueCamera, camDef: Camera | undefined, lens:
   if (halterung === 'kran') {
     optionen.armLaengeM = limits.armLengthM ?? Math.max(1.5, limits.travelM * 1.4);
   }
-  if (halterung === 'dolly' || halterung === 'slider') {
+  const gebogen = limits.pathShape !== 'line';
+  if (gebogen) optionen.rigDrehungDeg = pathShift(cam).headingDeg;
+  if ((halterung === 'dolly' || halterung === 'slider') && gebogen) {
+    // Gebogene Schiene: das Modell kann nur gerade — es bekommt ein kurzes
+    // Stueck unter dem Wagen, den Bogen zeichnet die Bodenlinie.
+    optionen.schienenLaengeM = 1.2;
+    optionen.schienenRichtung = 'laengs';
+    optionen.position = 0;
+  } else if (halterung === 'dolly' || halterung === 'slider') {
     const laenge = Math.max(0.3, limits.railLengthM || (halterung === 'dolly' ? 3.6 : 1));
     const weg = Math.max(1e-3, laenge / 2 - (SCHIENEN_RAND[halterung] ?? 0));
     optionen.schienenLaengeM = laenge;

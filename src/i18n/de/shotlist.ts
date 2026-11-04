@@ -49,4 +49,6 @@ export const shotlist: Record<string, string> = {
     'Auf einem {rig} braucht diese Fahrt mindestens {need} s — die eingestellten {set} s sind physikalisch nicht zu schaffen.',
   'shotlist.transitionSeconds': 'Fahrtzeit in Sekunden',
   'shotlist.transitionToggle': 'Fahrtzeit umschalten (OFF / Schnell / Langsam / Manuell)',
+  // #221 / #222 / #223 / #235
+  'shotlist.pathAt': 'bei {m} m auf dem Fahrweg',
 };

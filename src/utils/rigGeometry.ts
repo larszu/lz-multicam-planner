@@ -19,6 +19,7 @@
 import { MOUNT_TYPE_LABELS } from '../types';
 import { trackSectionPlan } from '../data/rigs';
 import type { RigLimits } from './rigLimits';
+import { pathCenter, rotateOnPath } from './travelPath';
 
 export interface RigVec {
   f: number;
@@ -145,6 +146,50 @@ function sleeperPositions(railLengthM: number): number[] {
  * Pose ergeben immer dieselbe Geometrie, damit 2D und 3D nicht auseinanderlaufen.
  */
 export function rigSkeleton(limits: RigLimits, pose: RigPose): RigSkeleton {
+  return pathCenter(limits) ? curvedSkeleton(limits, pose) : straightSkeleton(limits, pose);
+}
+
+/**
+ * Rig auf gebogener Strecke oder schwenkendem Arm (#235): das gerade Rig in
+ * Parkstellung, als Ganzes um den Mittelpunkt des Fahrwegs gedreht. Die
+ * Schiene selbst faehrt nicht mit — sie wird als Bogen neu gelegt.
+ */
+function curvedSkeleton(limits: RigLimits, pose: RigPose): RigSkeleton {
+  const base = straightSkeleton(limits, { ...pose, offsetM: 0 });
+  const s = pose.offsetM ?? 0;
+  const move = (p: RigVec): RigVec => ({ ...rotateOnPath(limits, p, s), h: p.h });
+  const onArc = (p: RigVec, at: number): RigVec => ({ ...rotateOnPath(limits, { f: 0, l: p.l }, at + p.f), h: p.h });
+  const segments: RigSegment[] = [];
+  for (const g of base.segments) {
+    if (g.role === 'rail') continue;
+    if (g.role === 'sleeper') {
+      segments.push({ ...g, a: onArc(v(0, g.a.l, g.a.h), g.a.f), b: onArc(v(0, g.b.l, g.b.h), g.b.f) });
+      continue;
+    }
+    segments.push({ ...g, a: move(g.a), b: move(g.b) });
+  }
+  const rails = base.segments.filter((g) => g.role === 'rail');
+  for (const r of rails) {
+    const from = Math.min(r.a.f, r.b.f);
+    const to = Math.max(r.a.f, r.b.f);
+    const n = Math.max(2, Math.ceil((to - from) / 0.25));
+    for (let i = 0; i < n; i += 1) {
+      const f0 = from + ((to - from) * i) / n;
+      const f1 = from + ((to - from) * (i + 1)) / n;
+      segments.push({ ...r, a: onArc(v(0, r.a.l, r.a.h), f0), b: onArc(v(0, r.a.l, r.a.h), f1) });
+    }
+  }
+  const fp = base.footprint;
+  const fpAt = fp ? move(v(fp.centerF, fp.centerL, 0)) : null;
+  return {
+    ...base,
+    segments,
+    footprint: fp && fpAt ? { ...fp, centerF: fpAt.f, centerL: fpAt.l } : undefined,
+    head: move(base.head),
+  };
+}
+
+function straightSkeleton(limits: RigLimits, pose: RigPose): RigSkeleton {
   const h = Math.max(0.05, pose.heightM);
   const off = pose.offsetM ?? 0;
   const fp = limits.footprintM;
@@ -240,7 +285,9 @@ export function rigSkeleton(limits: RigLimits, pose: RigPose): RigSkeleton {
       const dh = h - pivotH;
       // Der Ausleger muss den Kopf erreichen: der horizontale Anteil folgt
       // aus Auslegerlaenge und Hoehendifferenz (Pythagoras), mindestens 0.5 m.
-      const reach = Math.max(0.5, Math.sqrt(Math.max(0.25, arm * arm - dh * dh)));
+      const reach = limits.pathShape === 'swing' && limits.pathRadiusM
+        ? limits.pathRadiusM
+        : Math.max(0.5, Math.sqrt(Math.max(0.25, arm * arm - dh * dh)));
       const pivot = v(off - reach, 0, pivotH);
       segments.push(seg('arm', pivot, head, 0.1));
       if (limits.telescopeM) {

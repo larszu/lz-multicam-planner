@@ -28,7 +28,7 @@ import type { CameraMountType } from '../../types';
 import { exportStoryboardPng, printStoryboard, shotOpticsLabel } from '../../utils/storyboard';
 import { storyboardFingerprint } from '../../utils/documentContent';
 import { useTranslation, format } from '../../i18n';
-import { motionProfileHint, motionProfileLabel, mountTypeLabel } from '../../i18n/mount';
+import { motionProfileHint, motionProfileLabel, mountTypeLabel, pathLabel } from '../../i18n/mount';
 import { stampForStand } from '../../utils/documentStamp';
 import type { Shot } from '../../types';
 
@@ -220,7 +220,10 @@ export default function ShotlistPanel() {
 
   const rigOf = useCallback((shot: { cameraId: string }) => {
     const c = cameras.find((q) => q.id === shot.cameraId);
-    return c ? mountTypeLabel(t, c.mountType ?? 'tripod') : undefined;
+    if (!c) return undefined;
+    const off = (shot as { state?: { trackOffset?: number } }).state?.trackOffset;
+    const at = off ? format(t('shotlist.pathAt', 'at {m} m on the path'), { m: off.toFixed(1) }) : '';
+    return [mountTypeLabel(t, c.mountType ?? 'tripod'), pathLabel(t, c), at].filter(Boolean).join(' · ');
   }, [cameras, t]);
 
   const doExportPng = useCallback(async () => {

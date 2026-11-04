@@ -19,6 +19,7 @@ import ShotlistPanel from './components/Shotlist/ShotlistPanel';
 import RigControlPanel from './components/RigControl/RigControlPanel';
 import TemplateSelector from './components/Templates/TemplateSelector';
 import ExportPanel from './components/Export/ExportPanel';
+import CameraMapDialog from './components/Export/CameraMapDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import { loadJSON, saveJSON } from './utils/storage';
 import { Suspense, lazy, useState, useRef, useCallback, useEffect, useMemo } from 'react';
@@ -677,6 +678,7 @@ export default function App() {
       <StatusBar />
 
       <ExportPanel />
+      <CameraMapDialog />
       <FirstSteps activeTabId={layoutMode === 'focus' ? focusTabId : 'tab-multiview'} onSelectTab={handleSelectTab} />
       <CommandPalette commands={commands} />
       {braucht3D && <Suspense fallback={null}><KameraBildHost /></Suspense>}

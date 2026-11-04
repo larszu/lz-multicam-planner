@@ -37,6 +37,7 @@ import { defaultWallHeight, migrateWallHeights } from '../utils/wallHeight';
 import { adoptLegacyShotlists, normaliseShotlists } from './legacyShotlists';
 import type { PlanVorschau } from '../lib/planVorschau';
 import type { Teilplan } from '../utils/teilplan';
+import type { CoverageMode } from '../utils/coverage';
 import { neueSitzflaeche, neueVideowand, sitzflaecheAusRahmen, platzFuerPerson, venueAusDatei } from '../utils/raum';
 import { zielFolgen } from '../utils/kameraZiel';
 import type { PositionUebernahme } from '../utils/kameraPositionen';
@@ -287,6 +288,9 @@ interface AppState {
    */
   showDof: boolean;
   toggleShowDof: () => void;
+  /** Waermekarte der Publikumsabdeckung im 2D-Plan (#221); Vorgabe aus. */
+  coverageMode: CoverageMode;
+  setCoverageMode: (m: CoverageMode) => void;
   /** Read-only Anzeige der fremden .avplan-Lampen im 2D-Venue. */
   showForeign: boolean;
   toggleShowForeign: () => void;
@@ -1324,6 +1328,8 @@ export const useStore = create<AppState>((set, get) => ({
   toggleShowAllFov: () => set((s) => ({ showAllFov: !s.showAllFov })),
   showDof: false,
   toggleShowDof: () => set((s) => ({ showDof: !s.showDof })),
+  coverageMode: 'off',
+  setCoverageMode: (m) => set({ coverageMode: m }),
   showForeign: true,
   toggleShowForeign: () => set((s) => ({ showForeign: !s.showForeign })),
 

@@ -198,6 +198,10 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
   the project file. DWG says what to do instead (export DXF, or the free ODA
   File Converter) rather than failing silently
 - Two-point calibration tool for scaling imported floor plans (per axis, X or Y)
+- **A DXF with units lands at its real size** ($INSUNITS); the venue grows to fit it. *DXF layers* in *Floor plan* show or hide each layer (with its line count) while the DXF is in the session
+- **Turn the plan** by 90° or any angle (turned into the picture, so 3D, sub-plans and the exchange file follow); *Fix* locks position, scale and turn against accidental changes. File name and scale (mm/px, size in metres) stand under the opacity slider and in the camera map
+- **Travel paths** (camera card → *Position & rig* → *Path*): rigs with travel (dolly, slider, jib, crane, Steadicam, vehicles, cable cam, drone) run straight, on a **curve** (radius, *flip* to the other side) or, for jibs and cranes, as a **swing** around the pivot (arm reach, swing range). The plan shows the path with numbered ends, length, radius or swing angle and the crane's height range; *Track* moves the camera along it and its field of view, depth band and 3D position follow. A curved dolly track is laid as curved rails. The shotlist print carries rig, height and path per shot
+- **Audience coverage (optional, off by default):** *Audience coverage* at the bottom right of the plan (only with audience areas) shades each area on a 0.5 m grid — *All cameras* (brighter where cameras overlap), *Selected camera* or *Gaps* — and shows the share of the audience in frame. A spot counts when its head height lies inside the camera's horizontal and vertical angle of view and no solid wall is in the way; glass fronts do not block
 - **Walls and stages from the plan** (sidebar, Floor plan → *Detect walls and
   stages*): a vector PDF or DXF carries the drawing itself, so walls (with
   their thickness), doors, windows, columns, stairs, room outlines with their
@@ -227,6 +231,8 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 - **View from this camera** opens the 3D view through this camera; `Esc` or *Perspective* goes back
 - **Reset** (click twice) puts height, aim, focal length, aperture, focus and target back to the values of a new camera; name, position, body, lens and notes stay
 - **Copy positions** (clipboard button in the camera list header): all cameras as text, Markdown or CSV — name, X, Y, height, camera, lens, focal length, rig. The same panel reads such a list back: a known name moves that camera, a new name adds one; camera, lens and rig are matched by name. One undo step
+### Camera map
+*File → Export → Camera map…* draws the plan as one handover graphic: floor plan, stages, audience, video walls and walls, every camera as a symbol with its number (from the name, *CAM 3* → 3) or a letter, field of view, label with camera, lens range, focal length, rig, height and path, travel paths with numbered ends and length, a legend, project header, scale bar and the plan's source and scale. *Light* or *Dark*, labels on or off. Download as **SVG**, **PNG** or **PDF** (one page). *Animate from a cut list…* reads an FCPXML (clips of the primary storyline, multicam clips by their active video angle) or a text list with one cut per line (`00:01:02:13 CAM 2`, `end` closes the last one); clip names are matched to camera names, numbers or letters. The SVG then plays the cut: the camera on air gets a red ring and its legend row lights up, a timeline with the cuts and a running playhead sits under the plan. PNG and PDF show the first frame
 
 ### 3D Venue View
 - **Views:** *Top* (plan from above, stage at the top like in the 2D plan) and *Perspective* glide there instead of jumping. *Camera view* shows the selected camera's picture with all its controls (see *Camera view*); *Top* or *Perspective* bring the free 3D view back

@@ -1,4 +1,5 @@
 import type { VenueCamera } from '../types';
+import { pathShift } from './travelPath';
 
 /**
  * Ausrichtung des Rigs im Raum (Grad). Ohne eigene `rigRotation` folgt das Rig
@@ -16,15 +17,19 @@ export function rigYaw(cam: Pick<VenueCamera, 'pan' | 'rigRotation'>): number {
  * Effective camera position once the live-motion track slider (jib / dolly)
  * is applied. The "parked" position is `cam.x` / `cam.y`; the track shifts
  * along the **rig's** axis (`rigYaw`) — a dolly rolls along its rail no matter
- * where the camera happens to look. Returns the unmodified parked position
+ * where the camera happens to look — or along its arc / crane swing (#235). Returns the unmodified parked position
  * when no offset is set.
  */
 export function effectiveCameraPos(cam: VenueCamera): { x: number; y: number } {
   const offset = cam.trackOffset ?? 0;
   if (!offset) return { x: cam.x, y: cam.y };
-  const yawRad = (rigYaw(cam) * Math.PI) / 180;
-  return {
-    x: cam.x + Math.cos(yawRad) * offset,
-    y: cam.y + Math.sin(yawRad) * offset,
-  };
+  if (!cam.travelShape || cam.travelShape === 'line') {
+    const yawRad = (rigYaw(cam) * Math.PI) / 180;
+    return {
+      x: cam.x + Math.cos(yawRad) * offset,
+      y: cam.y + Math.sin(yawRad) * offset,
+    };
+  }
+  const { dx, dy } = pathShift(cam, offset);
+  return { x: cam.x + dx, y: cam.y + dy };
 }

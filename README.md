@@ -35,7 +35,7 @@ template or a floor plan, and the first camera is one click away.
 </picture>
 <b>Floor plan with real field of view.</b> Drag a camera into place; its cone
 shows the frame width at the focus distance, the depth-of-field band shows what
-is sharp. Import an image or PDF floor plan and calibrate it with two points.
+is sharp. Import an image, PDF or DXF floor plan, calibrate it with two points, turn it and fix it in place.
 </td>
 <td width="50%" valign="top">
 <picture>
@@ -91,6 +91,9 @@ rate. The director sees the show before the first rehearsal.
 - **Camera sheet:** height and rig per camera (starting height and range per rig), focal length slider within the lens, a target to aim at (stage centre, person, object or point) that the camera can keep following, and the values that answer the lens question — distance to the target, frame width and height there, shot size. *View from this camera*, *Reset*, and *Copy positions* as text, Markdown or CSV — pasted back, they move or add cameras.
 - **Select, copy, paste:** click to select, Shift/Ctrl/⌘-click to add, Shift-drag a frame in the 2D plan; drag one to move them all, `Del` deletes, `Ctrl/⌘+C` / `Ctrl/⌘+V` copies with new ids, 1 m offset per paste — each one undo step. A person dropped on or next to a free chair sits down on it, at the chair's seat height and facing its way, and moves with it.
 - **Audience and room:** seated and standing areas, dragged as rectangles on the 2D plan and facing the main stage — with a floor plan or walls, people appear only in these areas; an empty room without either fills its free floor on its own. Video walls, ceiling height, floor and wall materials. Walls are solid in 3D; *Draw glass front* draws see-through walls that block no sightline, and every wall takes doors and windows (windows glazed). Walls take a standard height for the whole room; any wall can have its own, an empty field uses the standard.
+- **Camera map:** *File → Export → Camera map…* draws the whole plan as one graphic — floor plan, every camera as a numbered or lettered symbol with lens and rig, travel paths with numbered ends, legend and project header — light or dark, as SVG, PNG or PDF. A cut list (FCPXML from the edit, or one line per cut: start time and camera) turns the SVG into an animation: the camera on air lights up, a timeline with playhead runs underneath.
+- **Travel paths:** dolly track, curved track or crane swing per camera — the ends are numbered, length, radius or swing range and the crane's height range are written on the plan; moving the camera along the path moves its field of view in 2D and 3D.
+- **Audience coverage (optional):** a switch at the bottom right of the 2D plan shades the audience areas by how many cameras have them in frame — all cameras, the selected one, or only the gaps — with the share of the audience that is seen.
 - **Shotlist and rig:** capture shots, set transitions, play the sequence, export a storyboard — shotlists are saved in the project file; record and replay camera moves within the rig's real limits.
 - **Templates:** football stadium, stadium event, small and large concert, church, conference — or save your own.
 - **Live from a control panel:** with *Settings → Bridge & mixer* switched on, the planner connects to [LZ Camera Bridge](https://github.com/larszu/lz-camera-bridge) (default `ws://localhost:9700`, reconnects on its own, status in the status bar). Pan, tilt and zoom the bridge reports — for example from a Broadcast Pix joystick — turn the planned camera in 2D and 3D; the camera chosen on the panel gets a dashed ring in 2D and a green tally in 3D. Each planned camera follows the bridge camera with the number in its name (*CAM 2* → 2); a different number goes in the camera's *Bridge camera* field. The plan stays as it was until you click *Apply* on the camera marked *Live*.
@@ -154,6 +157,8 @@ Netzwerk-Seriell-Bridge mit Schnittstelle, Leitungswerten, Belegung, Betriebsart
 und Port. *Einstellungen → Assistent (MCP)* lässt einen KI-Assistenten auf
 diesem Rechner im Plan arbeiten — aus als Vorgabe, jede Änderung ein
 Rückgängig-Schritt.
+
+Kamerakarte (*Datei → Export → Kamerakarte…*): der ganze Plan als SVG, PNG oder PDF, mit Optik, Stativ und Fahrweg je Kamera; mit Schnittliste als animiertes SVG. Fahrwege als Gerade, Bogen oder Kranschwenk; die Publikumsabdeckung ist ein optionaler Schalter unten rechts im 2D-Plan.
 
 Windows-Rechner mit zwei Grafikkarten: den Installer statt der portablen
 Fassung nehmen und die Programmdatei (angezeigt unter *Einstellungen →

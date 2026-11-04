@@ -131,4 +131,13 @@ export const venue: Record<string, string> = {
   'venue.list.dofCamera': 'Schärfentiefe dieser Kamera',
   'venue.toggle.dof': 'Schärfentiefe',
   'venue.toggle.dofTitle': 'Schärfebereich jeder Kamera als Körper: Nahgrenze, Fokusebene, Ferngrenze, hyperfokale Distanz',
+  // #221 / #222 / #223 / #235
+  'venue.coverage.all': 'Alle Kameras',
+  'venue.coverage.gaps': 'Lücken',
+  'venue.coverage.label': 'Publikumsabdeckung',
+  'venue.coverage.off': 'Aus',
+  'venue.coverage.selected': 'Gewählte Kamera',
+  'venue.coverage.share.title': 'Anteil der Publikumsfläche, den mindestens eine Kamera sieht',
+  'venue.coverage.share': '{p} % im Bild',
+  'venue.coverage.title': 'Publikumsflächen danach einfärben, wie viele Kameras sie im Bild haben (Schwenk, Neigung und Optik, feste Wände verdecken) — oder nur die Lücken zeigen.',
 };

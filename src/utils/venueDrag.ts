@@ -54,6 +54,8 @@ export interface DropInput {
   rigYawDeg: number;
   /** Versatz der Marke gegenueber der Parkposition, in Metern. */
   trackOffset: number;
+  /** Versatz auf gebogener Strecke (#235); ersetzt die gerade Rechnung. */
+  shift?: { dx: number; dy: number };
   venueWidthM: number;
   venueHeightM: number;
 }
@@ -78,8 +80,8 @@ export interface DropResult {
  */
 export const dropToParked = (input: DropInput): DropResult => {
   const yawRad = (input.rigYawDeg * Math.PI) / 180;
-  const dx = Math.cos(yawRad) * input.trackOffset;
-  const dy = Math.sin(yawRad) * input.trackOffset;
+  const dx = input.shift?.dx ?? Math.cos(yawRad) * input.trackOffset;
+  const dy = input.shift?.dy ?? Math.sin(yawRad) * input.trackOffset;
   const parkedX = Math.max(0, Math.min(input.venueWidthM, input.dropX - dx));
   const parkedY = Math.max(0, Math.min(input.venueHeightM, input.dropY - dy));
   return { parkedX, parkedY, markerX: parkedX + dx, markerY: parkedY + dy };
