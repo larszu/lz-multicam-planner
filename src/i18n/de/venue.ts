@@ -121,4 +121,6 @@ export const venue: Record<string, string> = {
   'venue.edit.height': 'Höhe',
   'venue.edit.pan': 'Schwenk',
   'venue.edit.tilt': 'Neigung',
+  'venue.planAlign.hint': 'Grundriss an die richtige Stelle ziehen. Wände, Bühnen und Kameras bleiben, wo sie sind.',
+  'venue.planAlign.done': 'Fertig',
 };

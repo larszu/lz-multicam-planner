@@ -6,8 +6,10 @@
 // treffen sich dabei:
 //   Zeichnung  — Meter ab der linken oberen Blattecke (die Erkennung)
 //   Welt       — Meter im Venue (`offsetX/offsetY`, `scaleX/scaleY` des Plans)
-// Dazwischen steht genau ein Faktor. Wird der erkannte Massstab uebernommen,
-// ist er 1 — dann liegt das Planbild massstaeblich im Venue.
+// Dazwischen steht je Achse ein Faktor. Wird der erkannte Massstab
+// uebernommen, ist er 1 — dann liegt das Planbild massstaeblich im Venue.
+// Sonst folgt die Zeichnung dem Planbild, wie es liegt, auch wenn X und Y
+// getrennt kalibriert sind.
 import {
   KI_BILD_KANTE,
   grauAus,
@@ -67,7 +69,8 @@ export interface PlanLaufErgebnis {
 
 /** Zeichnungsmeter → Weltmeter. */
 interface Abbildung {
-  s: number;
+  sx: number;
+  sy: number;
   dx: number;
   dy: number;
 }
@@ -89,7 +92,7 @@ function abbildung(
     const dx = g ? RAND_M - g.minX : plan.offsetX;
     const dy = g ? RAND_M - g.minY : plan.offsetY;
     return {
-      ab: { s: 1, dx, dy },
+      ab: { sx: 1, sy: 1, dx, dy },
       neuerPlan: { ...plan, scaleX: s, scaleY: s, offsetX: dx, offsetY: dy },
       venueGroesse: g
         ? { widthM: Math.ceil(g.maxX - g.minX + 2 * RAND_M), heightM: Math.ceil(g.maxY - g.minY + 2 * RAND_M) }
@@ -97,24 +100,40 @@ function abbildung(
     };
   }
   // Ohne Uebernahme bleibt die Kalibrierung des Nutzers: die Zeichnung wird
-  // auf die Breite gestaucht, die der Plan im Venue gerade einnimmt.
-  const s = (plan.widthPx * plan.scaleX) / p.breiteM;
-  return { ab: { s, dx: plan.offsetX, dy: plan.offsetY } };
+  // auf die Flaeche gelegt, die der Plan im Venue gerade einnimmt.
+  return {
+    ab: {
+      sx: (plan.widthPx * plan.scaleX) / p.breiteM,
+      sy: (plan.heightPx * plan.scaleY) / p.tiefeM,
+      dx: plan.offsetX,
+      dy: plan.offsetY,
+    },
+  };
 }
 
-const inWelt = (ab: Abbildung, x: number, y: number) => ({ x: ab.dx + x * ab.s, y: ab.dy + y * ab.s });
+const inWelt = (ab: Abbildung, x: number, y: number) => ({ x: ab.dx + x * ab.sx, y: ab.dy + y * ab.sy });
 const inRahmen = (ab: Abbildung, r: Rahmen): Rahmen => ({
-  minX: ab.dx + r.minX * ab.s,
-  minY: ab.dy + r.minY * ab.s,
-  maxX: ab.dx + r.maxX * ab.s,
-  maxY: ab.dy + r.maxY * ab.s,
+  minX: ab.dx + r.minX * ab.sx,
+  minY: ab.dy + r.minY * ab.sy,
+  maxX: ab.dx + r.maxX * ab.sx,
+  maxY: ab.dy + r.maxY * ab.sy,
 });
 const inZeichnung = (ab: Abbildung, r: Rahmen): Rahmen => ({
-  minX: (r.minX - ab.dx) / ab.s,
-  minY: (r.minY - ab.dy) / ab.s,
-  maxX: (r.maxX - ab.dx) / ab.s,
-  maxY: (r.maxY - ab.dy) / ab.s,
+  minX: (r.minX - ab.dx) / ab.sx,
+  minY: (r.minY - ab.dy) / ab.sy,
+  maxX: (r.maxX - ab.dx) / ab.sx,
+  maxY: (r.maxY - ab.dy) / ab.sy,
 });
+
+/**
+ * Ein Rahmen, der ueber dem Planbild `von` aufgezogen wurde, an derselben
+ * Stelle des Bildes, wenn es wie `nach` liegt.
+ */
+export function rahmenUmlegen(r: Rahmen, von: BackgroundPlan, nach: BackgroundPlan): Rahmen {
+  const x = (v: number) => nach.offsetX + ((v - von.offsetX) / von.scaleX) * nach.scaleX;
+  const y = (v: number) => nach.offsetY + ((v - von.offsetY) / von.scaleY) * nach.scaleY;
+  return { minX: x(r.minX), minY: y(r.minY), maxX: x(r.maxX), maxY: y(r.maxY) };
+}
 
 /** Erkannten Plan in die Vorschau umsetzen. */
 export function vorschauAusPlan(p: ErkannterPlan, plan: BackgroundPlan, o: PlanLaufOptionen, dauerMs: number): PlanLaufErgebnis {
@@ -130,21 +149,28 @@ export function vorschauAusPlan(p: ErkannterPlan, plan: BackgroundPlan, o: PlanL
     buehnen: o.stages,
     bereich: bereichInZeichnung,
   });
-  const waende: UebernahmeWand[] = u.waende.map((w) => ({
-    ...w,
-    x1: ab.dx + w.x1 * ab.s,
-    y1: ab.dy + w.y1 * ab.s,
-    x2: ab.dx + w.x2 * ab.s,
-    y2: ab.dy + w.y2 * ab.s,
-    dicke: w.dicke * ab.s,
-    oeffnungen: w.oeffnungen.map((q) => ({ ...q, offset: q.offset * ab.s, width: q.width * ab.s })),
-  }));
+  const waende: UebernahmeWand[] = u.waende.map((w) => {
+    const a = inWelt(ab, w.x1, w.y1);
+    const b = inWelt(ab, w.x2, w.y2);
+    const vorher = Math.hypot(w.x2 - w.x1, w.y2 - w.y1);
+    const laengs = vorher > 1e-9 ? Math.hypot(b.x - a.x, b.y - a.y) / vorher : ab.sx;
+    // Quer zur Wand gilt der Faktor der anderen Achse.
+    const quer = vorher > 1e-9 ? Math.hypot(((w.y2 - w.y1) / vorher) * ab.sx, ((w.x2 - w.x1) / vorher) * ab.sy) : ab.sx;
+    return {
+      ...w,
+      x1: a.x,
+      y1: a.y,
+      x2: b.x,
+      y2: b.y,
+      dicke: w.dicke * quer,
+      oeffnungen: w.oeffnungen.map((q) => ({ ...q, offset: q.offset * laengs, width: q.width * laengs })),
+    };
+  });
   const buehnen: UebernahmeBuehne[] = u.buehnen.map((b) => ({
     ...b,
-    x: ab.dx + b.x * ab.s,
-    y: ab.dy + b.y * ab.s,
-    breite: b.breite * ab.s,
-    tiefe: b.tiefe * ab.s,
+    ...inWelt(ab, b.x, b.y),
+    breite: b.breite * ab.sx,
+    tiefe: b.tiefe * ab.sy,
   }));
   const raeume = p.raeume
     .filter((r) => r.umriss)
@@ -158,6 +184,7 @@ export function vorschauAusPlan(p: ErkannterPlan, plan: BackgroundPlan, o: PlanL
       buehnen,
       raeume,
       bereich: bereichInZeichnung && inRahmen(ab, bereichInZeichnung),
+      plan: neuerPlan,
     },
     plan: neuerPlan,
     venueGroesse,
@@ -277,11 +304,11 @@ function kiEinrasten(
   // Referenzgeometrie zum Einrasten
   const refWaende: (Strecke & { dicke: number })[] = e.vektor
     ? e.vektor.plan.waende.map((w) => ({
-        x1: e.vektor!.ab.dx + w.x1 * e.vektor!.ab.s,
-        y1: e.vektor!.ab.dy + w.y1 * e.vektor!.ab.s,
-        x2: e.vektor!.ab.dx + w.x2 * e.vektor!.ab.s,
-        y2: e.vektor!.ab.dy + w.y2 * e.vektor!.ab.s,
-        dicke: w.dickeM * e.vektor!.ab.s,
+        x1: e.vektor!.ab.dx + w.x1 * e.vektor!.ab.sx,
+        y1: e.vektor!.ab.dy + w.y1 * e.vektor!.ab.sy,
+        x2: e.vektor!.ab.dx + w.x2 * e.vektor!.ab.sx,
+        y2: e.vektor!.ab.dy + w.y2 * e.vektor!.ab.sy,
+        dicke: w.dickeM * e.vektor!.ab.sx,
       }))
     : [];
 
@@ -340,7 +367,7 @@ function kiEinrasten(
     }
   }
   return {
-    vorschau: { waende, buehnen, raeume: [], bereich: e.optionen.bereich },
+    vorschau: { waende, buehnen, raeume: [], bereich: e.optionen.bereich, plan: neuerPlan },
     plan: neuerPlan,
     bericht: {
       quelle: e.vektor ? 'vektor+ki' : 'ki',

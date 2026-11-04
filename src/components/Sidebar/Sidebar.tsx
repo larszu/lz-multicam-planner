@@ -2135,6 +2135,8 @@ export default function Sidebar() {
   } = useStore();
   const selectedCameraId = useStore((s) => s.selectedCameraId);
   const selectCamera = useStore((s) => s.selectCamera);
+  const planAusrichten = useStore((s) => s.planAusrichten);
+  const setPlanAusrichten = useStore((s) => s.setPlanAusrichten);
   // Akkordeon: offen ist die Karte der ausgewaehlten Kamera. Klappt der Nutzer
   // sie trotzdem zu, merkt sich das genau diese eine Id — dadurch braucht es
   // keinen Effekt, der bei jeder Auswahl State nachzieht.
@@ -2424,16 +2426,25 @@ export default function Sidebar() {
                   <label>
                     <span className="text-bc-muted">{t('sidebar.offsetX', 'Offset X (m)')}</span>
                     <input type="number" className="w-full border border-bc-border bg-bc-panel-raised px-1 py-0.5 text-bc-text-bright"
-                      value={backgroundPlan.offsetX} step={0.5}
+                      value={backgroundPlan.offsetX} step={0.1}
                       onChange={(e) => setBackgroundPlan({ ...backgroundPlan, offsetX: parseFloat(e.target.value) || 0 })} />
                   </label>
                   <label>
                     <span className="text-bc-muted">{t('sidebar.offsetY', 'Offset Y (m)')}</span>
                     <input type="number" className="w-full border border-bc-border bg-bc-panel-raised px-1 py-0.5 text-bc-text-bright"
-                      value={backgroundPlan.offsetY} step={0.5}
+                      value={backgroundPlan.offsetY} step={0.1}
                       onChange={(e) => setBackgroundPlan({ ...backgroundPlan, offsetY: parseFloat(e.target.value) || 0 })} />
                   </label>
                 </div>
+                <button
+                  type="button"
+                  aria-pressed={planAusrichten}
+                  onClick={() => setPlanAusrichten(!planAusrichten)}
+                  title={t('sidebar.planAlign.title', 'Drag the floor plan on the 2D plan, e.g. onto detected walls. Off again keeps it from moving by accident.')}
+                  className={`w-full py-1 text-xs border ${planAusrichten ? 'border-bc-accent bg-bc-accent/20 text-bc-accent' : 'border-bc-border bg-bc-panel-raised text-bc-text hover:text-bc-text-bright'}`}
+                >
+                  {planAusrichten ? t('sidebar.planAlign.stop', 'Done moving the plan') : t('sidebar.planAlign.start', 'Move plan by dragging')}
+                </button>
                 <button
                   onClick={() => setBackgroundPlan(null)}
                   className="w-full py-1 bg-bc-red/20 text-bc-red-text text-xs hover:bg-bc-red/30"

@@ -8,7 +8,7 @@ import { useAiSettings } from '../Settings/useAiSettings';
 import { aiErrorHint } from '../Settings/aiErrorHint';
 import { planQuelleFuer } from '../../lib/planQuelle';
 import { usePlanLaden } from '../../lib/usePlanLaden';
-import { kiLauf, vorschauAusPlan, type PlanLaufBericht, type PlanLaufOptionen } from '../../lib/planLauf';
+import { kiLauf, rahmenUmlegen, vorschauAusPlan, type PlanLaufBericht, type PlanLaufOptionen } from '../../lib/planLauf';
 import { planAusQuelle } from '../../lib/planLesen';
 import { vorschauImBereich } from '../../lib/planVorschau';
 import type { ErkannterPlan } from '../../avplan/floorplan';
@@ -56,7 +56,11 @@ export default function PlanErkennungPanel() {
   const quelle = planQuelleFuer(backgroundPlan?.dataUrl);
   const hatSchluessel = !!ai.apiKey;
 
-  const bereich = planVorschau?.bereich;
+  // Ein Ausschnitt, der über dem Bild in Vorschau-Lage aufgezogen wurde,
+  // gilt für dieselbe Stelle des Bildes in seiner jetzigen Lage.
+  const bereich = planVorschau?.bereich && planVorschau.plan && backgroundPlan
+    ? rahmenUmlegen(planVorschau.bereich, planVorschau.plan, backgroundPlan)
+    : planVorschau?.bereich;
 
   const erkennen = useCallback(
     async (mitKi: boolean) => {

@@ -67,6 +67,18 @@ Nothing is applied until **Apply**: the result is an overlay on the 2D plan
 the plan limits the run to one area — useful for the one hall on a sheet that
 shows a whole building.
 
+While the overlay is shown, the plan image already lies where **Apply** puts
+it — when *Scale the plan too* is on, the image is scaled and moved with the
+detected building, so the overlay sits on the lines it came from. Without it,
+the drawing follows the plan as it lies, X and Y calibrated separately if they
+are. Pages exported with a page rotation (`/Rotate`, common for landscape
+sheets) are read the same way the page is rendered.
+
+To line the plan up afterwards, *Background → Move plan by dragging* lets the
+image be dragged on the 2D plan; walls, stages and cameras stay put. *Done* or
+`Esc` locks it again, so normal work cannot shift it by accident. *Offset X/Y*
+still set it to the decimetre.
+
 ## Measured on five real plans
 
 Five sheets by the same office (ArchiCAD, A0, 1:200, two of them area plans
