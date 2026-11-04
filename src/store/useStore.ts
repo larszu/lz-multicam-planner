@@ -33,7 +33,7 @@ import type { VenueSeatingBlock, VenueVideoWall } from '../avplan/floorplan';
 import { defaultWallHeight, migrateWallHeights } from '../utils/wallHeight';
 import { adoptLegacyShotlists, normaliseShotlists } from './legacyShotlists';
 import type { PlanVorschau } from '../lib/planVorschau';
-import { neueSitzflaeche, neueVideowand, platzFuerPerson, venueAusDatei } from '../utils/raum';
+import { neueSitzflaeche, neueVideowand, sitzflaecheAusRahmen, platzFuerPerson, venueAusDatei } from '../utils/raum';
 
 // Injected by Vite from package.json. In a release build that came through
 // the GitHub Actions workflow this matches the git release tag exactly,
@@ -136,7 +136,11 @@ interface AppState {
   addStage: (stage?: Partial<Stage>) => void;
   removeStage: (id: string) => void;
   updateStage: (id: string, updates: Partial<Stage>) => void;
-  addSeatingBlock: (standing?: boolean) => void;
+  /** Mit Rahmen: die Flaeche fuellt das aufgezogene Rechteck (#248). */
+  addSeatingBlock: (standing?: boolean, rahmen?: { minX: number; minY: number; maxX: number; maxY: number }) => void;
+  /** Publikumsflaeche im 2D-Plan aufziehen. */
+  publikumZeichnen: 'seated' | 'standing' | null;
+  setPublikumZeichnen: (v: 'seated' | 'standing' | null) => void;
   updateSeatingBlock: (id: string, updates: Partial<VenueSeatingBlock>) => void;
   removeSeatingBlock: (id: string) => void;
   addVideoWall: () => void;
@@ -564,8 +568,11 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   // ── Raum: Publikumsflaechen, Videowaende ──
-  addSeatingBlock: (standing) => set((s) => ({
-    venue: { ...s.venue, seatingBlocks: [...(s.venue.seatingBlocks ?? []), neueSitzflaeche(s.venue, standing)] },
+  addSeatingBlock: (standing, rahmen) => set((s) => ({
+    venue: {
+      ...s.venue,
+      seatingBlocks: [...(s.venue.seatingBlocks ?? []), rahmen ? sitzflaecheAusRahmen(s.venue, rahmen, standing) : neueSitzflaeche(s.venue, standing)],
+    },
     projectVersion: s.projectVersion + 1,
   })),
   updateSeatingBlock: (id, updates) => set((s) => ({
@@ -918,6 +925,7 @@ export const useStore = create<AppState>((set, get) => ({
         y2: wall?.y2 ?? s.venue.heightM / 2,
         ...(wall?.height !== undefined ? { height: wall.height } : {}),
         label: wall?.label ?? `Wall ${s.walls.length + 1}`,
+        ...(wall?.kind === 'glass' ? { kind: 'glass' as const } : {}),
       };
       return { walls: [...s.walls, w], projectVersion: s.projectVersion + 1 };
     });
@@ -933,6 +941,8 @@ export const useStore = create<AppState>((set, get) => ({
   setPlanBereichModus: (v) => set({ planBereichModus: v }),
   planAusrichten: false,
   setPlanAusrichten: (v) => set({ planAusrichten: v }),
+  publikumZeichnen: null,
+  setPublikumZeichnen: (v) => set({ publikumZeichnen: v }),
   planUebernehmen: (u) => {
     // Ein `set`: ein Schritt fuer Rueckgaengig.
     set((s) => ({

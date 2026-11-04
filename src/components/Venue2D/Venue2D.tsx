@@ -21,7 +21,7 @@ import { useTranslation, format } from '../../i18n';
 import { useIstHell } from '../../lib/useIstHell';
 import { planAblage } from '../../avplan/floorplan';
 import PlanVorschauOverlay from './PlanVorschauOverlay';
-import { wandDicke } from '../../utils/wallOpenings';
+import { oeffnungStrecke, wandDicke } from '../../utils/wallOpenings';
 import { usePlanLaden } from '../../lib/usePlanLaden';
 import EditGroupsBar from './EditGroupsBar';
 import RaumOverlay, { type RaumAuswahl } from './RaumOverlay';
@@ -86,6 +86,18 @@ const PALETTE = {
   },
 } as const;
 
+/** Hinweis am unteren Rand, solange ein Zeichen- oder Ausrichtmodus laeuft. */
+function ModusHinweis({ text, knopf, onKnopf }: { text: string; knopf: string; onKnopf: () => void }) {
+  return (
+    <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-bc-m border border-bc-accent bg-bc-panel/90 px-3 py-1.5 text-xs text-bc-text shadow-bc-1 backdrop-blur">
+      <span>{text}</span>
+      <button type="button" onClick={onKnopf} className="rounded-bc-s bg-bc-accent/20 px-2 py-0.5 font-medium text-bc-accent hover:bg-bc-accent/30">
+        {knopf}
+      </button>
+    </div>
+  );
+}
+
 export default function Venue2D() {
   const { t } = useTranslation();
   const P = PALETTE[useIstHell() ? 'hell' : 'dunkel'];
@@ -95,6 +107,10 @@ export default function Venue2D() {
   const setPlanBereichModus = useStore((s) => s.setPlanBereichModus);
   const planAusrichten = useStore((s) => s.planAusrichten);
   const setPlanAusrichten = useStore((s) => s.setPlanAusrichten);
+  const publikumZeichnen = useStore((s) => s.publikumZeichnen);
+  const setPublikumZeichnen = useStore((s) => s.setPublikumZeichnen);
+  const addSeatingBlock = useStore((s) => s.addSeatingBlock);
+  const rechteckModus = planBereichModus || !!publikumZeichnen;
   const { venue, setVenue, cameras: planCameras, selectedCameraId, selectCamera, moveCamera, updateCamera, removeCamera, duplicateCamera, showAllFov, showDof, pixelsPerMeter, persons, updatePerson, removePerson, duplicatePerson, updateStage, addStage, removeStage, updateSeatingBlock, updateVideoWall, backgroundPlan, setBackgroundPlan, walls, updateWall, addWall, removeWall, wallSnap, editGroups, avForeign, showForeign } = useStore();
   // Live-Pose der Bridge liegt nur auf der Anzeige, der Plan bleibt.
   const cameras = useLiveCameras(planCameras);
@@ -145,6 +161,7 @@ export default function Venue2D() {
 
   // ── Wall drawing mode ──
   const [drawingWall, setDrawingWall] = useState(false);
+  const [wallKind, setWallKind] = useState<Wall['kind']>('wall');
   const [wallStart, setWallStart] = useState<{ x: number; y: number } | null>(null);
   const [wallCursor, setWallCursor] = useState<{ x: number; y: number } | null>(null);
   const shiftHeld = useRef(false);
@@ -156,6 +173,7 @@ export default function Venue2D() {
         setWallStart(null);
         setWallCursor(null);
         useStore.getState().setPlanAusrichten(false);
+        useStore.getState().setPublikumZeichnen(null);
       }
     };
     const up = (e: KeyboardEvent) => { if (e.key === 'Shift') shiftHeld.current = false; };
@@ -168,6 +186,7 @@ export default function Venue2D() {
   useEffect(() => {
     const handler = (e: Event) => {
       setDrawingWall((e as CustomEvent).detail?.active ?? true);
+      setWallKind((e as CustomEvent).detail?.kind === 'glass' ? 'glass' : 'wall');
       setWallStart(null);
       setWallCursor(null);
     };
@@ -366,7 +385,8 @@ export default function Venue2D() {
           y1: wallStart.y,
           x2: snappedEnd.x,
           y2: snappedEnd.y,
-          label: `Wall ${walls.length + 1}`,
+          label: wallKind === 'glass' ? `Glass ${walls.length + 1}` : `Wall ${walls.length + 1}`,
+          ...(wallKind === 'glass' ? { kind: 'glass' as const } : {}),
         });
       }
       setWallStart(null);
@@ -421,7 +441,7 @@ export default function Venue2D() {
       setCalibCursor(null);
       window.dispatchEvent(new CustomEvent('multicam-calibrate-done'));
     }
-  }, [addWall, backgroundPlan, calibActive, calibAutoResize, calibAxis, calibDistM, calibPoints, calibScaleLocked, drawingWall, getPointerWorldPoint, ppm, setBackgroundPlan, setVenue, snapPoint, snapToEndpoints, venue, wallStart, walls.length]);
+  }, [addWall, backgroundPlan, calibActive, calibAutoResize, calibAxis, calibDistM, calibPoints, calibScaleLocked, drawingWall, getPointerWorldPoint, ppm, setBackgroundPlan, setVenue, snapPoint, snapToEndpoints, venue, wallKind, wallStart, walls.length]);
 
   const bereichPunkt = useCallback(() => {
     const p = getPointerWorldPoint();
@@ -429,13 +449,13 @@ export default function Venue2D() {
   }, [getPointerWorldPoint, ppm]);
 
   const handleStageMouseDown = useCallback(() => {
-    if (!planBereichModus) return;
+    if (!rechteckModus) return;
     const p = bereichPunkt();
     if (p) setBereichStart(p);
-  }, [bereichPunkt, planBereichModus]);
+  }, [bereichPunkt, rechteckModus]);
 
   const handleStageMouseUp = useCallback(() => {
-    if (!planBereichModus || !bereichStart) return;
+    if (!rechteckModus || !bereichStart) return;
     const p = bereichPunkt();
     setBereichStart(null);
     if (!p) return;
@@ -447,14 +467,21 @@ export default function Venue2D() {
     };
     // Ein Klick ohne Zug hebt den Ausschnitt auf, statt einen leeren zu setzen.
     const leer = rahmen.maxX - rahmen.minX < 0.5 || rahmen.maxY - rahmen.minY < 0.5;
+    if (publikumZeichnen) {
+      // Ein Klick ohne Zug legt die Flaeche wie bisher vor die Buehne.
+      addSeatingBlock(publikumZeichnen === 'standing', leer ? undefined : rahmen);
+      setPublikumZeichnen(null);
+      setBereichJetzt(null);
+      return;
+    }
     setPlanVorschau({ ...(planVorschau ?? { waende: [], buehnen: [], raeume: [] }), bereich: leer ? undefined : rahmen });
     setPlanBereichModus(false);
-  }, [bereichPunkt, bereichStart, planBereichModus, planVorschau, setPlanBereichModus, setPlanVorschau]);
+  }, [addSeatingBlock, bereichPunkt, bereichStart, publikumZeichnen, rechteckModus, planVorschau, setPlanBereichModus, setPlanVorschau, setPublikumZeichnen]);
 
   const handleStageMouseMove = useCallback(() => {
     const point = getPointerWorldPoint();
     if (!point) return;
-    if (planBereichModus && bereichStart) {
+    if (rechteckModus && bereichStart) {
       setBereichJetzt({ x: point.xPx / ppm, y: point.yPx / ppm });
     }
     if (drawingWall && wallStart) {
@@ -463,7 +490,7 @@ export default function Venue2D() {
     if (calibActive && calibPoints.length === 1) {
       setCalibCursor({ x: point.xPx, y: point.yPx });
     }
-  }, [bereichStart, calibActive, calibPoints.length, drawingWall, getPointerWorldPoint, planBereichModus, ppm, snapPoint, snapToEndpoints, wallStart]);
+  }, [bereichStart, calibActive, calibPoints.length, drawingWall, getPointerWorldPoint, rechteckModus, ppm, snapPoint, snapToEndpoints, wallStart]);
 
   const handleWallEndpointDragMove = useCallback((wall: Wall, end: 'start' | 'end', e: Konva.KonvaEventObject<DragEvent>) => {
     const node = e.target;
@@ -691,12 +718,18 @@ export default function Venue2D() {
         </div>
       )}
       {planAusrichten && backgroundPlan && (
-        <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-bc-m border border-bc-accent bg-bc-panel/90 px-3 py-1.5 text-xs text-bc-text shadow-bc-1 backdrop-blur">
-          <span>{t('venue.planAlign.hint', 'Drag the floor plan into place. Walls, stages and cameras stay where they are.')}</span>
-          <button type="button" onClick={() => setPlanAusrichten(false)} className="rounded-bc-s bg-bc-accent/20 px-2 py-0.5 font-medium text-bc-accent hover:bg-bc-accent/30">
-            {t('venue.planAlign.done', 'Done')}
-          </button>
-        </div>
+        <ModusHinweis
+          text={t('venue.planAlign.hint', 'Drag the floor plan into place. Walls, stages and cameras stay where they are.')}
+          knopf={t('venue.planAlign.done', 'Done')}
+          onKnopf={() => setPlanAusrichten(false)}
+        />
+      )}
+      {publikumZeichnen && (
+        <ModusHinweis
+          text={t('venue.audienceDraw.hint', 'Drag a rectangle where the audience is. People are only generated inside drawn areas.')}
+          knopf={t('venue.audienceDraw.cancel', 'Cancel')}
+          onKnopf={() => setPublikumZeichnen(null)}
+        />
       )}
       {/* Zoom indicator */}
       <EditGroupsBar />
@@ -711,7 +744,7 @@ export default function Venue2D() {
         scaleY={zoom}
         x={stagePos.x}
         y={stagePos.y}
-        draggable={!calibActive && !drawingWall && !planBereichModus}
+        draggable={!calibActive && !drawingWall && !rechteckModus}
         onDragEnd={(e) => {
           // Dieselbe Regel wie bei der Kamera-Marke, nur hier schon immer von
           // Hand geschrieben: ein Drag-Handler rechnet nur mit seinem eigenen
@@ -724,7 +757,7 @@ export default function Venue2D() {
         onMouseDown={handleStageMouseDown}
         onMouseUp={handleStageMouseUp}
         onMouseMove={handleStageMouseMove}
-        style={{ cursor: calibActive || drawingWall || planBereichModus ? 'crosshair' : 'grab' }}
+        style={{ cursor: calibActive || drawingWall || rechteckModus ? 'crosshair' : 'grab' }}
       >
       {/* ── Layer 1: Static background (venue, image, grid, scale bar) ── */}
       <Layer listening={false}>
@@ -846,7 +879,7 @@ export default function Venue2D() {
           ppm={ppm}
           blocks={venue.seatingBlocks ?? []}
           walls={venue.videoWalls ?? []}
-          locked={lockRoom || drawingWall || calibActive}
+          locked={lockRoom || drawingWall || calibActive || rechteckModus}
           auswahl={raumAuswahl}
           onAuswahl={(a) => { setRaumAuswahl(a); if (a) setSelectedStageId(null); }}
           onBlock={updateSeatingBlock}
@@ -910,7 +943,9 @@ export default function Venue2D() {
           <React.Fragment key={`wall-${w.id}`}>
             <Line
               points={[w.x1 * ppm, w.y1 * ppm, w.x2 * ppm, w.y2 * ppm]}
-              stroke="#9ca3af" strokeWidth={Math.max(3, wandDicke(w) * ppm)} hitStrokeWidth={Math.max(10, wandDicke(w) * ppm)}
+              stroke={w.kind === 'glass' ? '#38bdf8' : '#9ca3af'}
+              strokeWidth={w.kind === 'glass' ? 3 : Math.max(3, wandDicke(w) * ppm)}
+              hitStrokeWidth={Math.max(10, wandDicke(w) * ppm)}
               draggable={!drawingWall && !lockWalls}
               onContextMenu={(e) => { e.evt.preventDefault(); if (!lockWalls) openContextMenu('wall', w.id, false, e); }}
               onDragEnd={(e) => {
@@ -920,6 +955,18 @@ export default function Venue2D() {
                 updateWall(w.id, { x1: w.x1 + dx, y1: w.y1 + dy, x2: w.x2 + dx, y2: w.y2 + dy });
               }}
             />
+            {(w.openings ?? []).map((o, i) => {
+              const [ax, ay, bx, by] = oeffnungStrecke(w, o);
+              return (
+                <Line
+                  key={`op-${i}`}
+                  points={[ax * ppm, ay * ppm, bx * ppm, by * ppm]}
+                  stroke={o.kind === 'window' ? '#38bdf8' : o.kind === 'door' ? '#b45309' : P.blatt}
+                  strokeWidth={Math.max(2, wandDicke(w) * ppm * 0.6)}
+                  listening={false}
+                />
+              );
+            })}
             <Circle x={w.x1 * ppm} y={w.y1 * ppm} radius={5} fill="#132040" stroke="#f59e0b" strokeWidth={2} draggable={!drawingWall && !lockWalls} onDragMove={(e) => handleWallEndpointDragMove(w, 'start', e)} />
             <Circle x={w.x2 * ppm} y={w.y2 * ppm} radius={5} fill="#132040" stroke="#f59e0b" strokeWidth={2} draggable={!drawingWall && !lockWalls} onDragMove={(e) => handleWallEndpointDragMove(w, 'end', e)} />
             <Text x={((w.x1 + w.x2) / 2) * ppm - 20} y={((w.y1 + w.y2) / 2) * ppm - 14} text={w.label} fontSize={9} fill="#9ca3af" align="center" width={40} />
@@ -932,13 +979,14 @@ export default function Venue2D() {
             farben={{ wand: '#e11d48', stuetze: '#f59e0b', buehne: '#f97316', raum: '#22c55e', rahmen: '#38bdf8' }}
           />
         )}
-        {planBereichModus && bereichStart && bereichJetzt && (
+        {rechteckModus && bereichStart && bereichJetzt && (
           <Rect
             x={Math.min(bereichStart.x, bereichJetzt.x) * ppm}
             y={Math.min(bereichStart.y, bereichJetzt.y) * ppm}
             width={Math.abs(bereichJetzt.x - bereichStart.x) * ppm}
             height={Math.abs(bereichJetzt.y - bereichStart.y) * ppm}
-            stroke="#38bdf8"
+            stroke={publikumZeichnen ? '#a855f7' : '#38bdf8'}
+            fill={publikumZeichnen ? '#a855f722' : undefined}
             dash={[8, 6]}
             strokeWidth={1.5}
             listening={false}

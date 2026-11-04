@@ -1,7 +1,8 @@
 /** DE: Abschnitt „Raum" (Seitenleiste, 2D-Plan) und Qualitaetsschalter der 3D-Ansicht. Keys: room.*, venue.quality.* */
 export const room: Record<string, string> = {
   'room.title': 'Raum',
-  'room.hint': 'Optional — nur für die 3D-Ansicht. Ohne Publikumsflächen füllt sich der freie Boden von selbst mit Menschen.',
+  'room.hint': 'Optional — nur für die 3D-Ansicht. Publikumsflächen im 2D-Plan aufziehen; mit Grundriss oder Wänden stehen Menschen nur dort. Ein leerer Raum ohne beides füllt seinen freien Boden von selbst.',
+  'room.draw.title': 'Ein Rechteck im 2D-Plan aufziehen — ein Klick ohne Ziehen legt die Fläche vor die Hauptbühne',
   'room.ceiling': 'Decke (m)',
   'room.ceiling.open': 'offen',
   'room.ceiling.title': 'Leer lassen für Open Air oder eine Halle, deren Decke nicht gezeichnet werden soll',

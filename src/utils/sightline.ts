@@ -148,6 +148,7 @@ export const sightlineConflicts = (input: SightlineInput): SightlineConflict[] =
 
     // ── Waende ──
     for (const w of resolveWallHeights(input.walls, defaultWallHeight({ defaultWallHeightM: input.defaultWallHeightM }))) {
+      if (w.kind === 'glass') continue; // Durch eine Glasfront sieht die Kamera.
       const t = streckenSchnitt(from.x, from.y, to.x, to.y, w.x1, w.y1, w.x2, w.y2);
       if (t === null) continue;
       const linie = hoeheBei(from, to, t);

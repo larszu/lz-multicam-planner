@@ -123,4 +123,6 @@ export const venue: Record<string, string> = {
   'venue.edit.tilt': 'Neigung',
   'venue.planAlign.hint': 'Grundriss an die richtige Stelle ziehen. Wände, Bühnen und Kameras bleiben, wo sie sind.',
   'venue.planAlign.done': 'Fertig',
+  'venue.audienceDraw.hint': 'Ein Rechteck aufziehen, wo Publikum steht oder sitzt. Menschen entstehen nur in eingezeichneten Flächen.',
+  'venue.audienceDraw.cancel': 'Abbrechen',
 };

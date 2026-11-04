@@ -232,6 +232,8 @@ export interface Wall {
    * aus und laesst Bruestung und Sturz stehen.
    */
   openings?: VenueWallOpening[];
+  /** `glass`: Glasfront — durchsichtig in 3D, verdeckt keine Sichtlinie. Ohne Angabe eine feste Wand. */
+  kind?: 'wall' | 'glass';
   /** Base surface colour (hex). Falls back to a neutral grey when unset. */
   color?: string;
   /** Surface pattern for blur-checking in the preview. Defaults to 'solid'. */

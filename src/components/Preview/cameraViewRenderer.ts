@@ -382,6 +382,7 @@ export function drawCameraView(args: DrawCameraViewArgs): ProjectedPerson[] | un
     const wallBlur = Math.min(14, (outOfFocus * (cam.focalLength / 50)) / Math.max(1, cam.aperture) * 0.6);
 
     ctx.save();
+    if (wall.kind === 'glass') ctx.globalAlpha = 0.25;
     if (wallBlur > 0.5) ctx.filter = `blur(${wallBlur.toFixed(1)}px)`;
 
     // Clip to the wall quad so the pattern only paints on the wall surface.

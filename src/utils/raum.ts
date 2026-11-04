@@ -60,6 +60,37 @@ export function neueSitzflaeche(venue: Venue, standing = false): VenueSeatingBlo
   return { id: raumId('seat'), label: '', x: cx, y, width, rows, rowSpacingM: spacing, rotationDeg: obenBuehne ? 0 : 180, standing };
 }
 
+/**
+ * Publikumsflaeche aus einem aufgezogenen Rechteck (#248): sie fuellt genau
+ * das Rechteck und schaut zur naechstgelegenen Seite der Hauptbuehne.
+ */
+export function sitzflaecheAusRahmen(
+  venue: Venue,
+  r: { minX: number; minY: number; maxX: number; maxY: number },
+  standing = false,
+): VenueSeatingBlock {
+  const cx = (r.minX + r.maxX) / 2;
+  const cy = (r.minY + r.maxY) / 2;
+  const b = hauptbuehne(venue);
+  const blick = b ? (Math.atan2(b.y + b.height / 2 - cy, b.x + b.width / 2 - cx) * 180) / Math.PI : -90;
+  const rotationDeg = (((Math.round(blick / 90) * 90 + 90) % 360) + 360) % 360;
+  const quer = rotationDeg === 90 || rotationDeg === 270;
+  const breite = quer ? r.maxY - r.minY : r.maxX - r.minX;
+  const tiefe = quer ? r.maxX - r.minX : r.maxY - r.minY;
+  const rows = Math.max(1, Math.round(tiefe / 0.9));
+  return {
+    id: raumId('seat'),
+    label: '',
+    x: Math.round(cx * 100) / 100,
+    y: Math.round(cy * 100) / 100,
+    width: Math.max(1, Math.round(breite * 10) / 10),
+    rows,
+    rowSpacingM: Math.round(Math.min(3, Math.max(0.4, tiefe / rows)) * 100) / 100,
+    rotationDeg,
+    standing,
+  };
+}
+
 /** Neue Videowand: hinter der Hauptbuehne, Bild zum Publikum, Unterkante 1 m ueber dem Podest. */
 export function neueVideowand(venue: Venue): VenueVideoWall {
   const b = hauptbuehne(venue);
@@ -93,16 +124,19 @@ const FREI_UM_PERSON_M = 0.7;
 
 /**
  * Wer in der 3D-Ansicht sitzt und steht. Mit Publikumsflaechen: deren
- * Plaetze, belegt nach Anteil; ohne: die bisherige Fuellung der freien
- * Flaeche als stehende Menge. Um Kameras und gesetzte Personen bleibt Platz —
- * sonst stuende jemand im Stativ.
+ * Plaetze, belegt nach Anteil; ohne: die Fuellung der freien Flaeche als
+ * stehende Menge — aber nur, wenn `freiFuellen` (ein leerer Raum ohne Plan
+ * und Waende). Auf einem Gebaeudeplan stuende die Menge sonst in jedem Flur
+ * (#248); dort gibt es Publikum nur, wo eine Flaeche eingezeichnet ist. Um
+ * Kameras und gesetzte Personen bleibt Platz — sonst stuende jemand im Stativ.
  */
-export function publikumsBild(input: AudienceInput & { blocks?: VenueSeatingBlock[] }): PublikumsBild {
+export function publikumsBild(input: AudienceInput & { blocks?: VenueSeatingBlock[]; freiFuellen?: boolean }): PublikumsBild {
   const frei = (x: number, y: number) =>
     !input.cameras.some((c) => Math.hypot(c.x - x, c.y - y) < FREI_UM_KAMERA_M)
     && !input.persons.some((p) => Math.hypot(p.x - x, p.y - y) < FREI_UM_PERSON_M);
   const blocks = input.blocks ?? [];
   if (blocks.length === 0) {
+    if (input.freiFuellen === false) return { menschen: [], sitze: [], tribuenen: [] };
     const main = input.stages.reduce<AudienceInput['stages'][number] | null>((b, s) => (!b || s.width * s.height > b.width * b.height ? s : b), null);
     const ziel = main ? { x: main.x + main.width / 2, y: main.y + main.height / 2 } : { x: input.widthM / 2, y: 0 };
     return {

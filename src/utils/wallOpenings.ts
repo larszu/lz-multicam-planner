@@ -67,3 +67,44 @@ export function wandStuecke(w: Wall, hoeheM: number): WandStueck[] {
   if (laenge - x > 0.01) stuecke.push(mitte(x, laenge, 0, hoeheM));
   return stuecke;
 }
+
+export type OeffnungsArt = 'door' | 'window';
+
+const OEFFNUNG_VORGABE: Record<OeffnungsArt, { width: number; bottom: number; top: number }> = {
+  door: { width: 0.9, bottom: 0, top: 2.1 },
+  window: { width: 1.2, bottom: 0.9, top: 2.3 },
+};
+
+/** Eine neue Tür oder ein neues Fenster mittig in der Wand (#248). */
+export function neueOeffnung(w: Pick<Wall, 'x1' | 'y1' | 'x2' | 'y2'>, art: OeffnungsArt): NonNullable<Wall['openings']>[number] {
+  const laenge = Math.hypot(w.x2 - w.x1, w.y2 - w.y1);
+  const v = OEFFNUNG_VORGABE[art];
+  const width = Math.min(v.width, Math.max(0.1, laenge - 0.2));
+  return { offset: Math.max(0, (laenge - width) / 2), width, bottom: v.bottom, top: v.top, kind: art };
+}
+
+/** Anfang und Ende einer Öffnung im Grundriss. */
+export function oeffnungStrecke(w: Pick<Wall, 'x1' | 'y1' | 'x2' | 'y2'>, o: { offset: number; width: number }): [number, number, number, number] {
+  const laenge = Math.hypot(w.x2 - w.x1, w.y2 - w.y1) || 1;
+  const ux = (w.x2 - w.x1) / laenge;
+  const uy = (w.y2 - w.y1) / laenge;
+  const a = Math.max(0, Math.min(laenge, o.offset));
+  const b = Math.max(0, Math.min(laenge, o.offset + o.width));
+  return [w.x1 + ux * a, w.y1 + uy * a, w.x1 + ux * b, w.y1 + uy * b];
+}
+
+/** Die Scheiben der Fenster einer Wand — Glas in der Öffnung, nicht Loch. */
+export function fensterScheiben(w: Wall, hoeheM: number): WandStueck[] {
+  const laenge = Math.hypot(w.x2 - w.x1, w.y2 - w.y1);
+  if (laenge < 1e-6) return [];
+  const winkel = Math.atan2(w.y2 - w.y1, w.x2 - w.x1);
+  return (w.openings ?? [])
+    .filter((o) => o.kind === 'window')
+    .map((o) => {
+      const [ax, ay, bx, by] = oeffnungStrecke(w, o);
+      const unten = Math.max(0, Math.min(hoeheM, o.bottom));
+      const oben = Math.max(0, Math.min(hoeheM, o.top));
+      return { x: (ax + bx) / 2, y: (ay + by) / 2, unten, hoehe: oben - unten, laenge: Math.hypot(bx - ax, by - ay), winkel };
+    })
+    .filter((s) => s.hoehe > 0.01 && s.laenge > 0.01);
+}
