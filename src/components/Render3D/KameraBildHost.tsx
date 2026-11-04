@@ -22,6 +22,7 @@ import { WEBGL_POWER_PREFERENCE } from '../../utils/gpuInfo';
 import { renderLook, wendeLookAn } from './renderLook';
 import { tiefenschaerfeFuerBild } from '../../utils/tiefenschaerfe';
 import { SzenenGrund } from './SzenenGrund';
+import { useProjektHimmel } from '../../lib/useProjektHimmel';
 
 export default function KameraBildHost() {
   const [prefs] = useView3DPrefs();
@@ -63,6 +64,7 @@ function HostSzene() {
   const messung = useRef(new RenderMessung());
 
   const tag = show && prefs.daylight;
+  const [sky] = useProjektHimmel();
   const [tagBelichtung, setTagBelichtung] = useState(1);
   const look = useMemo(() => renderLook(show, tag ? tagBelichtung : undefined), [show, tag, tagBelichtung]);
   const onBelichtung = useCallback((b: number) => setTagBelichtung(b), []);
@@ -182,7 +184,7 @@ function HostSzene() {
   }, [gl, scene, kamera, prefs.quality, gesenkt, simple, show, stufe, look]);
 
   // Nach jedem Umbau der Szene sind die kopierten Bilder alt.
-  useEffect(() => { szene3DGeaendert(); }, [daten, show, simple, werte, prefs.audience, thema, tag, prefs.sky, look]);
+  useEffect(() => { szene3DGeaendert(); }, [daten, show, simple, werte, prefs.audience, thema, tag, sky, look]);
 
   return (
     <>
@@ -190,7 +192,7 @@ function HostSzene() {
         daten={daten}
         show={show}
         tag={tag}
-        sky={prefs.sky}
+        sky={sky}
         simple={simple}
         werte={werte}
         audience={prefs.audience}

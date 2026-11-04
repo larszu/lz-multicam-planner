@@ -2,6 +2,8 @@ import { Stage, Layer, Rect, Wedge, Arc, Circle, Text, Group, Line, Image as KIm
 import { useStore } from '../../store/useStore';
 import { useLiveCameras, useSurfaceCameraId } from '../../store/bridgeLive';
 import { foreignFixturesFrom, cctToColor } from '../../utils/foreignView';
+import { gegenlichtFuer } from '../../utils/gegenlicht';
+import { vFovForHFov } from '../../utils/view3dScene';
 import { getCameraById, getEffectiveSensor } from '../../data/cameras';
 import { getLensById } from '../../data/lenses';
 import { computeFov } from '../../utils/fov';
@@ -25,6 +27,9 @@ import { useTranslation, format } from '../../i18n';
 import { useIstHell } from '../../lib/useIstHell';
 import { planAblage } from '../../avplan/floorplan';
 import PlanVorschauOverlay from './PlanVorschauOverlay';
+import SonnenOverlay from './SonnenOverlay';
+import { useView3DPrefs } from '../Venue3D/view3dPrefs';
+import { useProjektHimmel } from '../../lib/useProjektHimmel';
 import { oeffnungStrecke, wandDicke } from '../../utils/wallOpenings';
 import { usePlanLaden } from '../../lib/usePlanLaden';
 import { teilplanAnlegen } from '../../lib/teilplanAnlegen';
@@ -257,6 +262,8 @@ export default function Venue2D() {
     () => (showForeign ? foreignFixturesFrom(avForeign.lighting) : []),
     [showForeign, avForeign.lighting],
   );
+  const [ansicht3D] = useView3DPrefs();
+  const [sky] = useProjektHimmel();
   const W = venue.widthM * ppm;
   const H = venue.heightM * ppm;
 
@@ -1306,9 +1313,24 @@ export default function Venue2D() {
         })}
       </Layer>
 
+      {ansicht3D.daylight && <SonnenOverlay sky={sky} breitePx={W} hoehePx={H} schrift={P.beschriftung} />}
+
       {/* ── Read-only foreign lighting (Lampen aus dem Light-Planner via .avplan) ── */}
       {foreignFixtures.length > 0 && (
         <Layer listening={false} opacity={0.85}>
+          {cameras.flatMap((cam) => {
+            const camDef = getCameraById(cam.cameraId, useStore.getState().customCameras);
+            const lensDef = getLensById(cam.lensId, useStore.getState().customLenses);
+            if (!camDef || !lensDef) return [];
+            const sensor = getEffectiveSensor(camDef, lensDef, cam.useSpeedbooster, cam.sensorModeIndex, cam.activeMount);
+            const h = computeFov(sensor, cam.focalLength, cam.focusDistance, cam.extenderActive, lensDef.squeeze ?? 1).horizontalDeg;
+            const pos = effectiveCameraPos(cam);
+            // Gegenlicht (#234): rote Linie von der Kamera zur Leuchte, in die sie schaut.
+            return gegenlichtFuer({ ...pos, z: cam.z, pan: cam.pan, tilt: cam.tilt, hFovDeg: h, vFovDeg: vFovForHFov(h, 16 / 9) }, foreignFixtures).map((g) => {
+              const f = foreignFixtures.find((x) => x.id === g.fixtureId)!;
+              return <Line key={`gl-${cam.id}-${g.fixtureId}`} points={[pos.x * ppm, pos.y * ppm, f.x * ppm, f.y * ppm]} stroke="#ef4444" strokeWidth={2} dash={[6, 4]} />;
+            });
+          })}
           {foreignFixtures.map((f) => {
             const color = cctToColor(f.colorTemp);
             const hasAim = f.aimX !== undefined && f.aimY !== undefined;

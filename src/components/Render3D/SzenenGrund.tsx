@@ -8,6 +8,7 @@ import type { StufenWerte } from '../../avplan/scene3d';
 import { Atmosphere } from '../Venue3D/ShowScene';
 import { Kulisse } from '../Venue3D/Kulisse';
 import { Tageslicht } from '../Venue3D/Tageslicht';
+import { FremdLicht3D } from '../Venue3D/FremdLicht3D';
 import type { KulissenDaten } from '../Venue3D/kulissenDaten';
 import type { HimmelPrefs } from '../../utils/tageslicht';
 import { PLANUNG_JE_THEMA, PLANUNGS_BODEN } from '../Venue3D/planungsLook';
@@ -45,6 +46,7 @@ export function SzenenGrund({ daten, show, tag, sky, simple, werte, audience, th
         planungsBoden={PLANUNGS_BODEN[thema]}
         einfacheBuehne={einfacheBuehne}
       />
+      <FremdLicht3D />
     </>
   );
 }

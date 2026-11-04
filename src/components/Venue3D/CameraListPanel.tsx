@@ -5,6 +5,7 @@ import type { View3DPrefs, View3DQuality } from './view3dPrefs';
 import type { Stufe } from '../../avplan/scene3d';
 import TageslichtEinstellung from './TageslichtEinstellung';
 import ShowLichtEinstellung from './ShowLichtEinstellung';
+import { useProjektHimmel } from '../../lib/useProjektHimmel';
 
 export interface CameraRow {
   cam: VenueCamera;
@@ -42,6 +43,7 @@ export default function CameraListPanel({
   hasFloorPlan: boolean;
 }) {
   const { t } = useTranslation();
+  const [sky, setSky] = useProjektHimmel();
 
   if (!prefs.listOpen) {
     return (
@@ -137,7 +139,7 @@ export default function CameraListPanel({
       )}
       {prefs.showLight && prefs.quality !== 'simple' && !prefs.daylight && <ShowLichtEinstellung />}
       {prefs.showLight && prefs.quality !== 'simple' && prefs.daylight && (
-        <TageslichtEinstellung sky={prefs.sky} onSky={(patch) => onPrefs({ sky: { ...prefs.sky, ...patch } })} />
+        <TageslichtEinstellung sky={sky} onSky={setSky} />
       )}
 
       <div className="flex items-center gap-2 px-3 pb-2">

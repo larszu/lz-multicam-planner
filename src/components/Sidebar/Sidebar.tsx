@@ -36,7 +36,7 @@ import { rigsForType, trackSectionPlan } from '../../data/rigs';
 import { clampHeight, clampTrack, DEFAULT_SWING_DEG, rigLimits, travelShapes } from '../../utils/rigLimits';
 import { pathLengthM, pathSweepDeg } from '../../utils/travelPath';
 import { DxfEbenenListe, PlanDrehen, PlanQuelleZeile } from './PlanWerkzeuge';
-import { rigYaw } from '../../utils/camera';
+import { effectiveCameraPos, rigYaw } from '../../utils/camera';
 import { defaultWallHeight } from '../../utils/wallHeight';
 import { WallHeightField } from './WallHeightField';
 import { WandOeffnungen } from './WandOeffnungen';
@@ -72,6 +72,9 @@ import { planAblage, planAccept } from '../../avplan/floorplan';
 import { usePlanLaden } from '../../lib/usePlanLaden';
 import { useTranslation, format } from '../../i18n';
 import { mountTypeLabel } from '../../i18n/mount';
+import { foreignFixturesFrom } from '../../utils/foreignView';
+import { gegenlichtFuer } from '../../utils/gegenlicht';
+import { vFovForHFov } from '../../utils/view3dScene';
 import { MOUNT_TYPE_LABELS } from '../../types';
 import { amZiel, istFestbrennweite, shotSizeLabel, zielPunkt } from '../../utils/kameraZiel';
 import { kamerablickWuenschen } from '../Venue3D/kamerablickWunsch';
@@ -423,6 +426,10 @@ function CameraCard({
       : venue.stages.length > 0
         ? `stage:${(cam.aimTarget?.kind === 'stage' && cam.aimTarget.stageId) || venue.stages[0].id}`
         : '';
+  const lichtplan = useStore((st) => st.avForeign.lighting);
+  const gegenlicht = fov
+    ? gegenlichtFuer({ ...effectiveCameraPos(cam), z: cam.z, pan: cam.pan, tilt: cam.tilt, hFovDeg: fov.horizontalDeg, vFovDeg: vFovForHFov(fov.horizontalDeg, 16 / 9) }, foreignFixturesFrom(lichtplan))
+    : [];
 
   // Bedarf 58 -- kommt die Optik an den beauftragten Ausschnitt heran?
   //
@@ -1612,6 +1619,19 @@ function CameraCard({
               <ul className="mt-0.5 space-y-0.5">
                 {sichtKonflikte.map((k) => (
                   <li key={`${k.kind}-${k.obstacleId}`}>{conflictText(k)}</li>
+                ))}
+              </ul>
+            </Note>
+          )}
+
+          {gegenlicht.length > 0 && (
+            <Note tone="warn">
+              <div className="font-medium">{t('sidebar.cam.backlight', 'Looking into a light')}</div>
+              <ul className="mt-0.5 space-y-0.5">
+                {gegenlicht.map((g) => (
+                  <li key={g.fixtureId}>
+                    {format(t('sidebar.cam.backlight.item', '{name}: in frame, camera {deg}° off the beam axis'), { name: g.name ?? g.fixtureId, deg: Math.round(g.imStrahlDeg) })}
+                  </li>
                 ))}
               </ul>
             </Note>

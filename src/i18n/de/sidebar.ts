@@ -537,4 +537,6 @@ export const sidebar: Record<string, string> = {
   'sidebar.plan.rotateRight': '90° im Uhrzeigersinn drehen',
   'sidebar.plan.rotation': '{deg}° gedreht',
   'sidebar.plan.unlock.title': 'Grundriss lösen, um ihn zu verschieben, zu skalieren oder zu drehen',
+  'sidebar.cam.backlight': 'Schaut in eine Leuchte',
+  'sidebar.cam.backlight.item': '{name}: im Bild, Kamera {deg}° neben der Strahlachse',
 };

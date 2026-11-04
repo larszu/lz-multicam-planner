@@ -415,6 +415,8 @@ interface AppState {
   /** Importiert ein .avplan-Gesamtprojekt: laedt den cameras-Slot nativ,
    *  ueberlagert den geteilten Raum und bewahrt lighting/cabling verlustfrei. */
   importAvPlan: (avplan: AvPlan) => void;
+  /** Lichtplan aus lz-light-planner (#234) setzen oder mit `undefined` entfernen; Kamera und Raum bleiben. */
+  setLichtplan: (lighting: unknown) => void;
 }
 
 let nextId = 1;
@@ -1719,6 +1721,7 @@ export const useStore = create<AppState>((set, get) => ({
   dismissIdRepair: () => set({ lastIdRepair: null }),
   lastLibraryMerge: null,
   dismissLibraryMerge: () => set({ lastLibraryMerge: null }),
+  setLichtplan: (lighting) => set((s) => ({ avForeign: { ...s.avForeign, lighting }, showForeign: true })),
   importAvPlan: (avplan) => {
     const slot = avplan.domains.cameras as AvPlanCamerasSlot | undefined;
     if (slot) {
