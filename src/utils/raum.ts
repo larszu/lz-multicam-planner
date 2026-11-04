@@ -8,6 +8,7 @@ import { stageTopZ } from './stageBody';
 import { showLichtAus } from './showRig';
 import { ledAusDatei } from './ledWand';
 import { himmelAusDatei } from './tageslicht';
+import { fixierteAnsichtenAusDatei } from './ansicht3d';
 import { audienceSeats, type AudienceInput } from './view3dScene';
 
 const RAUM_SCHLUESSEL = ['ceilingHeightM', 'floorMaterial', 'wallMaterial', 'seatingBlocks', 'videoWalls'] as const;
@@ -22,6 +23,7 @@ export function venueAusDatei(roh: Venue, stages: Stage[]): Venue {
   for (const k of RAUM_SCHLUESSEL) delete basis[k];
   delete basis.showLight;
   delete basis.sky;
+  delete basis.views3d;
   const raum = raumAus(roh);
   const v: Venue = { ...(basis as unknown as Venue), stages, ...raum, ...(raum.videoWalls ? { videoWalls: raum.videoWalls.map(ledAusDatei) } : {}) };
   if (typeof roh.ledProcessorMaxPx !== 'number' || !(roh.ledProcessorMaxPx > 0)) delete v.ledProcessorMaxPx;
@@ -29,6 +31,8 @@ export function venueAusDatei(roh: Venue, stages: Stage[]): Venue {
   if (roh.showLight && typeof roh.showLight === 'object') v.showLight = showLichtAus(roh.showLight);
   const sky = himmelAusDatei(roh.sky);
   if (sky) v.sky = sky;
+  const views3d = fixierteAnsichtenAusDatei(roh.views3d);
+  if (views3d) v.views3d = views3d;
   return v;
 }
 

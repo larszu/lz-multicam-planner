@@ -78,19 +78,39 @@ const bedarfAbonnieren = (fn: () => void) => {
   bedarfHoerer.add(fn);
   return () => { bedarfHoerer.delete(fn); };
 };
-const braucht = () => bedarf > 0;
+/** Will gerade jemand gerenderte Bilder? */
+export const braucht = () => bedarf > 0;
+
+/**
+ * Gerenderte Bilder anfordern, ohne Komponente — fuer den Export, der den
+ * Renderer auch braucht, wenn weder Kamerablick noch Multiview offen sind.
+ * Liefert die Freigabe; doppeltes Freigeben zaehlt einmal.
+ */
+export function bedarf3DAnfordern(): () => void {
+  bedarf += 1;
+  bedarfMelden();
+  let frei = false;
+  return () => {
+    if (frei) return;
+    frei = true;
+    bedarf -= 1;
+    bedarfMelden();
+  };
+}
 
 /** Eine Ansicht meldet, dass sie gerenderte Bilder zeigen will. */
 export function useBedarf3D(an: boolean): void {
-  useEffect(() => {
-    if (!an) return;
-    bedarf += 1;
-    bedarfMelden();
-    return () => {
-      bedarf -= 1;
-      bedarfMelden();
-    };
-  }, [an]);
+  useEffect(() => (an ? bedarf3DAnfordern() : undefined), [an]);
+}
+
+/**
+ * Wartet, bis der Renderer angemeldet ist (er wird erst bei Bedarf geladen),
+ * hoechstens `maxMs`. `true`, wenn er bereit ist.
+ */
+export async function warteAuf3D(maxMs = 8000, schrittMs = 100): Promise<boolean> {
+  const ende = Date.now() + maxMs;
+  while (!bereit3D() && Date.now() < ende) await new Promise((r) => setTimeout(r, schrittMs));
+  return bereit3D();
 }
 
 /** Fuer die App: muss der Host gemountet sein? */

@@ -2,6 +2,7 @@ import type { RaumErweiterung, VenueWallOpening } from '../avplan/floorplan';
 import type { SourceIdentity } from '../utils/sourceIdentity';
 import type { LedVideoWall } from '../utils/ledWand';
 import type { HimmelPrefs } from '../utils/tageslicht';
+import type { FixierteAnsichten } from '../utils/ansicht3d';
 
 // ── Sensor ──
 export interface SensorSize {
@@ -881,6 +882,8 @@ export interface Venue extends RaumErweiterung {
   ledProcessorMaxPx?: number;
   /** Place, date and time for daylight (#226); missing = the last values chosen on this computer. */
   sky?: HimmelPrefs;
+  /** Fixed 3D views per mode (top, perspective); the export uses them. Missing = start view. */
+  views3d?: FixierteAnsichten;
 }
 
 /** Colour look of the show light. */

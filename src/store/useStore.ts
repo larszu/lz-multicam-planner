@@ -41,6 +41,7 @@ import type { Teilplan } from '../utils/teilplan';
 import type { CoverageMode } from '../utils/coverage';
 import { neueSitzflaeche, neueVideowand, sitzflaecheAusRahmen, platzFuerPerson, venueAusDatei } from '../utils/raum';
 import { zielFolgen } from '../utils/kameraZiel';
+import { mitFixierung, type Ansicht3D, type Ansicht3DModus } from '../utils/ansicht3d';
 import type { PositionUebernahme } from '../utils/kameraPositionen';
 import { rigLimits } from '../utils/rigLimits';
 import { ablegen, aufstehen, bereinigt, einfuegen as kopieEinfuegen, freierStuhl, hinsetzen, istAusgewaehlt, kopiere, leereAuswahl, sitzendeFolgen, umschalten, type Auswahl, type AuswahlArt, type Zwischenablage } from '../utils/auswahl';
@@ -417,7 +418,27 @@ interface AppState {
   importAvPlan: (avplan: AvPlan) => void;
   /** Lichtplan aus lz-light-planner (#234) setzen oder mit `undefined` entfernen; Kamera und Raum bleiben. */
   setLichtplan: (lighting: unknown) => void;
+
+  /**
+   * Zuletzt gesehener Blickpunkt der 3D-Ansicht je Modus und der aktive
+   * Modus. Hier statt im Zustand der Ansicht, damit ihn der Wechsel zu 2D,
+   * ein anderer Reiter oder ein neues Layout nicht loescht. Kein Teil der
+   * Projektdatei — der fixierte Ausschnitt (`venue.views3d`) ist es.
+   */
+  blick3d: Blick3D;
+  merkeBlick3D: (patch: Partial<Blick3D>) => void;
+  /** Fixiert den Ausschnitt eines Modus im Projekt; `undefined` loest ihn. */
+  fixiereAnsicht3D: (modus: Ansicht3DModus, ansicht: Ansicht3D | undefined) => void;
 }
+
+export interface Blick3D {
+  preset: 'top' | 'perspective' | 'camera';
+  /** Der zuletzt benutzte freie Modus — dessen Blickpunkt gilt beim Zurueckkommen. */
+  frei: Ansicht3DModus;
+  ansicht: Partial<Record<Ansicht3DModus, Ansicht3D>>;
+}
+
+export const BLICK3D_START: Blick3D = { preset: 'perspective', frei: 'perspective', ansicht: {} };
 
 let nextId = 1;
 function uid(prefix = 'cam'): string {
@@ -1638,6 +1659,9 @@ export const useStore = create<AppState>((set, get) => ({
       savedAt: project.revision === 0 ? null : project.savedAt ?? null,
       projectEpoch: get().projectEpoch + 1,
       auswahl: leereAuswahl(),
+      // Der Blickpunkt gehoert zur vorigen Halle; das neue Projekt beginnt
+      // in seinem fixierten Ausschnitt oder der Startansicht.
+      blick3d: BLICK3D_START,
       // Eine Datei ohne Id (vor cable-planner#908 gespeichert) bekommt hier
       // ihre — und behaelt sie ab dem naechsten Speichern.
       projectId: isProjectId(project.projectId) ? project.projectId : legacyProjectId(project),
@@ -1721,6 +1745,12 @@ export const useStore = create<AppState>((set, get) => ({
   dismissIdRepair: () => set({ lastIdRepair: null }),
   lastLibraryMerge: null,
   dismissLibraryMerge: () => set({ lastLibraryMerge: null }),
+  blick3d: BLICK3D_START,
+  merkeBlick3D: (patch) => set((s) => ({ blick3d: { ...s.blick3d, ...patch } })),
+  fixiereAnsicht3D: (modus, ansicht) => set((s) => ({
+    venue: { ...s.venue, views3d: mitFixierung(s.venue.views3d, modus, ansicht) },
+    projectVersion: s.projectVersion + 1,
+  })),
   setLichtplan: (lighting) => set((s) => ({ avForeign: { ...s.avForeign, lighting }, showForeign: true })),
   importAvPlan: (avplan) => {
     const slot = avplan.domains.cameras as AvPlanCamerasSlot | undefined;
