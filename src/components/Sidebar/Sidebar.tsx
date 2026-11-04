@@ -76,7 +76,7 @@ import { foreignFixturesFrom } from '../../utils/foreignView';
 import { gegenlichtFuer } from '../../utils/gegenlicht';
 import { vFovForHFov } from '../../utils/view3dScene';
 import { MOUNT_TYPE_LABELS } from '../../types';
-import { amZiel, istFestbrennweite, shotSizeLabel, zielPunkt } from '../../utils/kameraZiel';
+import { amZiel, fokusEntfernung, istFestbrennweite, shotSizeLabel, zielPunkt } from '../../utils/kameraZiel';
 import { kamerablickWuenschen } from '../Venue3D/kamerablickWunsch';
 import PositionenAblage from './PositionenAblage';
 
@@ -426,6 +426,14 @@ function CameraCard({
       : venue.stages.length > 0
         ? `stage:${(cam.aimTarget?.kind === 'stage' && cam.aimTarget.stageId) || venue.stages[0].id}`
         : '';
+  // „Fokus auf…" (#225): dieselben Ziele wie die Ausrichtung, dazu je Buehne die Kante in Blickrichtung.
+  const fokusZiele: { wert: string; label: string; m: number | null }[] = [
+    ...venue.stages.flatMap((st) => [
+      { wert: `edge:${st.id}`, label: format(t('sidebar.cam.focusOn.edge', 'Edge of {name}'), { name: st.label }), m: fokusEntfernung(cam, { kind: 'stage-edge', stageId: st.id }, { persons, venue }) },
+      { wert: `stage:${st.id}`, label: format(t('sidebar.cam.targetStage', 'Centre of {name}'), { name: st.label }), m: fokusEntfernung(cam, { kind: 'stage', stageId: st.id }, { persons, venue }) },
+    ]),
+    ...persons.map((p) => ({ wert: `person:${p.id}`, label: p.label, m: fokusEntfernung(cam, { kind: 'person', id: p.id }, { persons, venue }) })),
+  ];
   const lichtplan = useStore((st) => st.avForeign.lighting);
   const gegenlicht = fov
     ? gegenlichtFuer({ ...effectiveCameraPos(cam), z: cam.z, pan: cam.pan, tilt: cam.tilt, hFovDeg: fov.horizontalDeg, vFovDeg: vFovForHFov(fov.horizontalDeg, 16 / 9) }, foreignFixturesFrom(lichtplan))
@@ -1149,6 +1157,29 @@ function CameraCard({
             onStep={(dir) => updateCamera(cam.id, { focusDistance: stepAlong(cam.focusDistance, dir, FOCUS_MIN_M, FOCUS_MAX_M, focusStepTicks) })}
             title={t('sidebar.cam.distance.title', 'The distance focus is set to — not the distance to the stage.')}
           />
+
+          {fokusZiele.length > 0 && (
+            <FieldRow label={t('sidebar.cam.focusOn', 'Focus on…')} htmlFor={`focus-on-${cam.id}`}>
+              <select
+                id={`focus-on-${cam.id}`}
+                className="block w-full border border-bc-border bg-bc-panel-raised text-bc-text-bright"
+                style={{ padding: '3px 6px' }}
+                value=""
+                title={t('sidebar.cam.focusOn.title', 'Sets the focus distance once: stage edge along the optical axis, stage centre, person or object.')}
+                onChange={(e) => {
+                  const z = fokusZiele.find((f) => f.wert === e.target.value);
+                  if (z?.m != null) updateCamera(cam.id, { focusDistance: Math.max(0.1, Math.round(z.m * 100) / 100), lockedPersonId: undefined });
+                }}
+              >
+                <option value="">{t('sidebar.cam.focusOn.pick', 'Choose a target…')}</option>
+                {fokusZiele.map((f) => (
+                  <option key={f.wert} value={f.wert} disabled={f.m == null}>
+                    {f.m == null ? format(t('sidebar.cam.focusOn.miss', '{name} — not in the axis'), { name: f.label }) : `${f.label} — ${f.m.toFixed(1)} m`}
+                  </option>
+                ))}
+              </select>
+            </FieldRow>
+          )}
 
           {lensDef?.extenderFactors && lensDef.extenderFactors.length > 0 && (
             <FieldRow label={t('sidebar.cam.extender', 'Extender')} htmlFor={`ext-${cam.id}`}>

@@ -471,6 +471,12 @@ export const sidebar: Record<string, string> = {
   'sidebar.cam.targetNone': 'Keine Bühne',
   'sidebar.cam.targetStage': 'Mitte von {name}',
   'sidebar.cam.targetPoint': 'Punkt im Plan',
+  // #225 — Fokus auf ein Ziel.
+  'sidebar.cam.focusOn': 'Fokus auf…',
+  'sidebar.cam.focusOn.title': 'Setzt die Fokusentfernung einmal: Bühnenkante entlang der optischen Achse, Bühnenmitte, Person oder Objekt.',
+  'sidebar.cam.focusOn.pick': 'Ziel wählen…',
+  'sidebar.cam.focusOn.edge': 'Kante von {name}',
+  'sidebar.cam.focusOn.miss': '{name} — nicht in der Achse',
   'sidebar.cam.targetPointPos': 'Punkt (m)',
   'sidebar.cam.targetX.aria': 'Zielpunkt X in Metern',
   'sidebar.cam.targetY.aria': 'Zielpunkt Y in Metern',
