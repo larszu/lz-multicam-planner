@@ -33,6 +33,7 @@ import type { VenueSeatingBlock, VenueVideoWall } from '../avplan/floorplan';
 import { defaultWallHeight, migrateWallHeights } from '../utils/wallHeight';
 import { adoptLegacyShotlists, normaliseShotlists } from './legacyShotlists';
 import type { PlanVorschau } from '../lib/planVorschau';
+import type { Teilplan } from '../utils/teilplan';
 import { neueSitzflaeche, neueVideowand, sitzflaecheAusRahmen, platzFuerPerson, venueAusDatei } from '../utils/raum';
 import { ablegen, aufstehen, bereinigt, einfuegen as kopieEinfuegen, freierStuhl, hinsetzen, istAusgewaehlt, kopiere, leereAuswahl, sitzendeFolgen, umschalten, type Auswahl, type AuswahlArt, type Zwischenablage } from '../utils/auswahl';
 
@@ -142,6 +143,11 @@ interface AppState {
   /** Publikumsflaeche im 2D-Plan aufziehen. */
   publikumZeichnen: 'seated' | 'standing' | null;
   setPublikumZeichnen: (v: 'seated' | 'standing' | null) => void;
+  /** Ausschnitt fuer einen Teilplan im 2D-Plan aufziehen (#248). */
+  teilplanZeichnen: boolean;
+  setTeilplanZeichnen: (v: boolean) => void;
+  /** Teilplan als neues, ungespeichertes Projekt oeffnen. */
+  teilplanOeffnen: (t: Teilplan) => void;
   updateSeatingBlock: (id: string, updates: Partial<VenueSeatingBlock>) => void;
   removeSeatingBlock: (id: string) => void;
   addVideoWall: () => void;
@@ -1061,6 +1067,26 @@ export const useStore = create<AppState>((set, get) => ({
   setPlanAusrichten: (v) => set({ planAusrichten: v }),
   publikumZeichnen: null,
   setPublikumZeichnen: (v) => set({ publikumZeichnen: v }),
+  teilplanZeichnen: false,
+  setTeilplanZeichnen: (v) => set({ teilplanZeichnen: v }),
+  teilplanOeffnen: (t) => {
+    get().applyProjectFile({
+      formatVersion: 1,
+      appVersion: APP_VERSION,
+      projectVersion: 0,
+      revision: 0,
+      projectId: newProjectId(),
+      savedAt: new Date().toISOString(),
+      venue: t.venue,
+      cameras: [],
+      persons: t.persons,
+      walls: t.walls,
+      shotlists: [],
+      backgroundPlan: t.backgroundPlan,
+    });
+    // Noch nie gespeichert: das soll die Kopfzeile sagen, bis es eine Datei gibt.
+    set((s) => ({ projectVersion: s.lastSavedVersion + 1 }));
+  },
   planUebernehmen: (u) => {
     // Ein `set`: ein Schritt fuer Rueckgaengig.
     set((s) => ({

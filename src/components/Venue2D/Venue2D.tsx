@@ -23,6 +23,7 @@ import { planAblage } from '../../avplan/floorplan';
 import PlanVorschauOverlay from './PlanVorschauOverlay';
 import { oeffnungStrecke, wandDicke } from '../../utils/wallOpenings';
 import { usePlanLaden } from '../../lib/usePlanLaden';
+import { teilplanAnlegen } from '../../lib/teilplanAnlegen';
 import EditGroupsBar from './EditGroupsBar';
 import RaumOverlay, { type RaumAuswahl } from './RaumOverlay';
 import { auswahlGroesse, imRahmen, istAusgewaehlt, leereAuswahl, rahmenAus, STUHL_BLICK_DEG, vereinige, type AuswahlArt } from '../../utils/auswahl';
@@ -111,7 +112,9 @@ export default function Venue2D() {
   const publikumZeichnen = useStore((s) => s.publikumZeichnen);
   const setPublikumZeichnen = useStore((s) => s.setPublikumZeichnen);
   const addSeatingBlock = useStore((s) => s.addSeatingBlock);
-  const rechteckModus = planBereichModus || !!publikumZeichnen;
+  const teilplanZeichnen = useStore((s) => s.teilplanZeichnen);
+  const setTeilplanZeichnen = useStore((s) => s.setTeilplanZeichnen);
+  const rechteckModus = planBereichModus || !!publikumZeichnen || teilplanZeichnen;
   const { venue, setVenue, cameras: planCameras, selectedCameraId, selectCamera, moveCamera, updateCamera, removeCamera, duplicateCamera, showAllFov, showDof, pixelsPerMeter, persons, updatePerson, removePerson, duplicatePerson, updateStage, addStage, removeStage, updateSeatingBlock, updateVideoWall, backgroundPlan, setBackgroundPlan, walls, updateWall, addWall, removeWall, wallSnap, editGroups, avForeign, showForeign, auswahl, setAuswahl, auswahlUmschalten, positionenSetzen, dropPerson } = useStore();
   // Live-Pose der Bridge liegt nur auf der Anzeige, der Plan bleibt.
   const cameras = useLiveCameras(planCameras);
@@ -182,6 +185,7 @@ export default function Venue2D() {
         setWallCursor(null);
         useStore.getState().setPlanAusrichten(false);
         useStore.getState().setPublikumZeichnen(null);
+        useStore.getState().setTeilplanZeichnen(false);
       }
     };
     const up = (e: KeyboardEvent) => { if (e.key === 'Shift') shiftHeld.current = false; };
@@ -511,6 +515,14 @@ export default function Venue2D() {
     };
     // Ein Klick ohne Zug hebt den Ausschnitt auf, statt einen leeren zu setzen.
     const leer = rahmen.maxX - rahmen.minX < 0.5 || rahmen.maxY - rahmen.minY < 0.5;
+    if (teilplanZeichnen) {
+      setTeilplanZeichnen(false);
+      setBereichJetzt(null);
+      if (leer) return;
+      if (!window.confirm(t('venue.subplan.confirm', 'Open this area as a new sub-plan with its own cameras? Walls, stages and audience inside it come along. The current project is replaced — save it first to keep the whole building plan.'))) return;
+      void teilplanAnlegen(rahmen, `${venue.name} – ${t('venue.subplan.name', 'Room')}`);
+      return;
+    }
     if (publikumZeichnen) {
       // Ein Klick ohne Zug legt die Flaeche wie bisher vor die Buehne.
       addSeatingBlock(publikumZeichnen === 'standing', leer ? undefined : rahmen);
@@ -520,7 +532,7 @@ export default function Venue2D() {
     }
     setPlanVorschau({ ...(planVorschau ?? { waende: [], buehnen: [], raeume: [] }), bereich: leer ? undefined : rahmen });
     setPlanBereichModus(false);
-  }, [addSeatingBlock, bereichPunkt, bereichStart, publikumZeichnen, rechteckModus, planVorschau, setPlanBereichModus, setPlanVorschau, setPublikumZeichnen]);
+  }, [addSeatingBlock, bereichPunkt, bereichStart, publikumZeichnen, rechteckModus, planVorschau, setPlanBereichModus, setPlanVorschau, setPublikumZeichnen, setTeilplanZeichnen, t, teilplanZeichnen, venue.name]);
 
   const handleStageMouseMove = useCallback(() => {
     const point = getPointerWorldPoint();
@@ -821,6 +833,13 @@ export default function Venue2D() {
           onKnopf={() => setPlanAusrichten(false)}
         />
       )}
+      {teilplanZeichnen && (
+        <ModusHinweis
+          text={t('venue.subplan.hint', 'Drag a rectangle around the room that gets its own plan.')}
+          knopf={t('venue.audienceDraw.cancel', 'Cancel')}
+          onKnopf={() => setTeilplanZeichnen(false)}
+        />
+      )}
       {publikumZeichnen && (
         <ModusHinweis
           text={t('venue.audienceDraw.hint', 'Drag a rectangle where the audience is. People are only generated inside drawn areas.')}
@@ -1094,7 +1113,7 @@ export default function Venue2D() {
             y={Math.min(bereichStart.y, bereichJetzt.y) * ppm}
             width={Math.abs(bereichJetzt.x - bereichStart.x) * ppm}
             height={Math.abs(bereichJetzt.y - bereichStart.y) * ppm}
-            stroke={publikumZeichnen ? '#a855f7' : '#38bdf8'}
+            stroke={publikumZeichnen ? '#a855f7' : teilplanZeichnen ? '#22c55e' : '#38bdf8'}
             fill={publikumZeichnen ? '#a855f722' : undefined}
             dash={[8, 6]}
             strokeWidth={1.5}
