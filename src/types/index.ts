@@ -1,5 +1,6 @@
 import type { RaumErweiterung, VenueWallOpening } from '../avplan/floorplan';
 import type { SourceIdentity } from '../utils/sourceIdentity';
+import type { LedVideoWall } from '../utils/ledWand';
 
 // ── Sensor ──
 export interface SensorSize {
@@ -873,6 +874,10 @@ export interface Venue extends RaumErweiterung {
   defaultWallHeightM?: number;
   /** Show light of the 3D views and rendered camera images; missing in files before v4.9 = defaults. */
   showLight?: ShowLightSettings;
+  /** Video walls; with `led` they are built from modules and sit in the media server canvas (#227). */
+  videoWalls?: LedVideoWall[];
+  /** Pixel limit of the LED processor, to check the canvas against. */
+  ledProcessorMaxPx?: number;
 }
 
 /** Colour look of the show light. */

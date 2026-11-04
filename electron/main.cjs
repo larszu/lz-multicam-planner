@@ -183,9 +183,10 @@ function createMainWindow() {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
+        // img/media https: — Bild oder Video per URL als Inhalt einer LED-Wand (#213).
         'Content-Security-Policy': [
           "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-          "img-src 'self' data: blob:; connect-src 'self' https://generativelanguage.googleapis.com https://api.openai.com https://api.anthropic.com https://api.mistral.ai https://api.x.ai https://devices.zumpelars.de ws://localhost:9700 ws://127.0.0.1:9700 data:; " +
+          "img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://generativelanguage.googleapis.com https://api.openai.com https://api.anthropic.com https://api.mistral.ai https://api.x.ai https://devices.zumpelars.de ws://localhost:9700 ws://127.0.0.1:9700 data:; " +
           "font-src 'self' data:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
         ],
       },

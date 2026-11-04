@@ -9,6 +9,7 @@ import { FiPlus, FiTrash2 } from 'react-icons/fi';
 import { useStore } from '../../store/useStore';
 import { useTranslation, format } from '../../i18n';
 import { Zahl } from './fields';
+import { LedLeinwand, LedWandFelder } from './LedWandFelder';
 import { RAUM_BOEDEN, RAUM_WAENDE, sitzblockNormal, sitzblockPlaetze, videowandNormal, type RaumBoden, type RaumWand, type VenueSeatingBlock } from '../../avplan/floorplan';
 
 const rund = (v: number) => Math.round(v * 100) / 100;
@@ -193,12 +194,18 @@ export default function RoomPanel() {
               <Zahl label={t('room.y', 'Y m')} value={rund(w.y)} step={0.1} min={-10000} max={10000} title={t('room.wallY.title', 'Centre of the lower edge, from the top edge of the plan')} onChange={(v) => updateVideoWall(w.id, { y: v })} />
               <Zahl label={t('room.z', 'Z m')} value={w.bottomM} step={0.25} min={0} max={200} title={t('room.bottom.title', 'Lower edge above the floor')} onChange={(v) => updateVideoWall(w.id, { bottomM: v })} />
               <Zahl label={t('room.rotation', 'Turn °')} value={w.rotationDeg} step={5} min={0} max={359} onChange={(v) => updateVideoWall(w.id, { rotationDeg: v })} />
-              <Zahl label={t('room.width', 'Width m')} value={w.widthM} step={0.5} min={0.5} max={400} onChange={(v) => updateVideoWall(w.id, { widthM: v })} />
-              <Zahl label={t('room.height', 'High m')} value={w.heightM} step={0.25} min={0.25} max={200} onChange={(v) => updateVideoWall(w.id, { heightM: v })} />
+              {!roh.led && (
+                <>
+                  <Zahl label={t('room.width', 'Width m')} value={w.widthM} step={0.5} min={0.5} max={400} onChange={(v) => updateVideoWall(w.id, { widthM: v })} />
+                  <Zahl label={t('room.height', 'High m')} value={w.heightM} step={0.25} min={0.25} max={200} onChange={(v) => updateVideoWall(w.id, { heightM: v })} />
+                </>
+              )}
             </div>
+            <LedWandFelder wand={roh} />
           </div>
         );
       })}
+      <LedLeinwand />
       <button onClick={() => addVideoWall()} className="flex items-center gap-1 px-2 py-1 bg-bc-accent/20 text-bc-accent text-xs hover:bg-bc-accent/30 w-full justify-center">
         <FiPlus size={12} /> {t('room.addVideoWall', 'Video wall')}
       </button>
