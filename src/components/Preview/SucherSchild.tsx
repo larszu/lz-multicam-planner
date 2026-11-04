@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { FiChevronLeft, FiChevronRight, FiDownload } from 'react-icons/fi';
+import { lazy, Suspense, useMemo, useState } from 'react';
+import { FiChevronLeft, FiChevronRight, FiDownload, FiSmartphone } from 'react-icons/fi';
 import { useStore } from '../../store/useStore';
 import { libraryLenses } from '../../library/registry';
 import { useTranslation } from '../../i18n';
@@ -7,6 +7,8 @@ import type { Camera, Lens, SensorSize, VenueCamera } from '../../types';
 import { blaettern, bildMitSchild, kompatibleObjektive, objektivSet, objektivWechsel, sucherZeilen } from '../../utils/sucherSchild';
 import { dateinameTeil, pngSpeichern } from '../../utils/multiviewWand';
 import { kontrastText } from '../../utils/color';
+
+const HandySucherDialog = lazy(() => import('../HandySucher/HandySucherDialog'));
 
 const KNOPF = 'grid h-9 w-9 shrink-0 place-items-center rounded-bc-full text-bc-on-media hover:bg-bc-scrim disabled:opacity-30';
 
@@ -45,6 +47,7 @@ export default function SucherSchild({ cam, camDef, lensDef, sensor, nummer, max
     pngSpeichern(out, `sucher_${dateinameTeil(cam.label)}_${dateinameTeil(lensDef.model)}_${Math.round(cam.focalLength)}mm.png`);
   };
   const kannBlaettern = set.length > 1;
+  const [handy, setHandy] = useState(false);
 
   return (
     <div className="mx-auto -mt-2 flex w-full items-center gap-2 rounded-bc-l bg-bc-media px-2 py-1.5 text-bc-on-media" style={{ maxWidth: maxBreite }} aria-label={t('preview.viewfinder', 'Viewfinder label')}>
@@ -72,6 +75,14 @@ export default function SucherSchild({ cam, camDef, lensDef, sensor, nummer, max
       <button type="button" onClick={speichern} className={KNOPF} aria-label={t('preview.saveFrame', 'Save picture with label (PNG)')} title={t('preview.saveFrame', 'Save picture with label (PNG)')}>
         <FiDownload size={16} />
       </button>
+      <button type="button" onClick={() => setHandy(true)} className={KNOPF} aria-label={t('handy.open', 'Phone as viewfinder')} title={t('handy.open', 'Phone as viewfinder')}>
+        <FiSmartphone size={16} />
+      </button>
+      {handy && (
+        <Suspense fallback={null}>
+          <HandySucherDialog camId={cam.id} onClose={() => setHandy(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }

@@ -19,6 +19,7 @@ import { room } from './de/room';
 import { ai } from './de/ai';
 import { bridge } from './de/bridge';
 import { optikSteuerweg } from './de/optikSteuerweg';
+import { handy } from './de/handy';
 
 export const de: Record<string, string> = {
   ...sidebar,
@@ -38,4 +39,5 @@ export const de: Record<string, string> = {
   ...ai,
   ...bridge,
   ...optikSteuerweg,
+  ...handy,
 };
