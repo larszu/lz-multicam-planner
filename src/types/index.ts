@@ -138,6 +138,9 @@ export type StageObjectType =
   | 'person' | 'person-guitar' | 'sitting-person' | 'drums' | 'keys'
   | 'mic-stand' | 'chair' | 'table' | 'lectern' | 'schneetiger' | 'custom';
 
+/** Form eines Fahrwegs (#235). */
+export type TravelShape = 'line' | 'arc' | 'swing';
+
 // ── Camera mount / support type (physical rig) ──
 // Re-introduced from the older dev tree because each mount imposes a real
 // height range and (for jib / dolly) a track length used by the live track
@@ -306,6 +309,15 @@ export interface BackgroundPlan {
   opacity: number; // 0-1
   widthPx: number;
   heightPx: number;
+  /** Gedreht um diesen Winkel (Grad, im Uhrzeigersinn) — ins Bild eingerechnet (#223). */
+  rotationDeg?: number;
+  /** Festgestellt: Lage, Massstab und Drehung sind gegen Verstellen gesperrt. */
+  locked?: boolean;
+  /** Dateiname der Quelle und ihre Art — stehen in der Kamerakarte. */
+  sourceName?: string;
+  sourceKind?: 'image' | 'pdf' | 'dxf';
+  /** Ausgeblendete DXF-Ebenen. */
+  hiddenLayers?: string[];
 }
 
 // ── Placed camera in the venue ──
@@ -545,6 +557,15 @@ export interface VenueCamera {
    * line in the 2D plan so the operator can see the swept area.
    */
   trackOffset?: number;
+  /**
+   * Form des Fahrwegs (#235): gerade Schiene, Bogen oder Schwenk des Kranarms
+   * um seinen Drehpunkt. Ohne Angabe gerade, wie vor #235.
+   */
+  travelShape?: TravelShape;
+  /** Radius von Bogen bzw. Schwenk (m). Beim Bogen mit Vorzeichen: negativ biegt nach links. */
+  travelRadiusM?: number;
+  /** Schwenkbereich des Kranarms in Grad (nur `swing`). */
+  swingDeg?: number;
   /**
    * Ausrichtung des Rigs im Raum (Grad, gleiche Konvention wie `pan`).
    * Eine gelegte Schiene, ein Kran-Chassis oder die Beinstellung eines Stativs

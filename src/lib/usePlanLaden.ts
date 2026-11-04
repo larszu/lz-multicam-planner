@@ -28,14 +28,14 @@ import {
   istDxfDatei,
   istPdfDatei,
   vektorAlsPlan,
-  type GeladenerPlan,
   type PdfjsModul,
   type PdfSeitenRenderer,
 } from '../avplan/floorplan';
+import { setDxfZeichnung } from './planBearbeiten';
+import { alsHintergrundPlan, dxfMeterBreite } from './hintergrundPlan';
 import { planQuelleFuer, setPlanQuelle, setPlanSeite } from './planQuelle';
 import { useStore } from '../store/useStore';
 import { useTranslation, format } from '../i18n';
-import type { BackgroundPlan } from '../types';
 
 let renderer: PdfSeitenRenderer | null = null;
 
@@ -51,23 +51,6 @@ function pdfRenderer(): PdfSeitenRenderer {
   };
   renderer = pdfjsRenderer(modul);
   return renderer;
-}
-
-/** Geladener Plan → MultiCams `BackgroundPlan`. Der Plan bekommt die Breite
- *  des Venues; Meter je Pixel gilt fuer beide Achsen gleich, bis jemand
- *  kalibriert. */
-export function alsHintergrundPlan(plan: GeladenerPlan, venueBreiteM: number): BackgroundPlan {
-  const s = venueBreiteM / plan.naturalWidth;
-  return {
-    dataUrl: plan.src,
-    scaleX: s,
-    scaleY: s,
-    offsetX: 0,
-    offsetY: 0,
-    opacity: 0.3,
-    widthPx: plan.naturalWidth,
-    heightPx: plan.naturalHeight,
-  };
 }
 
 /** DXF bis R2004 ist ANSI (meist Windows-1252), ab R2007 UTF-8. */
@@ -113,11 +96,24 @@ export function usePlanLaden() {
         // wird eines. Gezeichnet wird hier, erkannt spaeter aus denselben Daten.
         const dxf = istDxfDatei(datei);
         const bytes = dxf || istPdfDatei(datei) ? new Uint8Array(await datei.arrayBuffer()) : null;
-        const plan = dxf
-          ? vektorAlsPlan(dxfLesen(dxfText(bytes!)), datei.name)
+        const zeichnung = dxf ? dxfLesen(dxfText(bytes!)) : null;
+        const plan = zeichnung
+          ? vektorAlsPlan(zeichnung, datei.name)
           : await ladePlanDatei(datei, { pdf: pdfRenderer() });
         setPlanQuelle(bytes ? { art: dxf ? 'dxf' : 'pdf', name: datei.name, daten: bytes, seite: plan.seite, seiten: plan.seiten, bild: plan.src } : null);
-        setBackgroundPlan(alsHintergrundPlan(plan, venueBreiteM));
+        setDxfZeichnung(zeichnung, datei.name, plan.src);
+        const bg = {
+          ...alsHintergrundPlan(plan, venueBreiteM, zeichnung ? dxfMeterBreite(zeichnung) : undefined),
+          sourceName: datei.name,
+          sourceKind: dxf ? 'dxf' as const : istPdfDatei(datei) ? 'pdf' as const : 'image' as const,
+        };
+        setBackgroundPlan(bg);
+        const venue = useStore.getState().venue;
+        const planW = bg.widthPx * bg.scaleX;
+        const planH = bg.heightPx * bg.scaleY;
+        if (zeichnung?.meterJeEinheit && (planW > venue.widthM || planH > venue.heightM)) {
+          useStore.getState().setVenue({ ...venue, widthM: Math.max(venue.widthM, Math.ceil(planW)), heightM: Math.max(venue.heightM, Math.ceil(planH)) });
+        }
       } catch (err) {
         if (err instanceof DxfFehler) {
           alert(err.message);
@@ -167,10 +163,14 @@ export function usePlanLaden() {
         setBackgroundPlan(
           gleich
             ? { ...alt, dataUrl: r.dataUrl }
-            : alsHintergrundPlan(
-                { src: r.dataUrl, name: quelle.name, naturalWidth: r.breite, naturalHeight: r.hoehe, art: 'pdf', seiten: r.seiten, seite },
-                venueBreiteM,
-              ),
+            : {
+                ...alsHintergrundPlan(
+                  { src: r.dataUrl, name: quelle.name, naturalWidth: r.breite, naturalHeight: r.hoehe, art: 'pdf', seiten: r.seiten, seite },
+                  venueBreiteM,
+                ),
+                sourceName: quelle.name,
+                sourceKind: 'pdf',
+              },
         );
       } catch (err) {
         alert(format(t('sidebar.pdfRenderFailed', 'Failed to render PDF: {msg}'), { msg: err instanceof Error ? err.message : String(err) }));

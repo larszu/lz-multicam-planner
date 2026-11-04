@@ -15,7 +15,8 @@
  * muss, faellt beim Ergaenzen eines Rigs die vergessene Uebersetzung sofort
  * auf: TypeScript besteht darauf.
  */
-import type { CameraMountType } from '../types';
+import type { CameraMountType, VenueCamera } from '../types';
+import { pathSummary } from '../utils/travelPath';
 
 type T = (key: string, en: string) => string;
 
@@ -113,4 +114,21 @@ export function speedStepHint(t: T, key: string): string {
     case '2': return t('rig.speed.normalHint', 'The data-sheet speed of the rig');
     default: return t('rig.speed.fastHint', 'Repositioning - 2.5 times the speed');
   }
+}
+
+/** Der Fahrweg als kurze Zeile (#235): „Curve 6.0 m · R 8.0 m" — leer ohne Fahrweg. */
+export function pathLabel(t: T, cam: VenueCamera): string {
+  const p = pathSummary(cam);
+  if (!p) return '';
+  const len = `${p.lengthM.toFixed(1)} m`;
+  switch (p.shape) {
+    case 'line': return `${t('path.line', 'Straight')} ${len}`;
+    case 'arc': return `${t('path.arc', 'Curve')} ${len} · R ${(p.radiusM ?? 0).toFixed(1)} m`;
+    case 'swing': return `${t('path.swing', 'Swing')} ${Math.round(p.sweepDeg)}° · ${len} · ↕ ${p.heightM?.min.toFixed(1)}–${p.heightM?.max.toFixed(1)} m`;
+  }
+}
+
+/** Rig, Hoehe und Fahrweg einer Kamera in einer Zeile — fuer Shotliste und Kamerakarte. */
+export function rigLine(t: T, cam: VenueCamera): string {
+  return [mountTypeLabel(t, cam.mountType ?? 'tripod'), `${cam.z.toFixed(2)} m`, pathLabel(t, cam)].filter(Boolean).join(' · ');
 }

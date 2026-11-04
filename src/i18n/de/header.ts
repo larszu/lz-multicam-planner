@@ -141,4 +141,7 @@ export const header: Record<string, string> = {
 
   // 2026-09-10 — vom geschaerften Sprachmix-Zaehler gefunden.
   'header.editMode': 'Bearbeiten-Modus',
+  // #221 / #222 / #223 / #235
+  'header.export.cameraMap.desc': 'Plan mit allen Kameras, Optiken, Stativen und Fahrwegen — SVG, PNG oder PDF',
+  'header.export.cameraMap': 'Kamerakarte…',
 };

@@ -6,8 +6,9 @@ import { useLiveCameras, useMixerFollow, useSurfaceCameraId } from '../../store/
 import { getCameraById, getEffectiveSensor } from '../../data/cameras';
 import { getLensById } from '../../data/lenses';
 import { computeFov } from '../../utils/fov';
-import { effectiveCameraPos, rigYaw } from '../../utils/camera';
-import RigStructure from './RigStructure';
+import { effectiveCameraPos } from '../../utils/camera';
+import { pathShift } from '../../utils/travelPath';
+import RigStructure, { TravelPathFloor } from './RigStructure';
 import * as THREE from 'three';
 import { getExportRegistry } from '../../store/exportRegistry';
 import { FingerNavigation, umsehen } from '../../lib/fingerNavigation';
@@ -772,25 +773,18 @@ function CameraRig({
   const eff = effectiveCameraPos(cam);
   const { rig, versatz } = useKameraRig(modell, { x: eff.x, y: eff.y, z: cam.z, pan: cam.pan, tilt: cam.tilt });
 
-  // Ausrichtung des Rigs — einmal im Render aufgeloest, damit die Callbacks
-  // nur den Winkel als Abhaengigkeit brauchen und nicht das ganze cam-Objekt.
-  const camYaw = rigYaw(cam);
-
   const commitMove = useCallback(() => {
     if (!baseRef.current) return;
     // TransformControls drag operates on the *effective* (offset) position,
     // so back out the trackOffset to recover the parked position before
     // clamping into the venue bounds.
-    const offset = cam.trackOffset ?? 0;
     // Der Fahrweg folgt der Rig-Achse (Schiene/Kran), nicht dem Pan.
-    const yawRad = (camYaw * Math.PI) / 180;
-    const dropX = baseRef.current.position.x - Math.cos(yawRad) * offset;
-    const dropY = baseRef.current.position.z - Math.sin(yawRad) * offset;
-    const nextX = Math.max(0, Math.min(venueWidth, dropX));
-    const nextY = Math.max(0, Math.min(venueHeight, dropY));
-    baseRef.current.position.set(nextX + Math.cos(yawRad) * offset, 0, nextY + Math.sin(yawRad) * offset);
+    const { dx, dy } = pathShift(cam);
+    const nextX = Math.max(0, Math.min(venueWidth, baseRef.current.position.x - dx));
+    const nextY = Math.max(0, Math.min(venueHeight, baseRef.current.position.z - dy));
+    baseRef.current.position.set(nextX + dx, 0, nextY + dy);
     moveCamera(cam.id, nextX, nextY);
-  }, [cam.id, camYaw, cam.trackOffset, moveCamera, venueHeight, venueWidth]);
+  }, [cam, moveCamera, venueHeight, venueWidth]);
 
   const commitHeight = useCallback(() => {
     if (!liftRef.current) return;
@@ -824,6 +818,7 @@ function CameraRig({
           trotzdem fest: das Rig verschiebt sie um den Fahrweg zurueck. */}
       <primitive object={rig.gruppe} visible={!look.isPov} />
       {modell.skelett && !look.isPov && <RigStructure cam={cam} isSelected={isSelected} />}
+      {!look.isPov && <TravelPathFloor cam={cam} />}
       {bediener && modell.bediener && !look.isPov && (
         <Bediener id={cam.id} pose={modell.bediener} x={eff.x} y={eff.y} z={cam.z} pan={cam.pan} />
       )}

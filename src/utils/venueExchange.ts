@@ -152,8 +152,8 @@ function bgToFloorPlan(
     // ADR-005 — `kind: 'image'` gilt nur, solange nichts anderes bekannt ist.
     // Ein uebernommener PDF-Grundriss behaelt seine Herkunft und seine Seite.
     kind: foreign.kind ?? 'image',
-    ...(foreign.name !== undefined ? { name: foreign.name } : {}),
-    ...(foreign.locked !== undefined ? { locked: foreign.locked } : {}),
+    ...((foreign.name ?? bg.sourceName) !== undefined ? { name: foreign.name ?? bg.sourceName } : {}),
+    ...((bg.locked ?? foreign.locked) !== undefined ? { locked: bg.locked ?? foreign.locked } : {}),
     ...(foreign.pageCount !== undefined ? { pageCount: foreign.pageCount } : {}),
     ...(foreign.pageIndex !== undefined ? { pageIndex: foreign.pageIndex } : {}),
   };
@@ -260,6 +260,7 @@ function floorPlanToBg(fp: VenueExchangeFloorPlan): BackgroundPlan {
     opacity: fp.opacity,
     widthPx: fp.naturalWidth,
     heightPx: fp.naturalHeight,
+    ...(fp.locked ? { locked: true } : {}),
   };
 }
 

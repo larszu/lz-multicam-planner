@@ -1,6 +1,6 @@
 import { useStore, APP_VERSION, hatZwischenablage } from '../../store/useStore';
 import { auswahlGroesse, bereinigt } from '../../utils/auswahl';
-import { FiCamera, FiBox, FiSliders, FiSave, FiUpload, FiDownload, FiX, FiCheck, FiMapPin, FiPlus, FiSettings, FiRotateCcw, FiRotateCw, FiCopy, FiClipboard, FiTrash2 } from 'react-icons/fi';
+import { FiCamera, FiBox, FiSliders, FiSave, FiUpload, FiDownload, FiX, FiCheck, FiMap, FiMapPin, FiPlus, FiSettings, FiRotateCcw, FiRotateCw, FiCopy, FiClipboard, FiTrash2 } from 'react-icons/fi';
 import { history, useHistoryState } from '../../store/history';
 import { toVenueExchange, parseVenueExchange } from '../../utils/venueExchange';
 import { cameraListOf, buildAvPlanExport } from '../../store/avplanExport';
@@ -24,6 +24,7 @@ import { shiftReportFingerprint } from '../../utils/documentContent';
 import { buildStamp } from '../../utils/documentStamp';
 import { openFirstSteps } from './firstStepsEvent';
 import { canOpenWithTarget, currentElectronPath, openedFromInput, openProjectWithTarget, reportDocumentState, saveProject, saveProjectAs, useProjectFileState } from '../../store/projectSave';
+import { CAMERA_MAP_EVENT } from '../../utils/cameraMap';
 
 
 // Edit-mode slider options (issue #43). Each mode locks everything except its
@@ -407,6 +408,13 @@ export default function Header({
                 note={t('header.export.allWidetele.desc', 'Two PNGs per camera (lens min and max)')}
               >
                 {t('header.export.allWidetele', 'All — wide + tele')}
+              </MenuItem>
+              <MenuItem
+                icon={<FiMap size={13} />}
+                onClick={() => { close(); window.dispatchEvent(new CustomEvent(CAMERA_MAP_EVENT)); }}
+                note={t('header.export.cameraMap.desc', 'Plan with every camera, lens, rig and path — SVG, PNG or PDF')}
+              >
+                {t('header.export.cameraMap', 'Camera map…')}
               </MenuItem>
               {/* Bedarf 50 — die Schicht-Uebergabe. Sie steht hier und nicht
                   bei den Kamerakarten, weil sie kein Bild ist: ein Blatt ueber

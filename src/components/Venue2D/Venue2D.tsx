@@ -9,10 +9,13 @@ import { dofBand } from '../../utils/dofBand';
 import type { VenueCamera, Wall } from '../../types';
 import { effectiveCameraPos, rigYaw } from '../../utils/camera';
 import { zielPunkt } from '../../utils/kameraZiel';
+import { pathShift } from '../../utils/travelPath';
 import { dragIsOwn, dropToParked, planVerschoben } from '../../utils/venueDrag';
 import { stageColor, stageTopZ } from '../../utils/stageBody';
 import { alphaSuffix, shadeHex } from '../../utils/color';
 import RigOverlay, { RIG_HANDLE_RADIUS } from './RigOverlay';
+import CoverageOverlay from './CoverageOverlay';
+import { coverageReport, type CoverageCamera, type CoverageMode } from '../../utils/coverage';
 import { capturePlanAtWorldScale } from '../../utils/exportCapture';
 import { getExportRegistry } from '../../store/exportRegistry';
 import React, { useRef, useCallback, useEffect, useState, useMemo } from 'react';
@@ -256,6 +259,25 @@ export default function Venue2D() {
   );
   const W = venue.widthM * ppm;
   const H = venue.heightM * ppm;
+
+  const coverageMode = useStore((s) => s.coverageMode);
+  const setCoverageMode = useStore((s) => s.setCoverageMode);
+  const publikum = venue.seatingBlocks;
+  const abdeckung = useMemo(() => {
+    if (coverageMode === 'off' || !publikum?.length) return null;
+    const { customCameras, customLenses } = useStore.getState();
+    const cams: CoverageCamera[] = [];
+    for (const cam of cameras) {
+      const cd = getCameraById(cam.cameraId, customCameras);
+      const ld = getLensById(cam.lensId, customLenses);
+      if (!cd || !ld) continue;
+      const sensor = getEffectiveSensor(cd, ld, cam.useSpeedbooster, cam.sensorModeIndex, cam.activeMount);
+      const fov = computeFov(sensor, cam.focalLength, cam.focusDistance, cam.extenderActive, ld.squeeze ?? 1);
+      const p = effectiveCameraPos(cam);
+      cams.push({ id: cam.id, x: p.x, y: p.y, z: cam.z, pan: cam.pan, tilt: cam.tilt, hFovDeg: fov.horizontalDeg, vFovDeg: fov.verticalDeg });
+    }
+    return coverageReport(publikum, cams, walls, selectedCameraId);
+  }, [coverageMode, publikum, cameras, walls, selectedCameraId]);
 
   // Waehrend der Erkennungs-Vorschau liegt das Bild schon so, wie „Übernehmen"
   // es legt — die erkannten Waende stehen sonst neben ihrem Plan (#247).
@@ -593,6 +615,7 @@ export default function Venue2D() {
         dropY: e.target.y() / ppm,
         rigYawDeg: rigYaw(cam),
         trackOffset: cam.trackOffset ?? 0,
+        shift: pathShift(cam),
         venueWidthM: venue.widthM,
         venueHeightM: venue.heightM,
       });
@@ -827,7 +850,7 @@ export default function Venue2D() {
           </span>
         </div>
       )}
-      {planAusrichten && backgroundPlan && (
+      {planAusrichten && backgroundPlan && !backgroundPlan.locked && (
         <ModusHinweis
           text={t('venue.planAlign.hint', 'Drag the floor plan into place. Walls, stages and cameras stay where they are.')}
           knopf={t('venue.planAlign.done', 'Done')}
@@ -847,6 +870,30 @@ export default function Venue2D() {
           knopf={t('venue.audienceDraw.cancel', 'Cancel')}
           onKnopf={() => setPublikumZeichnen(null)}
         />
+      )}
+      {(venue.seatingBlocks?.length ?? 0) > 0 && (
+        <div className="absolute bottom-3 right-3 z-10 flex items-center gap-2 rounded-bc-full border border-bc-border bg-bc-panel/90 px-3 py-1 text-[11px] text-bc-text shadow-bc-1 backdrop-blur">
+          <label htmlFor="coverage-mode" className="text-bc-muted">{t('venue.coverage.label', 'Audience coverage')}</label>
+          <select
+            id="coverage-mode"
+            value={coverageMode}
+            onChange={(e) => setCoverageMode(e.target.value as CoverageMode)}
+            className="bg-transparent text-bc-text-bright"
+            title={t('venue.coverage.title', 'Shade the audience areas by how many cameras have them in frame (pan, tilt and lens, solid walls block) — or show only the gaps.')}
+          >
+            <option value="off">{t('venue.coverage.off', 'Off')}</option>
+            <option value="all">{t('venue.coverage.all', 'All cameras')}</option>
+            <option value="selected">{t('venue.coverage.selected', 'Selected camera')}</option>
+            <option value="gaps">{t('venue.coverage.gaps', 'Gaps')}</option>
+          </select>
+          {abdeckung?.share != null && (
+            <span className="tabular-nums font-semibold text-bc-text-bright" title={t('venue.coverage.share.title', 'Share of the audience area that at least one camera sees')}>
+              {format(t('venue.coverage.share', '{p} % seen'), {
+                p: Math.round(((coverageMode === 'selected' ? abdeckung.shareSelected : abdeckung.share) ?? 0) * 100),
+              })}
+            </span>
+          )}
+        </div>
       )}
       {/* Zoom indicator */}
       <EditGroupsBar />
@@ -924,6 +971,7 @@ export default function Venue2D() {
           const fovMax = computeFov(sensor, lensDef.focalLengthMin, cam.focusDistance, cam.extenderActive, lensDef.squeeze ?? 1);
           const range = cam.focusDistance * ppm;
           const isSelected = cam.id === selectedCameraId;
+          const eff = effectiveCameraPos(cam);
 
           /*
             Das Schaerfeband (#141).
@@ -953,20 +1001,20 @@ export default function Venue2D() {
             <React.Fragment key={`fov-group-${cam.id}`}>
               {isSelected && lensDef.focalLengthMin !== lensDef.focalLengthMax && (
                 <Wedge
-                  x={cam.x * ppm} y={cam.y * ppm} radius={range}
+                  x={eff.x * ppm} y={eff.y * ppm} radius={range}
                   angle={fovMax.horizontalDeg} rotation={cam.pan - fovMax.horizontalDeg / 2}
                   fill={'#22c55e10'} stroke={'#22c55e55'} strokeWidth={1} dash={[4, 4]} listening={false}
                 />
               )}
               {isSelected && lensDef.focalLengthMin !== lensDef.focalLengthMax && (
                 <Wedge
-                  x={cam.x * ppm} y={cam.y * ppm} radius={range}
+                  x={eff.x * ppm} y={eff.y * ppm} radius={range}
                   angle={fovMin.horizontalDeg} rotation={cam.pan - fovMin.horizontalDeg / 2}
                   fill={'#ef444410'} stroke={'#ef444455'} strokeWidth={1} dash={[4, 4]} listening={false}
                 />
               )}
               <Wedge
-                x={cam.x * ppm} y={cam.y * ppm} radius={range}
+                x={eff.x * ppm} y={eff.y * ppm} radius={range}
                 angle={fov.horizontalDeg} rotation={cam.pan - fov.horizontalDeg / 2}
                 fill={cam.color + (isSelected ? '30' : '15')}
                 stroke={cam.color + (isSelected ? 'cc' : '66')}
@@ -974,7 +1022,7 @@ export default function Venue2D() {
               />
               {band && (
                 <Arc
-                  x={cam.x * ppm} y={cam.y * ppm}
+                  x={eff.x * ppm} y={eff.y * ppm}
                   innerRadius={band.vonM * ppm} outerRadius={band.bisM * ppm}
                   angle={fov.horizontalDeg} rotation={cam.pan - fov.horizontalDeg / 2}
                   fill={cam.color + (isSelected ? '55' : '2a')}
@@ -1002,6 +1050,9 @@ export default function Venue2D() {
           onBlock={updateSeatingBlock}
           onWand={updateVideoWall}
         />
+        {abdeckung && publikum && (
+          <CoverageOverlay blocks={publikum} report={abdeckung} mode={coverageMode} ppm={ppm} />
+        )}
 
         {/* Stages — click to select (shows resize handles), drag to move,
             right-click for the context menu (issue #42 / #38). */}
@@ -1294,7 +1345,7 @@ export default function Venue2D() {
 
       {/* Plan ausrichten (#247): eine Griff-Flaeche ueber allem, damit der
           Zug den Plan trifft und keine Kamera darunter. */}
-      {planAusrichten && backgroundPlan && (
+      {planAusrichten && backgroundPlan && !backgroundPlan.locked && (
         <Layer>
           <Rect
             x={backgroundPlan.offsetX * ppm}

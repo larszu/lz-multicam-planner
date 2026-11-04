@@ -12,6 +12,7 @@ import type { VenueCamera } from '../../types';
 import { rigYaw } from '../../utils/camera';
 import { rigLimits } from '../../utils/rigLimits';
 import { rigSkeleton, type RigRole, type RigSegment } from '../../utils/rigGeometry';
+import { pathLengthM, pathPolyline, pathSweepDeg, rigToPlan } from '../../utils/travelPath';
 
 /** Farbe/Strich je Bauteil. */
 function roleStyle(role: RigRole, camColor: string): { stroke: string; opacity: number; dash?: number[] } {
@@ -115,6 +116,15 @@ export default function RigOverlay({
   const skel = rigSkeleton(limits, { heightM: cam.z, offsetM: cam.trackOffset ?? 0 });
   const yaw = rigYaw(cam);
   const yawRad = (yaw * Math.PI) / 180;
+  const weg = pathPolyline(limits);
+  const enden = weg.length > 1 ? [weg[0], weg[weg.length - 1]].map((p) => rigToPlan(cam, p)) : [];
+  const mitte = weg.length > 1 ? rigToPlan(cam, weg[Math.floor(weg.length / 2)]) : null;
+  const sweep = pathSweepDeg(limits);
+  const wegText = [
+    `${pathLengthM(limits).toFixed(1)} m`,
+    limits.pathShape === 'swing' ? `↻ ${Math.round(sweep)}°` : limits.pathShape === 'arc' ? `R ${Math.abs(limits.pathRadiusM ?? 0).toFixed(1)} m` : '',
+    limits.pathShape === 'swing' ? `↕ ${limits.minHeightM.toFixed(1)}–${limits.maxHeightM.toFixed(1)} m` : '',
+  ].filter(Boolean).join(' · ');
 
   return (
     <>
@@ -140,9 +150,9 @@ export default function RigOverlay({
       )}
 
       {/* Fahrweg: die Strecke, die der Kopf tatsaechlich zurueklegen kann. */}
-      {skel.travelM > 0 && (
+      {weg.length > 1 && (
         <Line
-          points={[-skel.travelM * ppm, 0, skel.travelM * ppm, 0]}
+          points={weg.flatMap((p) => [p.f * ppm, p.l * ppm])}
           stroke={cam.color}
           strokeWidth={1.5}
           dash={[4, 4]}
@@ -184,6 +194,27 @@ export default function RigOverlay({
             onMouseLeave={(e) => { const s = e.target.getStage(); if (s) s.container().style.cursor = 'grab'; }}
           />
         </Group>
+      )}
+
+      {/* Endpunkte und Laenge der Strecke (#235) — waagerecht, ausserhalb
+          der gedrehten Gruppe. */}
+      {isSelected && enden.map((p, i) => (
+        <Group key={`end-${i}`} x={p.x * ppm} y={p.y * ppm} listening={false}>
+          <Circle radius={7} fill={cam.color} opacity={0.9} />
+          <Text x={-7} y={-5} width={14} align="center" text={String(i + 1)} fontSize={9} fontStyle="bold" fill="#ffffff" />
+        </Group>
+      ))}
+      {isSelected && mitte && (
+        <Text
+          x={mitte.x * ppm - 80}
+          y={mitte.y * ppm - 18}
+          width={160}
+          align="center"
+          text={wegText}
+          fontSize={9}
+          fill={cam.color}
+          listening={false}
+        />
       )}
 
       {/* Rig-Name waagerecht unter der Kamera — ausserhalb der gedrehten
