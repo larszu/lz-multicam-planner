@@ -24,7 +24,7 @@ import {
   CARD_FINDING_LABEL,
   cardFindings,
 } from '../../utils/cameraCardExtras';
-import { FiPlus, FiTrash2, FiCopy, FiChevronDown, FiChevronUp, FiEye, FiEyeOff, FiUpload, FiUser, FiMap, FiMaximize2, FiLock, FiUnlock, FiStar, FiEdit2, FiRotateCcw, FiHome, FiImage, FiColumns, FiUsers, FiVideo, FiTarget } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiCopy, FiChevronDown, FiChevronUp, FiEye, FiEyeOff, FiUpload, FiUser, FiMap, FiMaximize2, FiLock, FiUnlock, FiStar, FiEdit2, FiRotateCcw, FiHome, FiImage, FiColumns, FiUsers, FiVideo, FiTarget, FiClipboard, FiCamera } from 'react-icons/fi';
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import type { StageObjectType, Camera, CameraMountType, VenueCamera, WallFit, WallPattern } from '../../types';
 
@@ -67,6 +67,9 @@ import { usePlanLaden } from '../../lib/usePlanLaden';
 import { useTranslation, format } from '../../i18n';
 import { mountTypeLabel } from '../../i18n/mount';
 import { MOUNT_TYPE_LABELS } from '../../types';
+import { amZiel, istFestbrennweite, shotSizeLabel, zielPunkt } from '../../utils/kameraZiel';
+import { kamerablickWuenschen } from '../Venue3D/kamerablickWunsch';
+import PositionenAblage from './PositionenAblage';
 
 // Ausgeblendet (Lars, 14.10.2026): Coverage brief, Rigging & Comms und
 // Network source waren fuer den Kern — Kameras einzeichnen, Optik pruefen —
@@ -238,10 +241,13 @@ function CameraCard({
     walls,
     persons,
     venue,
+    selectCamera,
+    resetCamera,
   } = useStore();
   const cam = cameras.find((c) => c.id === camId)!;
   const isSelected = cam.id === selectedCameraId;
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const [showNewLens, setShowNewLens] = useState(false);
   const [newLens, setNewLens] = useState({ manufacturer: '', model: '', focalMin: '10', focalMax: '100', aperture: '2.8', mount: 'B4', type: 'zoom' as 'zoom' | 'prime' });
   const [showNewCustomCam, setShowNewCustomCam] = useState(false);
@@ -399,6 +405,17 @@ function CameraCard({
 
   const fov = effectiveSensor && lensDef ? computeFov(effectiveSensor, cam.focalLength, cam.focusDistance, cam.extenderActive, lensDef.squeeze ?? 1) : null;
   const dof = effectiveSensor && lensDef ? computeDof(effectiveSensor, cam.focalLength, cam.aperture, cam.focusDistance, cam.extenderActive) : null;
+  const festbrennweite = istFestbrennweite(lensDef);
+
+  const ziel = zielPunkt(cam.aimTarget, { persons, venue });
+  const amZielWerte = ziel && effectiveSensor && lensDef ? amZiel(cam, effectiveSensor, lensDef.squeeze, ziel) : null;
+  const zielWert = cam.aimTarget?.kind === 'person'
+    ? `person:${cam.aimTarget.id}`
+    : cam.aimTarget?.kind === 'point'
+      ? 'point'
+      : venue.stages.length > 0
+        ? `stage:${(cam.aimTarget?.kind === 'stage' && cam.aimTarget.stageId) || venue.stages[0].id}`
+        : '';
 
   // Bedarf 58 -- kommt die Optik an den beauftragten Ausschnitt heran?
   //
@@ -473,7 +490,7 @@ function CameraCard({
             <span className="text-bc-muted">{camDef?.model ?? '—'}</span>
             <span>{mountTypeLabel(t, cam.mountType ?? 'tripod')}</span>
             <span className="tabular-nums">{cam.z.toFixed(2)} m</span>
-            <span className="tabular-nums">{cam.focalLength.toFixed(0)} mm</span>
+            <span className="tabular-nums">{lensDef ? `${lensDef.model} · ` : ''}{cam.focalLength.toFixed(0)} mm</span>
             {fov && <span className="tabular-nums">{fov.horizontalDeg.toFixed(0)}°</span>}
           </div>
         )}
@@ -1001,8 +1018,22 @@ function CameraCard({
             note={cam.extenderActive > 1 ? format(t('sidebar.cam.focalEff', 'eff. {e} mm'), { e: (cam.focalLength * cam.extenderActive).toFixed(0) }) : undefined}
             onChange={(v) => updateCamera(cam.id, { focalLength: v })}
             onStep={(dir) => updateCamera(cam.id, { focalLength: stepAlong(cam.focalLength, dir, focalMin, focalMax, focalStepTicks) })}
-            title={t('sidebar.cam.focalLength.title', 'Focal length — logarithmic, snaps to the marks. Shift = free.')}
+            disabled={festbrennweite}
+            title={festbrennweite
+              ? t('sidebar.cam.focalLength.prime', 'Prime lens — the focal length is fixed.')
+              : t('sidebar.cam.focalLength.title', 'Focal length — logarithmic, snaps to the marks. Shift = free.')}
           />
+
+          {amZielWerte && (
+            <div className="space-y-0.5" aria-label={t('sidebar.cam.atTarget.aria', 'Image at the target')}>
+              <Readout label={t('sidebar.cam.fovH', 'FOV horizontal')} value={`${amZielWerte.horizontalDeg.toFixed(1)}°`} />
+              <Readout label={t('sidebar.cam.targetDistance', 'Distance to target')} value={`${amZielWerte.distanceM.toFixed(1)} m`} />
+              <Readout
+                label={t('sidebar.cam.frameAtTarget', 'Frame at target')}
+                value={`${amZielWerte.widthM.toFixed(1)} × ${amZielWerte.heightM.toFixed(1)} m · ${shotSizeLabel(t, amZielWerte.size)}`}
+              />
+            </div>
+          )}
 
           <LensSlider
             label={t('sidebar.cam.aperture.label', 'Aperture')}
@@ -1053,6 +1084,66 @@ function CameraCard({
           </Group>
 
           <Group id="aim" title={t('sidebar.cam.aim', 'Aim')} summary={`${cam.pan.toFixed(0)}° / ${cam.tilt.toFixed(0)}°`}>
+            <FieldRow label={t('sidebar.cam.target', 'Target')} htmlFor={`target-${cam.id}`}>
+              <select
+                id={`target-${cam.id}`}
+                className="block w-full border border-bc-border bg-bc-panel-raised text-bc-text-bright"
+                style={{ padding: '3px 6px' }}
+                value={zielWert}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const [art, id] = [v.slice(0, v.indexOf(':')), v.slice(v.indexOf(':') + 1)];
+                  updateCamera(cam.id, {
+                    aimTarget: v === 'point'
+                      ? { kind: 'point', x: ziel?.x ?? venue.widthM / 2, y: ziel?.y ?? venue.heightM / 2 }
+                      : art === 'person'
+                        ? { kind: 'person', id }
+                        : id === venue.stages[0]?.id ? undefined : { kind: 'stage', stageId: id },
+                    aimFollow: cam.aimFollow,
+                  });
+                }}
+              >
+                {venue.stages.length === 0 && <option value="">{t('sidebar.cam.targetNone', 'No stage')}</option>}
+                {venue.stages.map((st) => (
+                  <option key={st.id} value={`stage:${st.id}`}>{format(t('sidebar.cam.targetStage', 'Centre of {name}'), { name: st.label })}</option>
+                ))}
+                {persons.map((p) => (
+                  <option key={p.id} value={`person:${p.id}`}>{p.label}</option>
+                ))}
+                <option value="point">{t('sidebar.cam.targetPoint', 'Point in the plan')}</option>
+              </select>
+            </FieldRow>
+            {cam.aimTarget?.kind === 'point' && (
+              <FieldRow label={t('sidebar.cam.targetPointPos', 'Point (m)')}>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['x', 'y'] as const).map((k) => (
+                    <input
+                      key={k}
+                      type="number"
+                      step={0.5}
+                      className="w-full border border-bc-border bg-bc-panel-raised text-bc-text-bright tabular-nums"
+                      style={{ padding: '3px 6px' }}
+                      value={cam.aimTarget?.kind === 'point' ? cam.aimTarget[k] : 0}
+                      aria-label={k === 'x' ? t('sidebar.cam.targetX.aria', 'Target point X in metres') : t('sidebar.cam.targetY.aria', 'Target point Y in metres')}
+                      onChange={(e) => {
+                        if (cam.aimTarget?.kind !== 'point') return;
+                        updateCamera(cam.id, { aimTarget: { ...cam.aimTarget, [k]: parseFloat(e.target.value) || 0 }, aimFollow: cam.aimFollow });
+                      }}
+                    />
+                  ))}
+                </div>
+              </FieldRow>
+            )}
+            <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-bc-text" title={t('sidebar.cam.aimFollow.title', 'Pan and tilt follow the target whenever the camera or the target moves.')}>
+              <input
+                type="checkbox"
+                checked={!!cam.aimFollow}
+                disabled={!ziel}
+                onChange={(e) => updateCamera(cam.id, { aimFollow: e.target.checked || undefined })}
+                className="accent-bc-accent"
+              />
+              {t('sidebar.cam.aimFollow', 'Aim at the target')}
+            </label>
             <ValueSlider
               label={t('sidebar.cam.pan.label', 'Pan')}
               value={cam.pan}
@@ -1127,7 +1218,7 @@ function CameraCard({
                         mountType: newMount,
                         rigId: undefined,
                         trackLengthM: undefined,
-                        z: clampHeight(next, cam.z),
+                        z: next.standardHeightM,
                         trackOffset: next.trackM > 0 ? 0 : undefined,
                       });
                     }}
@@ -2105,6 +2196,32 @@ function CameraCard({
               onChange={(e) => updateCamera(cam.id, { notes: e.target.value })}
             />
           </Group>
+
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => { selectCamera(cam.id); kamerablickWuenschen(); }}
+              style={{ padding: '4px 10px' }}
+              className="bc-btn-soft flex items-center gap-1 text-[11px]"
+              title={t('sidebar.cam.viewFrom.title', 'Opens the 3D view through this camera. Esc goes back.')}
+            >
+              <FiCamera size={12} /> {t('sidebar.cam.viewFrom', 'View from this camera')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!confirmReset) { setConfirmReset(true); return; }
+                resetCamera(cam.id);
+                setConfirmReset(false);
+              }}
+              onBlur={() => setConfirmReset(false)}
+              style={{ padding: '4px 10px' }}
+              className={`bc-btn-soft flex items-center gap-1 text-[11px] ${confirmReset ? 'text-bc-red-text' : ''}`}
+              title={t('sidebar.cam.reset.title', 'Height, aim and lens settings back to those of a new camera. Position, body, lens and notes stay.')}
+            >
+              <FiRotateCcw size={12} /> {confirmReset ? t('sidebar.cam.resetAgain', 'Really reset? Click again.') : t('sidebar.cam.reset', 'Reset')}
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -2148,6 +2265,7 @@ export default function Sidebar() {
   const [roomOpen, setRoomOpen] = useState(false);
   const [personsOpen, setPersonsOpen] = useState(false);
   const [camerasOpen, setCamerasOpen] = useState(true);
+  const [positionsOpen, setPositionsOpen] = useState(false);
   const [wallsOpen, setWallsOpen] = useState(false);
   const [bgOpen, setBgOpen] = useState(false);
   const [wallDrawMode, setWallDrawMode] = useState<false | 'wall' | 'glass'>(false);
@@ -2897,6 +3015,18 @@ export default function Sidebar() {
               <FiTarget size={15} />
             </button>
             <button
+              onClick={() => setPositionsOpen(!positionsOpen)}
+              style={{ padding: '6px' }}
+              className={positionsOpen
+                ? 'bg-bc-border text-bc-text-bright'
+                : 'hover:bg-bc-border text-bc-muted hover:text-bc-text-bright'}
+              aria-pressed={positionsOpen}
+              title={t('positions.toggle', 'Copy or read in positions')}
+              aria-label={t('positions.toggle', 'Copy or read in positions')}
+            >
+              <FiClipboard size={15} />
+            </button>
+            <button
               onClick={() => addCamera()}
               style={{ padding: '5px 10px' }}
               className="rounded-bc-full flex items-center gap-1 bg-bc-accent text-bc-accent-text text-xs font-semibold hover:bg-bc-accent/80"
@@ -2908,6 +3038,7 @@ export default function Sidebar() {
         />
 
         {camerasOpen && <div style={{ padding: '0 14px 12px' }}>
+          {positionsOpen && <PositionenAblage />}
           {cameras.map((cam) => (
             <CameraCard
               key={cam.id}

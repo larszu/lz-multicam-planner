@@ -218,17 +218,22 @@ export default function ShotlistPanel() {
     [list, venue.name],
   );
 
+  const rigOf = useCallback((shot: { cameraId: string }) => {
+    const c = cameras.find((q) => q.id === shot.cameraId);
+    return c ? mountTypeLabel(t, c.mountType ?? 'tripod') : undefined;
+  }, [cameras, t]);
+
   const doExportPng = useCallback(async () => {
     if (!list || list.shots.length === 0) return;
     setBusy(true);
     try {
-      await exportStoryboardPng(list, venue.name, stempel());
+      await exportStoryboardPng(list, venue.name, stempel(), rigOf);
     } catch {
       flash('Export fehlgeschlagen.');
     } finally {
       setBusy(false);
     }
-  }, [flash, list, stempel, venue.name]);
+  }, [flash, list, rigOf, stempel, venue.name]);
 
   const btn =
     'px-2 py-1 rounded-bc-m text-[11px] border border-bc-border text-bc-text hover:text-bc-text-bright hover:border-bc-accent/60 disabled:opacity-40 disabled:hover:text-bc-text disabled:hover:border-bc-border transition-colors';
@@ -325,7 +330,7 @@ export default function ShotlistPanel() {
         </button>
         <button
           className={btn}
-          onClick={() => list && printStoryboard(list, venue.name, stempel())}
+          onClick={() => list && printStoryboard(list, venue.name, stempel(), rigOf)}
           disabled={!list || shots.length === 0}
           title={t('shotlist.print', 'Print storyboard / save as PDF')}
         >

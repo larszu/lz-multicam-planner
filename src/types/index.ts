@@ -177,36 +177,37 @@ export const MOUNT_TYPE_LABELS: Record<CameraMountType, string> = {
 };
 
 /**
- * Per-mount-type ergonomic ranges in metres. `pump` is the recommended single
+ * Per-mount-type ergonomic ranges in metres. `standard` is the height a
+ * camera on this rig starts at. `pump` is the recommended single
  * height-slider step (column pump for pedestal, jib lift step, etc.). `track`
  * is the maximum live-motion travel along the rig (used by the dolly travel
  * and jib swing sliders); undefined for static rigs.
  */
-export const MOUNT_HEIGHT_RANGE: Record<CameraMountType, { min: number; max: number; pump: number; track?: number }> = {
-  tripod:    { min: 0.5, max: 2.2, pump: 0.05 },
+export const MOUNT_HEIGHT_RANGE: Record<CameraMountType, { min: number; max: number; pump: number; standard: number; track?: number }> = {
+  tripod:    { min: 0.5, max: 2.2, pump: 0.05, standard: 1.4 },
   // Hi-Hat: Kamera fast auf dem Boden, kaum Hoehenspiel.
-  hihat:     { min: 0.1, max: 0.5, pump: 0.05 },
-  pedestal:  { min: 0.6, max: 1.8, pump: 0.4 },
-  jib:       { min: 0.3, max: 6.0, pump: 1.5, track: 3.5 },
+  hihat:     { min: 0.1, max: 0.5, pump: 0.05, standard: 0.3 },
+  pedestal:  { min: 0.6, max: 1.8, pump: 0.4, standard: 1.4 },
+  jib:       { min: 0.3, max: 6.0, pump: 1.5, standard: 3.0, track: 3.5 },
   // Techno 22 als gaengiger Vertreter: 24' (7.3 m) Objektivhoehe ueberschlaegig,
   // 15'6" (4.7 m) Teleskopweg. Der Arm faehrt teleskopierend ein/aus, statt nur
   // zu schwenken — darum deutlich mehr Track als ein klassischer Jib.
-  technocrane: { min: 0.5, max: 7.3, pump: 1.5, track: 4.7 },
-  dolly:     { min: 0.4, max: 1.9, pump: 0.1, track: 6.0 },
+  technocrane: { min: 0.5, max: 7.3, pump: 1.5, standard: 4.0, track: 4.7 },
+  dolly:     { min: 0.4, max: 1.9, pump: 0.1, standard: 1.4, track: 6.0 },
   // Slider: kurzer Weg, dafuer sehr feine Kontrolle.
-  slider:    { min: 0.2, max: 2.0, pump: 0.05, track: 1.2 },
+  slider:    { min: 0.2, max: 2.0, pump: 0.05, standard: 1.0, track: 1.2 },
   // Cable-Cam haengt in Seilen — grosser Hoehenbereich, sehr weiter Weg.
-  cablecam:  { min: 2.0, max: 40.0, pump: 2.0, track: 80.0 },
-  drone:     { min: 0.5, max: 120.0, pump: 5.0, track: 100.0 },
-  scissorlift: { min: 1.2, max: 12.0, pump: 1.0 },
+  cablecam:  { min: 2.0, max: 40.0, pump: 2.0, standard: 8.0, track: 80.0 },
+  drone:     { min: 0.5, max: 120.0, pump: 5.0, standard: 20.0, track: 100.0 },
+  scissorlift: { min: 1.2, max: 12.0, pump: 1.0, standard: 4.0 },
   // Remote-Head sitzt auf einem anderen Rig; eigener Hoehenbereich bleibt klein.
-  remotehead: { min: 0.3, max: 3.0, pump: 0.2 },
-  carmount:  { min: 0.3, max: 2.5, pump: 0.2, track: 50.0 },
-  rickshaw:  { min: 0.8, max: 2.0, pump: 0.2, track: 30.0 },
-  gimbal:    { min: 0.8, max: 1.9, pump: 0.6 },
-  handheld:  { min: 1.0, max: 1.9, pump: 0.8 },
-  steadicam: { min: 0.3, max: 2.0, pump: 0.5 },
-  fixed:     { min: 0.0, max: 12.0, pump: 0.0 },
+  remotehead: { min: 0.3, max: 3.0, pump: 0.2, standard: 1.5 },
+  carmount:  { min: 0.3, max: 2.5, pump: 0.2, standard: 1.2, track: 50.0 },
+  rickshaw:  { min: 0.8, max: 2.0, pump: 0.2, standard: 1.5, track: 30.0 },
+  gimbal:    { min: 0.8, max: 1.9, pump: 0.6, standard: 1.5 },
+  handheld:  { min: 1.0, max: 1.9, pump: 0.8, standard: 1.6 },
+  steadicam: { min: 0.3, max: 2.0, pump: 0.5, standard: 1.4 },
+  fixed:     { min: 0.0, max: 12.0, pump: 0.0, standard: 2.5 },
 };
 
 
@@ -392,6 +393,11 @@ export type ControlPath =
   | 'hitachi-rcz' | 'ikegami-iup' | 'gv-ldk' | 'marshall-cv420'
   | 'none';
 
+export type AimTarget =
+  | { kind: 'stage'; stageId?: string }
+  | { kind: 'person'; id: string }
+  | { kind: 'point'; x: number; y: number };
+
 export interface VenueCamera {
   id: string;
   label: string; // CAM 1, CAM 2 …
@@ -563,6 +569,10 @@ export interface VenueCamera {
    * echten Mischer ist die Belegung selten 1:1 (`utils/bridgeLive.ts`).
    */
   mixerInput?: number;
+  /** Where the camera looks (#230). Unset = stage centre, if there is a stage. */
+  aimTarget?: AimTarget;
+  /** Pan and tilt follow `aimTarget` whenever camera or target move (#230). */
+  aimFollow?: boolean;
   /**
    * Bedarf 58 — welchen Ausschnitt diese Position liefern MUSS.
    *

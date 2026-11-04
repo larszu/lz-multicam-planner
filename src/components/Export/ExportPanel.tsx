@@ -22,6 +22,8 @@ import { paintLines } from '../../utils/paintState';
 import { shadingLines } from '../../utils/shadingCapability';
 import { registryLines } from '../../utils/paintRegistry';
 import { useTranslation, format } from '../../i18n';
+import { mountTypeLabel } from '../../i18n/mount';
+import { amZiel, shotSizeLabel, zielPunkt } from '../../utils/kameraZiel';
 import { renderSelectedCameraView } from '../Preview/cameraViewRenderer';
 
 export type ExportMode = 'current' | 'all' | 'widetele' | 'all-widetele';
@@ -94,6 +96,9 @@ export default function ExportPanel() {
     const fov = computeFov(sensor, focalLength, targetCam.focusDistance, targetCam.extenderActive, lensDef.squeeze ?? 1);
     const dof = computeDof(sensor, focalLength, targetCam.aperture, targetCam.focusDistance, targetCam.extenderActive);
     const personPx = personHeightInFrame(sensor.heightMm, focalLength * targetCam.extenderActive, targetCam.focusDistance);
+    const zielStand = useStore.getState();
+    const ziel = zielPunkt(targetCam.aimTarget, { persons: zielStand.persons, venue: zielStand.venue });
+    const amZielWerte = ziel ? amZiel({ ...targetCam, focalLength }, sensor, lensDef.squeeze, ziel) : null;
 
     // Apply override to the store so the live preview/2D/3D paint with the right state,
     // then wait one frame so the canvases update before we capture them.
@@ -255,10 +260,15 @@ export default function ExportPanel() {
       { label: t('preview.export.d.focusDist', 'Focus dist:'), value: `${targetCam.focusDistance.toFixed(1)}m` },
       { label: t('preview.export.d.position', 'Position:'), value: `X=${targetCam.x.toFixed(1)}m Y=${targetCam.y.toFixed(1)}m Z=${targetCam.z.toFixed(1)}m` },
       { raw: `Pan: ${targetCam.pan.toFixed(1)}°  Tilt: ${targetCam.tilt.toFixed(1)}°` },
+      { label: t('preview.export.d.rig', 'Rig:'), value: `${mountTypeLabel(t, targetCam.mountType ?? 'tripod')}, ${t('preview.export.d.lensHeight', 'lens height')} ${targetCam.z.toFixed(2)}m` },
       { gap: true },
       { label: t('preview.export.d.fovH', 'FOV H:'), value: `${fov.horizontalDeg.toFixed(2)}°`, color: GREEN },
       { label: t('preview.export.d.fovV', 'FOV V:'), value: `${fov.verticalDeg.toFixed(2)}°`, color: GREEN },
       { label: t('preview.export.d.image', 'Image:'), value: `${fov.imageWidthAtDistance.toFixed(2)}m × ${fov.imageHeightAtDistance.toFixed(2)}m` },
+      ...(amZielWerte ? [
+        { label: t('preview.export.d.target', 'To target:'), value: `${amZielWerte.distanceM.toFixed(1)}m` },
+        { label: t('preview.export.d.atTarget', 'At target:'), value: `${amZielWerte.widthM.toFixed(2)}m × ${amZielWerte.heightM.toFixed(2)}m · ${shotSizeLabel(t, amZielWerte.size)}`, color: GREEN },
+      ] : []),
       { label: t('preview.export.d.eqFl', '35mm eq FL:'), value: `${fov.equivalentFocalLength.toFixed(0)}mm` },
       { label: t('preview.export.d.dof', 'DoF:'), value: `${dof.nearLimit < 0.01 ? '0' : dof.nearLimit.toFixed(2)}m – ${dof.farLimit === Infinity ? '∞' : dof.farLimit.toFixed(2) + 'm'}`, color: GREEN },
       { label: t('preview.export.d.hyperfocal', 'Hyperfocal:'), value: `${dof.hyperfocal.toFixed(2)}m` },

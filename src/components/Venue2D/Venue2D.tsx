@@ -8,6 +8,7 @@ import { computeFov } from '../../utils/fov';
 import { dofBand } from '../../utils/dofBand';
 import type { VenueCamera, Wall } from '../../types';
 import { effectiveCameraPos, rigYaw } from '../../utils/camera';
+import { zielPunkt } from '../../utils/kameraZiel';
 import { dragIsOwn, dropToParked, planVerschoben } from '../../utils/venueDrag';
 import { stageColor, stageTopZ } from '../../utils/stageBody';
 import { alphaSuffix, shadeHex } from '../../utils/color';
@@ -1187,6 +1188,24 @@ export default function Venue2D() {
                   : undefined
               }
             />
+          );
+        })}
+
+        {/* Ziel der Kamera (#230): Linie und Fadenkreuz in Kamerafarbe —
+            mehrere Kameras auf demselben Ziel treffen sich sichtbar. */}
+        {cameras.map((cam) => {
+          if (!cam.aimTarget && !cam.aimFollow) return null;
+          const ziel = zielPunkt(cam.aimTarget, { persons, venue });
+          if (!ziel) return null;
+          const pos = effectiveCameraPos(cam);
+          const r = 0.25 * ppm;
+          return (
+            <Group key={`ziel-${cam.id}`} listening={false} opacity={cam.id === selectedCameraId ? 0.9 : 0.5}>
+              <Line points={[pos.x * ppm, pos.y * ppm, ziel.x * ppm, ziel.y * ppm]} stroke={cam.color} strokeWidth={1} dash={[4, 4]} />
+              <Circle x={ziel.x * ppm} y={ziel.y * ppm} radius={r} stroke={cam.color} strokeWidth={1.5} />
+              <Line points={[ziel.x * ppm - r * 1.5, ziel.y * ppm, ziel.x * ppm + r * 1.5, ziel.y * ppm]} stroke={cam.color} strokeWidth={1} />
+              <Line points={[ziel.x * ppm, ziel.y * ppm - r * 1.5, ziel.x * ppm, ziel.y * ppm + r * 1.5]} stroke={cam.color} strokeWidth={1} />
+            </Group>
           );
         })}
 

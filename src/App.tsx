@@ -1,4 +1,5 @@
 import { useStore } from './store/useStore';
+import { KAMERABLICK_WUNSCH_EVENT } from './components/Venue3D/kamerablickWunsch';
 import Header from './components/Layout/Header';
 import { TABS } from './components/Layout/tabs';
 import FirstSteps from './components/Layout/FirstSteps';
@@ -441,6 +442,16 @@ export default function App() {
         return <div className="p-4 text-bc-dim">{format(t('header.panel.unknown', 'Unknown panel: {component}'), { component: component ?? '' })}</div>;
     }
   }, [t]);
+
+  // „Aus dieser Kamera sehen" (#232): der Kamerablick lebt im 3D-Reiter.
+  useEffect(() => {
+    const zeigen = () => {
+      if (layoutMode !== 'focus' && model.getNodeById('tab-3d')) model.doAction(Actions.selectTab('tab-3d'));
+      else handleSelectTab('tab-3d');
+    };
+    window.addEventListener(KAMERABLICK_WUNSCH_EVENT, zeigen);
+    return () => window.removeEventListener(KAMERABLICK_WUNSCH_EVENT, zeigen);
+  }, [layoutMode, model, handleSelectTab]);
 
   useEffect(() => {
     const registry = getExportRegistry();

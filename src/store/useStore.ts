@@ -35,6 +35,9 @@ import { adoptLegacyShotlists, normaliseShotlists } from './legacyShotlists';
 import type { PlanVorschau } from '../lib/planVorschau';
 import type { Teilplan } from '../utils/teilplan';
 import { neueSitzflaeche, neueVideowand, sitzflaecheAusRahmen, platzFuerPerson, venueAusDatei } from '../utils/raum';
+import { zielFolgen } from '../utils/kameraZiel';
+import type { PositionUebernahme } from '../utils/kameraPositionen';
+import { rigLimits } from '../utils/rigLimits';
 import { ablegen, aufstehen, bereinigt, einfuegen as kopieEinfuegen, freierStuhl, hinsetzen, istAusgewaehlt, kopiere, leereAuswahl, sitzendeFolgen, umschalten, type Auswahl, type AuswahlArt, type Zwischenablage } from '../utils/auswahl';
 
 // Injected by Vite from package.json. In a release build that came through
@@ -235,6 +238,10 @@ interface AppState {
   /** Ein Preset entfernen. */
   removePreset: (id: string, number: number) => void;
   moveCamera: (id: string, x: number, y: number) => void;
+  /** Optik, Hoehe und Ausrichtung zurueck auf die Werte einer neuen Kamera (#232). */
+  resetCamera: (id: string) => void;
+  /** Positionen aus der Zwischenablage: gleicher Name = verschieben, neuer Name = neue Kamera (#232). */
+  positionenUebernehmen: (zeilen: PositionUebernahme[]) => { updated: number; added: number };
   duplicateCamera: (id: string) => void;
 
   // Walls
@@ -550,6 +557,27 @@ const defaultVenue: Venue = {
   stages: [{ id: 'stage-0', x: 7, y: 0.5, width: 6, height: 3, label: 'Stage' }],
 };
 
+/** Optik, Hoehe und Ausrichtung einer neuen Kamera — auch Ziel von „Zuruecksetzen". */
+function grundstellung(
+  lens: Lens | undefined,
+  venue: Venue,
+  mountType: NonNullable<VenueCamera['mountType']>,
+  rigId?: string,
+): Pick<VenueCamera, 'z' | 'pan' | 'tilt' | 'focalLength' | 'aperture' | 'focusDistance' | 'extenderActive' | 'useSpeedbooster' | 'trackOffset'> {
+  const limits = rigLimits({ mountType, rigId });
+  return {
+    z: limits.standardHeightM,
+    pan: -90,
+    tilt: 0,
+    focalLength: lens?.focalLengthMin ?? 50,
+    aperture: lens?.maxApertureWide ?? 2.8,
+    focusDistance: venue.heightM * 0.5,
+    extenderActive: 1,
+    useSpeedbooster: false,
+    trackOffset: limits.travelM > 0 ? 0 : undefined,
+  };
+}
+
 export const useStore = create<AppState>((set, get) => ({
   venue: defaultVenue,
   sourceListText: '',
@@ -585,13 +613,10 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   updateStage: (id, updates) => {
-    set((s) => ({
-      venue: {
-        ...s.venue,
-        stages: s.venue.stages.map((st) => (st.id === id ? { ...st, ...updates } : st)),
-      },
-      projectVersion: s.projectVersion + 1,
-    }));
+    set((s) => {
+      const venue = { ...s.venue, stages: s.venue.stages.map((st) => (st.id === id ? { ...st, ...updates } : st)) };
+      return { venue, cameras: zielFolgen(s.cameras, { persons: s.persons, venue }), projectVersion: s.projectVersion + 1 };
+    });
   },
 
   // ── Raum: Publikumsflaechen, Videowaende ──
@@ -690,7 +715,7 @@ export const useStore = create<AppState>((set, get) => ({
       if (!alt) return s;
       const neu = { ...alt, ...updates };
       const persons = sitzendeFolgen(s.persons.map((p) => (p.id === id ? neu : p)), alt, neu);
-      return { persons, projectVersion: s.projectVersion + 1 };
+      return { persons, cameras: zielFolgen(s.cameras, { persons, venue: s.venue }), projectVersion: s.projectVersion + 1 };
     }),
 
   dropPerson: (id, x, y) => {
@@ -737,11 +762,14 @@ export const useStore = create<AppState>((set, get) => ({
     }),
 
   positionenSetzen: (cams, ps) =>
-    set((s) => ({
-      cameras: s.cameras.map((c) => (cams[c.id] ? { ...c, ...cams[c.id] } : c)),
-      persons: s.persons.map((p) => (ps[p.id] ? { ...p, ...ps[p.id] } : p)),
-      projectVersion: s.projectVersion + 1,
-    })),
+    set((s) => {
+      const persons = s.persons.map((p) => (ps[p.id] ? { ...p, ...ps[p.id] } : p));
+      return {
+        cameras: zielFolgen(s.cameras.map((c) => (cams[c.id] ? { ...c, ...cams[c.id] } : c)), { persons, venue: s.venue }),
+        persons,
+        projectVersion: s.projectVersion + 1,
+      };
+    }),
 
   auswahlKopieren: () => {
     const s = get();
@@ -948,18 +976,11 @@ export const useStore = create<AppState>((set, get) => ({
         lensId: lensDef.id,
         x: s.venue.widthM / 2,
         y: s.venue.heightM * 0.75,
-        z: 1.5,
-        pan: -90,
-        tilt: 0,
-        focalLength: lensDef.focalLengthMin,
-        aperture: lensDef.maxApertureWide,
-        focusDistance: s.venue.heightM * 0.5,
         color: CAMERA_COLORS[idx % CAMERA_COLORS.length],
-        extenderActive: 1,
-        useSpeedbooster: false,
         sensorModeIndex: camDef.sensorModes && camDef.sensorModes.length > 0 ? 0 : undefined,
         activeMount,
         mountType: 'tripod',
+        ...grundstellung(lensDef, s.venue, 'tripod'),
       };
       return { cameras: [...s.cameras, newCam], selectedCameraId: newCam.id, projectVersion: s.projectVersion + 1 };
     });
@@ -974,10 +995,85 @@ export const useStore = create<AppState>((set, get) => ({
     })),
 
   updateCamera: (id, updates) =>
-    set((s) => ({
-      cameras: s.cameras.map((c) => (c.id === id ? { ...c, ...updates } : c)),
-      projectVersion: s.projectVersion + 1,
-    })),
+    set((s) => {
+      // Von Hand gedreht: die Kamera folgt dem Ziel nicht mehr (#230).
+      const vonHand = ('pan' in updates || 'tilt' in updates) && !('aimFollow' in updates);
+      const cameras = s.cameras.map((c) =>
+        c.id === id ? { ...c, ...updates, ...(vonHand && c.aimFollow ? { aimFollow: undefined } : {}) } : c,
+      );
+      return { cameras: zielFolgen(cameras, { persons: s.persons, venue: s.venue }), projectVersion: s.projectVersion + 1 };
+    }),
+
+  resetCamera: (id) =>
+    set((s) => {
+      const c = s.cameras.find((q) => q.id === id);
+      if (!c) return s;
+      const lens = [...LENSES, ...s.customLenses, ...libraryLenses()].find((l) => l.id === c.lensId);
+      const neu: VenueCamera = {
+        ...c,
+        ...grundstellung(lens, s.venue, c.mountType ?? 'tripod', c.rigId),
+        rigRotation: undefined,
+        trackLengthM: undefined,
+        aimTarget: undefined,
+        aimFollow: undefined,
+        lockedPersonId: undefined,
+        lockedDistance: undefined,
+      };
+      return { cameras: s.cameras.map((q) => (q.id === id ? neu : q)), projectVersion: s.projectVersion + 1 };
+    }),
+
+  positionenUebernehmen: (zeilen) => {
+    let updated = 0;
+    let added = 0;
+    set((s) => {
+      const cameras = [...s.cameras];
+      const allLenses = [...LENSES, ...s.customLenses, ...libraryLenses()];
+      for (const z of zeilen) {
+        const i = cameras.findIndex((c) => c.label.trim().toLowerCase() === z.name.trim().toLowerCase());
+        const lens = z.lensId ? allLenses.find((l) => l.id === z.lensId) : undefined;
+        const patch: Partial<VenueCamera> = {
+          x: z.x,
+          y: z.y,
+          z: z.z,
+          ...(z.cameraId ? { cameraId: z.cameraId } : {}),
+          ...(lens ? { lensId: lens.id, activeMount: lens.mount, aperture: lens.maxApertureWide } : {}),
+          ...(z.mountType ? { mountType: z.mountType, rigId: undefined, trackLengthM: undefined } : {}),
+        };
+        if (i >= 0) {
+          const c = { ...cameras[i], ...patch };
+          const l = lens ?? allLenses.find((q) => q.id === c.lensId);
+          const f = z.focalLength ?? c.focalLength;
+          cameras[i] = { ...c, focalLength: l ? Math.min(l.focalLengthMax, Math.max(l.focalLengthMin, f)) : f };
+          updated++;
+        } else {
+          const camDef = (z.cameraId && [...CAMERAS, ...s.customCameras, ...libraryCameras()].find((c) => c.id === z.cameraId)) || CAMERAS[0];
+          const pick = lens ? { mount: lens.mount, lens } : pickInitialMountAndLens(camDef.mount, camDef.adaptedMounts, s.customLenses, camDef.id);
+          const l = pick.lens ?? allLenses[0];
+          const idx = cameras.length;
+          const mountType = z.mountType ?? 'tripod';
+          const basis: VenueCamera = {
+            id: uid(),
+            label: z.name.trim(),
+            cameraId: camDef.id,
+            lensId: l.id,
+            x: z.x,
+            y: z.y,
+            color: CAMERA_COLORS[idx % CAMERA_COLORS.length],
+            sensorModeIndex: camDef.sensorModes && camDef.sensorModes.length > 0 ? 0 : undefined,
+            activeMount: pick.mount,
+            mountType,
+            ...grundstellung(l, s.venue, mountType),
+          };
+          const f = z.focalLength ?? basis.focalLength;
+          cameras.push({ ...basis, z: z.z, focalLength: Math.min(l.focalLengthMax, Math.max(l.focalLengthMin, f)) });
+          added++;
+        }
+      }
+      if (updated + added === 0) return s;
+      return { cameras: zielFolgen(cameras, { persons: s.persons, venue: s.venue }), projectVersion: s.projectVersion + 1 };
+    });
+    return { updated, added };
+  },
 
   savePresetFromCamera: (id, name, segment) =>
     set((s) => ({
@@ -1016,7 +1112,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   moveCamera: (id, x, y) =>
     set((s) => ({
-      cameras: s.cameras.map((c) => (c.id === id ? { ...c, x, y } : c)),
+      cameras: zielFolgen(s.cameras.map((c) => (c.id === id ? { ...c, x, y } : c)), { persons: s.persons, venue: s.venue }),
       projectVersion: s.projectVersion + 1,
     })),
 

@@ -49,7 +49,7 @@ export function Menu({ label, children }: MenuProps) {
       if (!shell.current?.contains(e.target as Node)) setOpen(false);
     };
     const esc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') { e.preventDefault(); setOpen(false); }
     };
     // ROLLEN FUEHRT NACH, GROESSE SCHLIESST.
     //

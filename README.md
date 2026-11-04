@@ -88,6 +88,7 @@ rate. The director sees the show before the first rehearsal.
 - **One colour and number per camera:** list, 2D plan, the number marker over each camera in 3D, multiview tile, viewfinder label and camera card all carry the same colour and number.
 - **Show light you can set:** brightness, colour mood, haze, number and kind of fixtures — generated from your stages, stored in the project.
 - **Daylight and real camera bodies in 3D:** sun, sky and weather from date, time and place; each camera drawn as its body, lens and rig.
+- **Camera sheet:** height and rig per camera (starting height and range per rig), focal length slider within the lens, a target to aim at (stage centre, person, object or point) that the camera can keep following, and the values that answer the lens question — distance to the target, frame width and height there, shot size. *View from this camera*, *Reset*, and *Copy positions* as text, Markdown or CSV — pasted back, they move or add cameras.
 - **Select, copy, paste:** click to select, Shift/Ctrl/⌘-click to add, Shift-drag a frame in the 2D plan; drag one to move them all, `Del` deletes, `Ctrl/⌘+C` / `Ctrl/⌘+V` copies with new ids, 1 m offset per paste — each one undo step. A person dropped on or next to a free chair sits down on it, at the chair's seat height and facing its way, and moves with it.
 - **Audience and room:** seated and standing areas, dragged as rectangles on the 2D plan and facing the main stage — with a floor plan or walls, people appear only in these areas; an empty room without either fills its free floor on its own. Video walls, ceiling height, floor and wall materials. Walls are solid in 3D; *Draw glass front* draws see-through walls that block no sightline, and every wall takes doors and windows (windows glazed). Walls take a standard height for the whole room; any wall can have its own, an empty field uses the standard.
 - **Shotlist and rig:** capture shots, set transitions, play the sequence, export a storyboard — shotlists are saved in the project file; record and replay camera moves within the rig's real limits.
@@ -120,6 +121,13 @@ durch jede Kamera (*3D-Ansicht → Kamerablick*) und Multiview mit Preview,
 Program, CUT und AUTO. In 3D ist die Preview-Kamera grün und die
 Program-Kamera rot; der Schalter *Tally* in der Kameraliste blendet das aus. Läuft im Browser und als Desktop-App für macOS und Windows,
 kostenlos nutzbar.
+
+Im Kamerablatt: Höhe und Montage je Kamera, Brennweiten-Schieber in den
+Grenzen des Objektivs, ein Ziel (Bühnenmitte, Person, Objekt oder Punkt), auf
+das die Kamera sich ausrichtet, und darunter Entfernung, Bildbreite und
+Einstellungsgröße am Ziel. *Aus dieser Kamera sehen*, *Zurücksetzen* und
+*Positionen kopieren* als Text, Markdown oder CSV — eingefügt verschiebt die
+Liste Kameras oder legt neue an.
 
 Live vom Pult: *Einstellungen → Bridge & Mischer* verbindet mit LZ Camera
 Bridge; Schwenk, Neigung und Zoom der Bridge (etwa vom Joystick) drehen die

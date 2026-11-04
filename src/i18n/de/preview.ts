@@ -139,4 +139,8 @@ export const preview: Record<string, string> = {
   'preview.overlay.viewfinder': 'Sucher-Schild',
   'preview.saveFrame': 'Bild mit Schild speichern (PNG)',
   'preview.viewfinder': 'Sucher-Schild',
+  'preview.export.d.rig': 'Montage:',
+  'preview.export.d.lensHeight': 'Objektivhöhe',
+  'preview.export.d.target': 'Zum Ziel:',
+  'preview.export.d.atTarget': 'Am Ziel:',
 };
