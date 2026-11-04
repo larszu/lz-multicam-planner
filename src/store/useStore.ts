@@ -224,6 +224,9 @@ interface AppState {
   /** Ausschnitt auf dem 2D-Plan aufziehen. */
   planBereichModus: boolean;
   setPlanBereichModus: (v: boolean) => void;
+  /** Planbild im 2D-Plan per Ziehen verschieben (#247); sonst liegt es fest. */
+  planAusrichten: boolean;
+  setPlanAusrichten: (v: boolean) => void;
   planUebernehmen: (u: {
     waende: Omit<Wall, 'id'>[];
     buehnen: Omit<Stage, 'id'>[];
@@ -921,6 +924,8 @@ export const useStore = create<AppState>((set, get) => ({
   setPlanVorschau: (v) => set({ planVorschau: v, ...(v ? {} : { planBereichModus: false }) }),
   planBereichModus: false,
   setPlanBereichModus: (v) => set({ planBereichModus: v }),
+  planAusrichten: false,
+  setPlanAusrichten: (v) => set({ planAusrichten: v }),
   planUebernehmen: (u) => {
     // Ein `set`: ein Schritt fuer Rueckgaengig.
     set((s) => ({

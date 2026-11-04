@@ -84,3 +84,13 @@ export const dropToParked = (input: DropInput): DropResult => {
   const parkedY = Math.max(0, Math.min(input.venueHeightM, input.dropY - dy));
   return { parkedX, parkedY, markerX: parkedX + dx, markerY: parkedY + dy };
 };
+
+/**
+ * Das Planbild an eine neue linke obere Ecke gezogen (#247). Gerundet auf
+ * Millimeter, damit die Versatzfelder keine Rechenreste zeigen.
+ */
+export const planVerschoben = <P extends { offsetX: number; offsetY: number }>(plan: P, xM: number, yM: number): P => ({
+  ...plan,
+  offsetX: Math.round(xM * 1000) / 1000,
+  offsetY: Math.round(yM * 1000) / 1000,
+});

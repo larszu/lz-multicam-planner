@@ -8,7 +8,7 @@ import { computeFov } from '../../utils/fov';
 import { dofBand } from '../../utils/dofBand';
 import type { VenueCamera, Wall } from '../../types';
 import { effectiveCameraPos, rigYaw } from '../../utils/camera';
-import { dragIsOwn, dropToParked } from '../../utils/venueDrag';
+import { dragIsOwn, dropToParked, planVerschoben } from '../../utils/venueDrag';
 import { stageColor, stageTopZ } from '../../utils/stageBody';
 import { alphaSuffix, shadeHex } from '../../utils/color';
 import RigOverlay, { RIG_HANDLE_RADIUS } from './RigOverlay';
@@ -92,6 +92,8 @@ export default function Venue2D() {
   const setPlanVorschau = useStore((s) => s.setPlanVorschau);
   const planBereichModus = useStore((s) => s.planBereichModus);
   const setPlanBereichModus = useStore((s) => s.setPlanBereichModus);
+  const planAusrichten = useStore((s) => s.planAusrichten);
+  const setPlanAusrichten = useStore((s) => s.setPlanAusrichten);
   const { venue, setVenue, cameras: planCameras, selectedCameraId, selectCamera, moveCamera, updateCamera, removeCamera, duplicateCamera, showAllFov, showDof, pixelsPerMeter, persons, updatePerson, removePerson, duplicatePerson, updateStage, addStage, removeStage, updateSeatingBlock, updateVideoWall, backgroundPlan, setBackgroundPlan, walls, updateWall, addWall, removeWall, wallSnap, editGroups, avForeign, showForeign } = useStore();
   // Live-Pose der Bridge liegt nur auf der Anzeige, der Plan bleibt.
   const cameras = useLiveCameras(planCameras);
@@ -123,6 +125,8 @@ export default function Venue2D() {
   const [bereichStart, setBereichStart] = useState<{ x: number; y: number } | null>(null);
   const [bereichJetzt, setBereichJetzt] = useState<{ x: number; y: number } | null>(null);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
+  // Plan ausrichten (#247): Versatz waehrend des Ziehens, erst beim Loslassen ins Projekt.
+  const [planZug, setPlanZug] = useState<{ x: number; y: number } | null>(null);
   const [containerSize, setContainerSize] = useState({ w: 800, h: 600 });
   const [zoom, setZoom] = useState(1);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
@@ -150,6 +154,7 @@ export default function Venue2D() {
       if (e.key === 'Escape') {
         setWallStart(null);
         setWallCursor(null);
+        useStore.getState().setPlanAusrichten(false);
       }
     };
     const up = (e: KeyboardEvent) => { if (e.key === 'Shift') shiftHeld.current = false; };
@@ -219,9 +224,13 @@ export default function Venue2D() {
   const W = venue.widthM * ppm;
   const H = venue.heightM * ppm;
 
+  // Waehrend der Erkennungs-Vorschau liegt das Bild schon so, wie „Übernehmen"
+  // es legt — die erkannten Waende stehen sonst neben ihrem Plan (#247).
+  const gezeigterPlan = planVorschau?.plan ?? backgroundPlan;
+
   // Compute world extent including background image
-  const bgExtentW = backgroundPlan ? (backgroundPlan.offsetX + backgroundPlan.widthPx * backgroundPlan.scaleX) * ppm : 0;
-  const bgExtentH = backgroundPlan ? (backgroundPlan.offsetY + backgroundPlan.heightPx * backgroundPlan.scaleY) * ppm : 0;
+  const bgExtentW = gezeigterPlan ? (gezeigterPlan.offsetX + gezeigterPlan.widthPx * gezeigterPlan.scaleX) * ppm : 0;
+  const bgExtentH = gezeigterPlan ? (gezeigterPlan.offsetY + gezeigterPlan.heightPx * gezeigterPlan.scaleY) * ppm : 0;
   const worldW = Math.max(W, bgExtentW);
   const worldH = Math.max(H, bgExtentH);
 
@@ -686,6 +695,14 @@ export default function Venue2D() {
           </span>
         </div>
       )}
+      {planAusrichten && backgroundPlan && (
+        <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-bc-m border border-bc-accent bg-bc-panel/90 px-3 py-1.5 text-xs text-bc-text shadow-bc-1 backdrop-blur">
+          <span>{t('venue.planAlign.hint', 'Drag the floor plan into place. Walls, stages and cameras stay where they are.')}</span>
+          <button type="button" onClick={() => setPlanAusrichten(false)} className="rounded-bc-s bg-bc-accent/20 px-2 py-0.5 font-medium text-bc-accent hover:bg-bc-accent/30">
+            {t('venue.planAlign.done', 'Done')}
+          </button>
+        </div>
+      )}
       {/* Zoom indicator */}
       <EditGroupsBar />
       <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, background: P.chip, padding: '4px 10px', borderRadius: 'var(--radius-bc-full)', fontSize: 11, color: P.chipText, pointerEvents: 'none', backdropFilter: 'blur(4px)' }}>
@@ -717,14 +734,14 @@ export default function Venue2D() {
       {/* ── Layer 1: Static background (venue, image, grid, scale bar) ── */}
       <Layer listening={false}>
         <Rect x={0} y={0} width={W} height={H} fill={P.blatt} />
-        {bgImage && backgroundPlan && (
+        {bgImage && gezeigterPlan && (
           <KImage
             image={bgImage}
-            x={(backgroundPlan.offsetX) * ppm}
-            y={(backgroundPlan.offsetY) * ppm}
-            width={backgroundPlan.widthPx * backgroundPlan.scaleX * ppm}
-            height={backgroundPlan.heightPx * backgroundPlan.scaleY * ppm}
-            opacity={backgroundPlan.opacity}
+            x={(gezeigterPlan.offsetX + (planZug?.x ?? 0)) * ppm}
+            y={(gezeigterPlan.offsetY + (planZug?.y ?? 0)) * ppm}
+            width={gezeigterPlan.widthPx * gezeigterPlan.scaleX * ppm}
+            height={gezeigterPlan.heightPx * gezeigterPlan.scaleY * ppm}
+            opacity={gezeigterPlan.opacity}
           />
         )}
         {Array.from({ length: Math.floor(venue.widthM) + 1 }).map((_, i) => (
@@ -1063,6 +1080,40 @@ export default function Venue2D() {
               </Group>
             );
           })}
+        </Layer>
+      )}
+
+      {/* Plan ausrichten (#247): eine Griff-Flaeche ueber allem, damit der
+          Zug den Plan trifft und keine Kamera darunter. */}
+      {planAusrichten && backgroundPlan && (
+        <Layer>
+          <Rect
+            x={backgroundPlan.offsetX * ppm}
+            y={backgroundPlan.offsetY * ppm}
+            width={backgroundPlan.widthPx * backgroundPlan.scaleX * ppm}
+            height={backgroundPlan.heightPx * backgroundPlan.scaleY * ppm}
+            fill={P.blatt}
+            opacity={0.01}
+            draggable
+            onMouseEnter={(e) => { const c = e.target.getStage()?.container(); if (c) c.style.cursor = 'move'; }}
+            onMouseLeave={(e) => { const c = e.target.getStage()?.container(); if (c) c.style.cursor = ''; }}
+            onDragMove={(e) => setPlanZug({ x: e.target.x() / ppm - backgroundPlan.offsetX, y: e.target.y() / ppm - backgroundPlan.offsetY })}
+            onDragEnd={(e) => {
+              e.cancelBubble = true;
+              setPlanZug(null);
+              setBackgroundPlan(planVerschoben(backgroundPlan, e.target.x() / ppm, e.target.y() / ppm));
+            }}
+          />
+          <Rect
+            x={(backgroundPlan.offsetX + (planZug?.x ?? 0)) * ppm}
+            y={(backgroundPlan.offsetY + (planZug?.y ?? 0)) * ppm}
+            width={backgroundPlan.widthPx * backgroundPlan.scaleX * ppm}
+            height={backgroundPlan.heightPx * backgroundPlan.scaleY * ppm}
+            stroke="#38bdf8"
+            strokeWidth={2 / zoom}
+            dash={[10 / zoom, 6 / zoom]}
+            listening={false}
+          />
         </Layer>
       )}
 

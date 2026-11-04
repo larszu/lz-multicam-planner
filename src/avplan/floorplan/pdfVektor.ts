@@ -19,6 +19,9 @@ type Matrix = [number, number, number, number, number, number]
 
 export interface PdfVektorSeite {
   view: number[]
+  /** pdf.js: Abbildung PDF-Raum → Bild, mit /Rotate und Seitenrahmen.
+   *  Dieselbe, mit der der Seiten-Renderer das Planbild zeichnet. */
+  getViewport?(o: { scale: number }): { width: number; height: number; transform: number[] }
   getOperatorList(): Promise<{ fnArray: ArrayLike<number>; argsArray: unknown[] }>
   getTextContent(o?: { includeMarkedContent?: boolean }): Promise<{ items: unknown[] }>
 }
@@ -95,23 +98,39 @@ export async function pdfVektorLesen(
     } catch {
       /* ohne Ebenen geht es auch */
     }
-    const [x0, y0, x1, y1] = page.view
-    const hoehePt = y1 - y0
-    // PDF-Raum (y nach oben, pt) → Papier-mm, y nach unten.
-    const basis: Matrix = [MM_JE_PT, 0, 0, -MM_JE_PT, -x0 * MM_JE_PT, y1 * MM_JE_PT]
+    const { basis, breite, hoehe } = seitenBasis(page)
     const ol = await page.getOperatorList()
     const pfade = operatorListeLesen(pdfjs.OPS, ol, basis, ebenenNamen, o.ebeneAuslassen)
     const texte = textInhaltLesen((await page.getTextContent()).items, basis)
     return {
       quelle: 'pdf',
-      breite: (x1 - x0) * MM_JE_PT,
-      hoehe: hoehePt * MM_JE_PT,
+      breite,
+      hoehe,
       pfade,
       texte,
       seiten: doc.numPages,
     }
   } finally {
     doc.destroy?.()
+  }
+}
+
+/**
+ * PDF-Raum (y nach oben, pt) → Papier-mm, y nach unten — so, wie die Seite
+ * gerendert wird. Ein CAD-Export legt ein Querformat-Blatt oft hochkant an
+ * und dreht es mit /Rotate; ohne die Drehung laegen die erkannten Waende
+ * quer zum Planbild.
+ */
+export function seitenBasis(page: PdfVektorSeite): { basis: Matrix; breite: number; hoehe: number } {
+  const v = page.getViewport?.({ scale: MM_JE_PT })
+  if (v && v.transform?.length === 6) {
+    return { basis: v.transform as Matrix, breite: v.width, hoehe: v.height }
+  }
+  const [x0, y0, x1, y1] = page.view
+  return {
+    basis: [MM_JE_PT, 0, 0, -MM_JE_PT, -x0 * MM_JE_PT, y1 * MM_JE_PT],
+    breite: (x1 - x0) * MM_JE_PT,
+    hoehe: (y1 - y0) * MM_JE_PT,
   }
 }
 
@@ -297,9 +316,8 @@ export function textInhaltLesen(items: unknown[], basis: Matrix): VektorText[] {
     const x = basis[0] * e + basis[2] * f + basis[4]
     const y = basis[1] * e + basis[3] * f + basis[5]
     const hoehePt = Math.hypot(c, d) || Math.abs(it.height ?? 0)
-    // y-Achse gespiegelt: ein Winkel gegen den Uhrzeigersinn im PDF ist im
-    // Bild einer im Uhrzeigersinn mit umgekehrtem Vorzeichen.
-    const winkel = (-Math.atan2(b, a) * 180) / Math.PI
+    // Leserichtung durch die Basis: die spiegelt y und dreht mit /Rotate.
+    const winkel = (Math.atan2(basis[1] * a + basis[3] * b, basis[0] * a + basis[2] * b) * 180) / Math.PI
     out.push({
       text: it.str,
       x,

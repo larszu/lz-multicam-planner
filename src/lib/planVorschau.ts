@@ -2,6 +2,7 @@
 // Welt-Metern (Venue-Koordinaten). Lebt nur im Speicher — nicht im Projekt,
 // nicht in der Historie: erst „Übernehmen" ist eine Handlung.
 import type { Rahmen, UebernahmeWand, UebernahmeBuehne } from '../avplan/floorplan';
+import type { BackgroundPlan } from '../types';
 
 export interface PlanVorschau {
   waende: UebernahmeWand[];
@@ -10,6 +11,12 @@ export interface PlanVorschau {
   raeume: { umriss: { x: number; y: number }[]; label: string }[];
   /** Gewaehlter Ausschnitt in Welt-Metern; ohne: ganzer Plan. */
   bereich?: Rahmen;
+  /**
+   * Wie das Planbild nach „Übernehmen" liegt, wenn der Maßstab mitkommt.
+   * Der 2D-Plan zeigt das Bild schon in der Vorschau so — sonst lägen die
+   * erkannten Wände neben dem Bild, aus dem sie stammen.
+   */
+  plan?: BackgroundPlan;
 }
 
 export const imRahmen = (b: Rahmen | undefined, x: number, y: number) =>
