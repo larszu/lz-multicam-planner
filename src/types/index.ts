@@ -216,7 +216,7 @@ export const MOUNT_HEIGHT_RANGE: Record<CameraMountType, { min: number; max: num
   rickshaw:  { min: 0.8, max: 2.0, pump: 0.2, standard: 1.5, track: 30.0 },
   gimbal:    { min: 0.8, max: 1.9, pump: 0.6, standard: 1.5 },
   handheld:  { min: 1.0, max: 1.9, pump: 0.8, standard: 1.6 },
-  steadicam: { min: 0.3, max: 2.0, pump: 0.5, standard: 1.4 },
+  steadicam: { min: 0.3, max: 2.0, pump: 0.5, standard: 1.4, track: 10.0 },
   fixed:     { min: 0.0, max: 12.0, pump: 0.0, standard: 2.5 },
 };
 
