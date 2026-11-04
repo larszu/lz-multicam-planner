@@ -51,6 +51,17 @@ export const library: Record<string, string> = {
   'library.error.serverEmpty':
     'Der Server wurde neu aufgesetzt und hat noch keine Geräte. Die Geräte vom letzten Abgleich wurden behalten.',
   'library.error.server': 'Der Server hat mit einem Fehler geantwortet. Später erneut versuchen.',
+  'library.error.storageFull':
+    'Der Speicher des Bibliotheksservers ist voll. Dort wurde nichts gespeichert; die eigenen Geräte bleiben lokal. Der Serverbetreiber muss Platz schaffen.',
+  'library.error.notFound':
+    'Der Server bietet diese Funktion nicht an. Vermutlich läuft dort eine ältere Version der Gerätebibliothek, oder die Adresse zeigt auf einen anderen Server.',
+  'library.error.invalid':
+    'Der Server hat die Daten als ungültig abgelehnt. Hersteller, Modell, Hinweise und Datenblattlink des Eintrags prüfen.',
+  'library.error.badRequest': 'Der Server konnte die Anfrage nicht annehmen (zu groß oder fehlerhaft).',
+  'library.error.unavailable':
+    'Der Server ist vorübergehend nicht verfügbar (Neustart oder überlastet). In ein paar Minuten erneut versuchen.',
+  'library.error.internal':
+    'Auf dem Server ist ein interner Fehler aufgetreten; der Grund steht in seinem Protokoll. Später erneut versuchen — bleibt es dabei, mit Uhrzeit melden.',
 
   'library.sync': 'Abgleich',
   'library.sync.count': '{cameras} Kameras und {lenses} Objektive aus der Bibliothek im Katalog.',
@@ -86,6 +97,15 @@ export const library: Record<string, string> = {
   'library.finding.sourceNotLink': 'Datenblattlink ist kein Link',
   'library.finding.noManufacturer': 'Hersteller fehlt',
   'library.finding.noModel': 'Modell fehlt',
+  'library.finding.manufacturerTooLong': 'Hersteller länger als 120 Zeichen',
+  'library.finding.modelTooLong': 'Modell länger als 160 Zeichen',
+  'library.finding.notesTooLong': 'Hinweise länger als 2000 Zeichen',
+  'library.finding.sourceTooLong': 'Datenblattlink länger als 500 Zeichen',
+  'library.itemError.hidden': 'die Bibliothek hat dieses Gerät ausgeblendet',
+  'library.itemError.pendingByOther':
+    'ein anderer Vorschlag für dieses Gerät wartet noch auf Moderation — erneut versuchen, sobald er entschieden ist',
+  'library.itemError.pendingExists': 'der eigene frühere Vorschlag für dieses Gerät wartet noch auf Moderation',
+  'library.itemError.exists': 'Hersteller und Modell gehören schon zu einem anderen Gerät',
   'library.badge.carried': 'Eintrag der Gerätebibliothek aus der Projektdatei — nicht im eigenen Abgleich.',
 
   'library.status.verified': 'geprüft',

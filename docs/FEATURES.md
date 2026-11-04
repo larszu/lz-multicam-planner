@@ -129,6 +129,15 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
   sign-in. Changed community guidelines (`guidelines-outdated`) have to be
   accepted again on the website — the message links to
   `<server>/guidelines`.
+- **Upload checks and server errors**: an entry the upload route would refuse
+  (manufacturer or model missing, datasheet link missing or not a link, a
+  field over the server's limit — manufacturer 120, model 160, notes 2000,
+  link 500 characters) is blocked locally with that reason and not sent, so it
+  cannot fail the request for every other entry. A server error names its
+  cause from HTTP status and server code — storage full (507), function
+  unknown to an older server (404), invalid data (400), temporarily
+  unavailable (502–504), internal error (500) — with status and code in
+  brackets.
 - **Built-in catalog**: `npm run library:publish` uploads `src/data/cameras.ts`
   and `src/data/lenses.ts` with an admin API key (`DEVICE_LIBRARY_KEY=dlk_…`,
   optional `DEVICE_LIBRARY_URL`); admin uploads go live at once. Entries

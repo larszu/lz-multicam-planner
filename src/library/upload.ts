@@ -75,6 +75,29 @@ export function toUploadItem(item: LibraryItem): UploadItem & { hash: string } {
   return { localId: itemId(item), core, facet, hash: hashOf({ core, facet }) };
 }
 
+/** Grenzen der Upload-Route des Servers (`routes/upload.ts`, `itemSchema`). */
+export const CORE_LIMITS = { manufacturer: 120, model: 160, description: 2000, sourceUrl: 500 } as const;
+
+const istLink = (s: string) => /^https?:\/\/\S+\.\S+$/i.test(s.trim());
+
+/**
+ * Was der Server an einem Eintrag ablehnen wuerde, schon vor dem Senden.
+ * Ein Eintrag, den die Route nicht annimmt, liesse sonst die GANZE Anfrage
+ * mit 400 scheitern — und mit ihr jeden anderen Eintrag des Abgleichs.
+ * Die Kennungen sind die des Servers, plus `<feld>-too-long`.
+ */
+export function localFindings(core: UploadItem['core']): string[] {
+  const out: string[] = [];
+  if (!core.manufacturer.trim()) out.push('no-manufacturer');
+  if (!core.model.trim()) out.push('no-model');
+  if (!core.sourceUrl) out.push('no-source');
+  else if (!istLink(core.sourceUrl)) out.push('source-not-link');
+  for (const k of Object.keys(CORE_LIMITS) as (keyof typeof CORE_LIMITS)[]) {
+    if ((core[k]?.length ?? 0) > CORE_LIMITS[k]) out.push(`${k}-too-long`);
+  }
+  return out;
+}
+
 export function pendingUploads(items: LibraryItem[], ledger: UploadLedger, force = false): (UploadItem & { hash: string })[] {
   return items.map(toUploadItem).filter((u) => {
     if (force) return true;

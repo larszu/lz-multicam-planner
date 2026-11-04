@@ -34,5 +34,32 @@ export function libraryErrorText(t: T, code: LibraryFehler): string {
   }
 }
 
+/** Was der Server zu einem `server`-Fehler mitgab: HTTP-Status und `error`-Code der Antwort. */
+export interface ServerDetail {
+  status: number;
+  code: string;
+}
+
+/** Ein `server`-Fehler mit dem Grund, den Status und Code verraten (#156). */
+export function serverReasonText(t: T, d: ServerDetail): string {
+  const { status, code } = d;
+  let satz: string;
+  if (status === 507 || code === 'storage-full')
+    satz = t('library.error.storageFull', 'The library server has run out of storage. Nothing was saved there; your devices stay local. The server administrator has to free up space.');
+  else if (status === 404 || code === 'not-found')
+    satz = t('library.error.notFound', 'The server does not offer this function. It probably runs an older version of the device library, or the address points to another server.');
+  else if (code === 'invalid')
+    satz = t('library.error.invalid', 'The server refused the data as invalid. Check manufacturer, model, notes and datasheet link of the entry.');
+  else if (status === 413 || code === 'file-too-large' || code === 'bad-request')
+    satz = t('library.error.badRequest', 'The server could not take the request (too large or malformed).');
+  else if (status === 502 || status === 503 || status === 504)
+    satz = t('library.error.unavailable', 'The server is temporarily unavailable (restarting or overloaded). Try again in a few minutes.');
+  else if (status >= 500)
+    satz = t('library.error.internal', 'The server ran into an internal error; the cause is in its log. Try again later — if it keeps happening, report it with the time.');
+  else satz = t('library.error.server', 'The server answered with an error. Try again later.');
+  const ref = [status ? `HTTP ${status}` : '', code].filter(Boolean).join(' · ');
+  return ref ? `${satz} (${ref})` : satz;
+}
+
 /** Wo die Richtlinien neu angenommen werden — der Client kennt keine eigene Funktion dafuer. */
 export const guidelinesUrl = (server: string) => `${server.replace(/\/+$/, '')}/guidelines`;
