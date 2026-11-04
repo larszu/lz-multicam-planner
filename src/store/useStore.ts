@@ -34,6 +34,7 @@ import { defaultWallHeight, migrateWallHeights } from '../utils/wallHeight';
 import { adoptLegacyShotlists, normaliseShotlists } from './legacyShotlists';
 import type { PlanVorschau } from '../lib/planVorschau';
 import { neueSitzflaeche, neueVideowand, sitzflaecheAusRahmen, platzFuerPerson, venueAusDatei } from '../utils/raum';
+import { ablegen, aufstehen, bereinigt, einfuegen as kopieEinfuegen, freierStuhl, hinsetzen, istAusgewaehlt, kopiere, leereAuswahl, sitzendeFolgen, umschalten, type Auswahl, type AuswahlArt, type Zwischenablage } from '../utils/auswahl';
 
 // Injected by Vite from package.json. In a release build that came through
 // the GitHub Actions workflow this matches the git release tag exactly,
@@ -158,6 +159,21 @@ interface AppState {
   removePerson: (id: string) => void;
   duplicatePerson: (id: string) => void;
   updatePerson: (id: string, updates: Partial<ReferencePerson>) => void;
+  /** Person an (x, y) ablegen: nahe einem freien Stuhl setzt sie sich darauf (#250). */
+  dropPerson: (id: string, x: number, y: number) => void;
+  /** Person auf einen Stuhl setzen; `null` laesst sie aufstehen. */
+  seatPerson: (id: string, chairId: string | null) => void;
+
+  // Mehrfachauswahl und Zwischenablage (#250) — nicht Teil der Historie.
+  auswahl: Auswahl;
+  setAuswahl: (a: Auswahl) => void;
+  auswahlUmschalten: (art: AuswahlArt, id: string) => void;
+  /** Loescht alles Ausgewaehlte, das nicht gesperrt ist — ein Schritt. */
+  auswahlLoeschen: () => void;
+  /** Setzt Positionen mehrerer Objekte in einem Schritt (Mehrfach-Ziehen). */
+  positionenSetzen: (cams: Record<string, { x: number; y: number }>, persons: Record<string, { x: number; y: number }>) => void;
+  auswahlKopieren: () => number;
+  einfuegen: () => number;
 
   // Custom lenses
   customLenses: Lens[];
@@ -499,6 +515,11 @@ function personUid(): string {
   return `person-${personId++}`;
 }
 
+/** Was zuletzt kopiert wurde; bleibt ueber Projektwechsel, wie in jedem Programm. */
+let zwischenablage: Zwischenablage | null = null;
+let einfuegeStufe = 0;
+export const hatZwischenablage = () => zwischenablage !== null;
+
 // Object type presets: { height, width, defaultLabel }
 // Per-object defaults shared with the renderers in Venue2D / Venue3D / Preview.
 // `color` is the accent fall-back when ReferencePerson.color is unset.
@@ -631,11 +652,16 @@ export const useStore = create<AppState>((set, get) => ({
         label: `${preset.label} ${count + 1}`,
         objectType,
       };
-      return { persons: [...s.persons, newObj], projectVersion: s.projectVersion + 1 };
+      // „Sitzend" ohne Ort nimmt den ersten freien Stuhl.
+      const stuhl = objectType === 'sitting-person' && x === undefined && y === undefined ? freierStuhl(s.persons) : null;
+      return { persons: [...s.persons, stuhl ? { ...newObj, ...hinsetzen(stuhl) } : newObj], projectVersion: s.projectVersion + 1 };
     });
   },
 
-  removePerson: (id) => set((s) => ({ persons: s.persons.filter((p) => p.id !== id), projectVersion: s.projectVersion + 1 })),
+  removePerson: (id) => set((s) => ({
+    persons: s.persons.filter((p) => p.id !== id).map((p) => (p.seatedOn === id ? { ...p, ...aufstehen() } : p)),
+    projectVersion: s.projectVersion + 1,
+  })),
 
   duplicatePerson: (id) =>
     set((s) => {
@@ -653,10 +679,102 @@ export const useStore = create<AppState>((set, get) => ({
     }),
 
   updatePerson: (id, updates) =>
+    set((s) => {
+      const alt = s.persons.find((p) => p.id === id);
+      if (!alt) return s;
+      const neu = { ...alt, ...updates };
+      const persons = sitzendeFolgen(s.persons.map((p) => (p.id === id ? neu : p)), alt, neu);
+      return { persons, projectVersion: s.projectVersion + 1 };
+    }),
+
+  dropPerson: (id, x, y) => {
+    const { persons, updatePerson } = get();
+    const p = persons.find((q) => q.id === id);
+    if (p) updatePerson(id, ablegen(p, x, y, persons));
+  },
+
+  seatPerson: (id, chairId) => {
+    const { persons, updatePerson } = get();
+    const stuhl = chairId ? persons.find((q) => q.id === chairId && q.objectType === 'chair') : undefined;
+    if (stuhl) updatePerson(id, hinsetzen(stuhl));
+    else updatePerson(id, aufstehen());
+  },
+
+  auswahl: leereAuswahl(),
+  setAuswahl: (a) => set({ auswahl: a }),
+  auswahlUmschalten: (art, id) =>
+    set((s) => {
+      const auswahl = umschalten(s.auswahl, art, id);
+      const drin = istAusgewaehlt(auswahl, art, id);
+      return {
+        auswahl,
+        ...(art === 'camera' && drin ? { selectedCameraId: id } : {}),
+      };
+    }),
+
+  auswahlLoeschen: () =>
+    set((s) => {
+      const a = bereinigt(s.auswahl, s.cameras, s.persons);
+      const camWeg = new Set(s.cameras.filter((c) => a.cameraIds.includes(c.id) && !c.locked).map((c) => c.id));
+      const personWeg = new Set(s.persons.filter((p) => a.personIds.includes(p.id) && !p.locked).map((p) => p.id));
+      if (camWeg.size + personWeg.size === 0) return s;
+      return {
+        cameras: s.cameras.filter((c) => !camWeg.has(c.id)),
+        persons: s.persons
+          .filter((p) => !personWeg.has(p.id))
+          .map((p) => (p.seatedOn && personWeg.has(p.seatedOn) ? { ...p, ...aufstehen() } : p)),
+        auswahl: { cameraIds: a.cameraIds.filter((id) => !camWeg.has(id)), personIds: a.personIds.filter((id) => !personWeg.has(id)) },
+        selectedCameraId: s.selectedCameraId && camWeg.has(s.selectedCameraId) ? null : s.selectedCameraId,
+        programCameraId: s.programCameraId && camWeg.has(s.programCameraId) ? null : s.programCameraId,
+        projectVersion: s.projectVersion + 1,
+      };
+    }),
+
+  positionenSetzen: (cams, ps) =>
     set((s) => ({
-      persons: s.persons.map((p) => (p.id === id ? { ...p, ...updates } : p)),
+      cameras: s.cameras.map((c) => (cams[c.id] ? { ...c, ...cams[c.id] } : c)),
+      persons: s.persons.map((p) => (ps[p.id] ? { ...p, ...ps[p.id] } : p)),
       projectVersion: s.projectVersion + 1,
     })),
+
+  auswahlKopieren: () => {
+    const s = get();
+    const clip = kopiere(bereinigt(s.auswahl, s.cameras, s.persons), s.cameras, s.persons);
+    const n = clip.cameras.length + clip.persons.length;
+    if (n > 0) {
+      zwischenablage = clip;
+      einfuegeStufe = 0;
+    }
+    return n;
+  },
+
+  einfuegen: () => {
+    if (!zwischenablage) return 0;
+    const clip = zwischenablage;
+    einfuegeStufe += 1;
+    const stufe = einfuegeStufe;
+    let n = 0;
+    set((s) => {
+      const neu = kopieEinfuegen(clip, {
+        camId: () => uid(),
+        personId: personUid,
+        stufe,
+        breiteM: s.venue.widthM,
+        tiefeM: s.venue.heightM,
+        kameraZahl: s.cameras.length,
+        farben: CAMERA_COLORS,
+      });
+      n = neu.cameras.length + neu.persons.length;
+      return {
+        cameras: [...s.cameras, ...neu.cameras],
+        persons: [...s.persons, ...neu.persons],
+        auswahl: { cameraIds: neu.cameras.map((c) => c.id), personIds: neu.persons.map((p) => p.id) },
+        ...(neu.cameras[0] ? { selectedCameraId: neu.cameras[0].id } : {}),
+        projectVersion: s.projectVersion + 1,
+      };
+    });
+    return n;
+  },
 
   // ── Custom Lenses ──
   customLenses: loadCustomLenses(),
@@ -1213,7 +1331,7 @@ export const useStore = create<AppState>((set, get) => ({
     nextId = 1;
     stageId = 1;
     personId = 1;
-    set({ venue: defaultVenue, cameras: [], selectedCameraId: null, persons: [], walls: [], backgroundPlan: null, projectVersion: 1, lastSavedVersion: 0, savedRevision: 0, savedAt: null });
+    set({ venue: defaultVenue, cameras: [], selectedCameraId: null, auswahl: leereAuswahl(), persons: [], walls: [], backgroundPlan: null, projectVersion: 1, lastSavedVersion: 0, savedRevision: 0, savedAt: null });
   },
 
   // ── Project versioning ──
@@ -1382,6 +1500,7 @@ export const useStore = create<AppState>((set, get) => ({
       savedRevision: Number.isInteger(project.revision) && project.revision! > 0 ? project.revision! : 0,
       savedAt: project.revision === 0 ? null : project.savedAt ?? null,
       projectEpoch: get().projectEpoch + 1,
+      auswahl: leereAuswahl(),
       // Eine Datei ohne Id (vor cable-planner#908 gespeichert) bekommt hier
       // ihre — und behaelt sie ab dem naechsten Speichern.
       projectId: isProjectId(project.projectId) ? project.projectId : legacyProjectId(project),

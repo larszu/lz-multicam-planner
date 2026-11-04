@@ -25,6 +25,7 @@ import { oeffnungStrecke, wandDicke } from '../../utils/wallOpenings';
 import { usePlanLaden } from '../../lib/usePlanLaden';
 import EditGroupsBar from './EditGroupsBar';
 import RaumOverlay, { type RaumAuswahl } from './RaumOverlay';
+import { auswahlGroesse, imRahmen, istAusgewaehlt, leereAuswahl, rahmenAus, STUHL_BLICK_DEG, vereinige, type AuswahlArt } from '../../utils/auswahl';
 
 // Shared style for context-menu items (issue #38).
 const ctxItemStyle: React.CSSProperties = {
@@ -111,7 +112,7 @@ export default function Venue2D() {
   const setPublikumZeichnen = useStore((s) => s.setPublikumZeichnen);
   const addSeatingBlock = useStore((s) => s.addSeatingBlock);
   const rechteckModus = planBereichModus || !!publikumZeichnen;
-  const { venue, setVenue, cameras: planCameras, selectedCameraId, selectCamera, moveCamera, updateCamera, removeCamera, duplicateCamera, showAllFov, showDof, pixelsPerMeter, persons, updatePerson, removePerson, duplicatePerson, updateStage, addStage, removeStage, updateSeatingBlock, updateVideoWall, backgroundPlan, setBackgroundPlan, walls, updateWall, addWall, removeWall, wallSnap, editGroups, avForeign, showForeign } = useStore();
+  const { venue, setVenue, cameras: planCameras, selectedCameraId, selectCamera, moveCamera, updateCamera, removeCamera, duplicateCamera, showAllFov, showDof, pixelsPerMeter, persons, updatePerson, removePerson, duplicatePerson, updateStage, addStage, removeStage, updateSeatingBlock, updateVideoWall, backgroundPlan, setBackgroundPlan, walls, updateWall, addWall, removeWall, wallSnap, editGroups, avForeign, showForeign, auswahl, setAuswahl, auswahlUmschalten, positionenSetzen, dropPerson } = useStore();
   // Live-Pose der Bridge liegt nur auf der Anzeige, der Plan bleibt.
   const cameras = useLiveCameras(planCameras);
   const surfaceCameraId = useSurfaceCameraId(planCameras);
@@ -141,6 +142,13 @@ export default function Venue2D() {
   // Ausschnitt fuer die Plan-Erkennung aufziehen (#205).
   const [bereichStart, setBereichStart] = useState<{ x: number; y: number } | null>(null);
   const [bereichJetzt, setBereichJetzt] = useState<{ x: number; y: number } | null>(null);
+  // Auswahlrahmen: Shift + Ziehen auf freier Flaeche (#250). Ohne Shift
+  // schiebt Ziehen weiter die Ansicht.
+  const [rahmenStart, setRahmenStart] = useState<{ x: number; y: number } | null>(null);
+  const [rahmenJetzt, setRahmenJetzt] = useState<{ x: number; y: number } | null>(null);
+  const rahmenGezogen = useRef(false);
+  const rahmenEnde = useRef<{ x: number; y: number } | null>(null);
+  const gruppenZug = useRef<{ startX: number; startY: number; cams: Record<string, { x: number; y: number }>; persons: Record<string, { x: number; y: number }> } | null>(null);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
   // Plan ausrichten (#247): Versatz waehrend des Ziehens, erst beim Loslassen ins Projekt.
   const [planZug, setPlanZug] = useState<{ x: number; y: number } | null>(null);
@@ -364,6 +372,8 @@ export default function Venue2D() {
     if (e.target === e.target.getStage() && !drawingWall && !calibActive) {
       setSelectedStageId(null);
       setRaumAuswahl(null);
+      if (rahmenGezogen.current) rahmenGezogen.current = false;
+      else if (!e.evt.shiftKey && !e.evt.metaKey && !e.evt.ctrlKey) setAuswahl(leereAuswahl());
     }
     const point = getPointerWorldPoint();
     if (!point) return;
@@ -441,18 +451,52 @@ export default function Venue2D() {
       setCalibCursor(null);
       window.dispatchEvent(new CustomEvent('multicam-calibrate-done'));
     }
-  }, [addWall, backgroundPlan, calibActive, calibAutoResize, calibAxis, calibDistM, calibPoints, calibScaleLocked, drawingWall, getPointerWorldPoint, ppm, setBackgroundPlan, setVenue, snapPoint, snapToEndpoints, venue, wallKind, wallStart, walls.length]);
+  }, [addWall, backgroundPlan, calibActive, calibAutoResize, calibAxis, calibDistM, calibPoints, calibScaleLocked, drawingWall, getPointerWorldPoint, ppm, setAuswahl, setBackgroundPlan, setVenue, snapPoint, snapToEndpoints, venue, wallKind, wallStart, walls.length]);
 
   const bereichPunkt = useCallback(() => {
     const p = getPointerWorldPoint();
     return p ? { x: p.xPx / ppm, y: p.yPx / ppm } : null;
   }, [getPointerWorldPoint, ppm]);
 
-  const handleStageMouseDown = useCallback(() => {
-    if (!rechteckModus) return;
+  const handleStageMouseDown = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (!rechteckModus) {
+      if (e.evt.shiftKey && e.target === e.target.getStage() && !drawingWall && !calibActive) {
+        e.target.getStage()?.stopDrag();
+        const p = bereichPunkt();
+        if (p) {
+          rahmenEnde.current = p;
+          setRahmenStart(p);
+          setRahmenJetzt(p);
+        }
+      }
+      return;
+    }
     const p = bereichPunkt();
     if (p) setBereichStart(p);
-  }, [bereichPunkt, rechteckModus]);
+  }, [bereichPunkt, calibActive, drawingWall, rechteckModus]);
+
+  // Losgelassen wird auch neben dem Plan (ueber einer Karte, ausserhalb des
+  // Fensters) — darum am Fenster, und vor Konvas Klick, der sonst die
+  // Auswahl gleich wieder aufhoebe.
+  useEffect(() => {
+    if (!rahmenStart) return;
+    const ende = () => {
+      const r = rahmenAus(rahmenStart, rahmenEnde.current ?? rahmenStart);
+      setRahmenStart(null);
+      setRahmenJetzt(null);
+      if (r.maxX - r.minX < 0.1 && r.maxY - r.minY < 0.1) return;
+      rahmenGezogen.current = true;
+      const s = useStore.getState();
+      const treffer = imRahmen(
+        r,
+        lockCameras ? [] : s.cameras.map((c) => ({ id: c.id, ...effectiveCameraPos(c) })),
+        lockPersons ? [] : s.persons,
+      );
+      setAuswahl(vereinige(s.auswahl, treffer));
+    };
+    window.addEventListener('mouseup', ende, true);
+    return () => window.removeEventListener('mouseup', ende, true);
+  }, [lockCameras, lockPersons, rahmenStart, setAuswahl]);
 
   const handleStageMouseUp = useCallback(() => {
     if (!rechteckModus || !bereichStart) return;
@@ -481,6 +525,10 @@ export default function Venue2D() {
   const handleStageMouseMove = useCallback(() => {
     const point = getPointerWorldPoint();
     if (!point) return;
+    if (rahmenStart) {
+      rahmenEnde.current = { x: point.xPx / ppm, y: point.yPx / ppm };
+      setRahmenJetzt(rahmenEnde.current);
+    }
     if (rechteckModus && bereichStart) {
       setBereichJetzt({ x: point.xPx / ppm, y: point.yPx / ppm });
     }
@@ -490,7 +538,7 @@ export default function Venue2D() {
     if (calibActive && calibPoints.length === 1) {
       setCalibCursor({ x: point.xPx, y: point.yPx });
     }
-  }, [bereichStart, calibActive, calibPoints.length, drawingWall, getPointerWorldPoint, rechteckModus, ppm, snapPoint, snapToEndpoints, wallStart]);
+  }, [bereichStart, calibActive, calibPoints.length, drawingWall, getPointerWorldPoint, rechteckModus, ppm, rahmenStart, snapPoint, snapToEndpoints, wallStart]);
 
   const handleWallEndpointDragMove = useCallback((wall: Wall, end: 'start' | 'end', e: Konva.KonvaEventObject<DragEvent>) => {
     const node = e.target;
@@ -524,6 +572,7 @@ export default function Venue2D() {
       // ergab das ein paar Zentimeter, und die Kamera sprang in die Ecke.
       // Begruendung und Gegenprobe: `utils/venueDrag.ts`.
       if (!dragIsOwn(e)) return;
+      gruppenZug.current = null;
       // The drag operates on the *effective* (track-offset-adjusted) marker.
       // Subtract the offset back out so cam.x/cam.y stores the parked position.
       const drop = dropToParked({
@@ -589,13 +638,61 @@ export default function Venue2D() {
 
   const handlePersonDragEnd = useCallback(
     (personId: string, e: Konva.KonvaEventObject<DragEvent>) => {
+      if (!dragIsOwn(e)) return;
       const newX = Math.max(0, Math.min(venue.widthM, e.target.x() / ppm));
       const newY = Math.max(0, Math.min(venue.heightM, e.target.y() / ppm));
-      e.target.position({ x: newX * ppm, y: newY * ppm });
-      updatePerson(personId, { x: newX, y: newY });
+      const gruppe = gruppenZug.current;
+      gruppenZug.current = null;
+      if (gruppe) {
+        updatePerson(personId, { x: newX, y: newY });
+      } else {
+        // Allein abgelegt, setzt sich eine Person auf einen freien Stuhl in der Naehe.
+        dropPerson(personId, newX, newY);
+      }
+      const p = useStore.getState().persons.find((q) => q.id === personId);
+      e.target.position({ x: (p?.x ?? newX) * ppm, y: (p?.y ?? newY) * ppm });
     },
-    [updatePerson, ppm, venue],
+    [dropPerson, updatePerson, ppm, venue],
   );
+
+  // Klick: allein auswaehlen; Shift/Cmd/Strg: zur Auswahl hinzu oder heraus (#250).
+  const auswahlKlick = useCallback((art: AuswahlArt, id: string, e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    const ev = e.evt as MouseEvent;
+    if (ev.shiftKey || ev.metaKey || ev.ctrlKey) {
+      auswahlUmschalten(art, id);
+      return;
+    }
+    if (art === 'camera') selectCamera(id);
+    setAuswahl(art === 'camera' ? { cameraIds: [id], personIds: [] } : { cameraIds: [], personIds: [id] });
+  }, [auswahlUmschalten, selectCamera, setAuswahl]);
+
+  // Mehrfach-Ziehen: wer ein ausgewaehltes Objekt zieht, nimmt den Rest der
+  // Auswahl mit. Gesperrte bleiben stehen.
+  const gruppenStart = useCallback((art: AuswahlArt, id: string, e: Konva.KonvaEventObject<DragEvent>) => {
+    if (!dragIsOwn(e)) return;
+    const s = useStore.getState();
+    if (!istAusgewaehlt(s.auswahl, art, id) || auswahlGroesse(s.auswahl) < 2) {
+      gruppenZug.current = null;
+      return;
+    }
+    const cams: Record<string, { x: number; y: number }> = {};
+    const ps: Record<string, { x: number; y: number }> = {};
+    if (!lockCameras) for (const c of s.cameras) if (s.auswahl.cameraIds.includes(c.id) && !c.locked && !(art === 'camera' && c.id === id)) cams[c.id] = { x: c.x, y: c.y };
+    if (!lockPersons) for (const p of s.persons) if (s.auswahl.personIds.includes(p.id) && !p.locked && !(art === 'person' && p.id === id)) ps[p.id] = { x: p.x, y: p.y };
+    gruppenZug.current = { startX: e.target.x() / ppm, startY: e.target.y() / ppm, cams, persons: ps };
+  }, [lockCameras, lockPersons, ppm]);
+
+  const gruppenZiehen = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
+    const g = gruppenZug.current;
+    if (!g || !dragIsOwn(e)) return;
+    const dx = e.target.x() / ppm - g.startX;
+    const dy = e.target.y() / ppm - g.startY;
+    const clampX = (v: number) => Math.max(0, Math.min(venue.widthM, v));
+    const clampY = (v: number) => Math.max(0, Math.min(venue.heightM, v));
+    const ziel = (m: Record<string, { x: number; y: number }>) =>
+      Object.fromEntries(Object.entries(m).map(([k, v]) => [k, { x: clampX(v.x + dx), y: clampY(v.y + dy) }]));
+    positionenSetzen(ziel(g.cams), ziel(g.persons));
+  }, [positionenSetzen, ppm, venue.heightM, venue.widthM]);
 
   // Keep the Transformer attached to the currently-selected (unlocked) stage.
   useEffect(() => {
@@ -744,7 +841,7 @@ export default function Venue2D() {
         scaleY={zoom}
         x={stagePos.x}
         y={stagePos.y}
-        draggable={!calibActive && !drawingWall && !rechteckModus}
+        draggable={!calibActive && !drawingWall && !rechteckModus && !rahmenStart}
         onDragEnd={(e) => {
           // Dieselbe Regel wie bei der Kamera-Marke, nur hier schon immer von
           // Hand geschrieben: ein Drag-Handler rechnet nur mit seinem eigenen
@@ -979,6 +1076,18 @@ export default function Venue2D() {
             farben={{ wand: '#e11d48', stuetze: '#f59e0b', buehne: '#f97316', raum: '#22c55e', rahmen: '#38bdf8' }}
           />
         )}
+        {rahmenStart && rahmenJetzt && (
+          <Rect
+            x={Math.min(rahmenStart.x, rahmenJetzt.x) * ppm}
+            y={Math.min(rahmenStart.y, rahmenJetzt.y) * ppm}
+            width={Math.abs(rahmenJetzt.x - rahmenStart.x) * ppm}
+            height={Math.abs(rahmenJetzt.y - rahmenStart.y) * ppm}
+            stroke={P.beschriftung}
+            dash={[6, 4]}
+            strokeWidth={1}
+            listening={false}
+          />
+        )}
         {rechteckModus && bereichStart && bereichJetzt && (
           <Rect
             x={Math.min(bereichStart.x, bereichJetzt.x) * ppm}
@@ -999,8 +1108,8 @@ export default function Venue2D() {
           </>
         )}
 
-        {/* Persons */}
-        {persons.map((p) => {
+        {/* Persons — Stuehle zuerst, damit wer darauf sitzt obenauf liegt. */}
+        {[...persons].sort((a, b) => Number(b.objectType === 'chair') - Number(a.objectType === 'chair')).map((p) => {
           const type = p.objectType ?? 'person';
           const col = p.color ?? (
             type === 'drums' ? '#ef4444' :
@@ -1015,8 +1124,20 @@ export default function Venue2D() {
             '#f59e0b'
           );
           const footW = Math.max(6, p.width * ppm);
+          const gewaehlt = istAusgewaehlt(auswahl, 'person', p.id);
+          const blick = ((p.facingDeg ?? STUHL_BLICK_DEG) * Math.PI) / 180;
           return (
-            <Group key={p.id} x={p.x * ppm} y={p.y * ppm} draggable={!p.locked && !lockPersons} onDragEnd={(e) => handlePersonDragEnd(p.id, e)} onContextMenu={(e) => { e.evt.preventDefault(); if (!lockPersons) openContextMenu('person', p.id, !!p.locked, e); }}>
+            <Group key={p.id} x={p.x * ppm} y={p.y * ppm} draggable={!p.locked && !lockPersons && !drawingWall}
+              onClick={(e) => { if (!lockPersons) auswahlKlick('person', p.id, e); }}
+              onTap={(e) => { if (!lockPersons) auswahlKlick('person', p.id, e); }}
+              onDragStart={(e) => gruppenStart('person', p.id, e)}
+              onDragMove={gruppenZiehen}
+              onDragEnd={(e) => handlePersonDragEnd(p.id, e)}
+              onContextMenu={(e) => { e.evt.preventDefault(); if (!lockPersons) openContextMenu('person', p.id, !!p.locked, e); }}>
+              {gewaehlt && <Circle radius={Math.max(9, footW / 2 + 4)} stroke={P.beschriftung} strokeWidth={1.5} dash={[4, 3]} listening={false} />}
+              {type === 'chair' && (
+                <Line points={[0, 0, Math.cos(blick) * Math.max(9, footW * 0.7), Math.sin(blick) * Math.max(9, footW * 0.7)]} stroke={col} strokeWidth={2} listening={false} />
+              )}
               {type === 'table' || type === 'drums' || type === 'keys' ? (
                 <Rect x={-footW / 2} y={-footW / 4} width={footW} height={footW / 2} fill={col} opacity={0.55} stroke={col} strokeWidth={1} cornerRadius={2} />
               ) : type === 'schneetiger' ? (
@@ -1057,7 +1178,14 @@ export default function Venue2D() {
           const isSelected = cam.id === selectedCameraId;
           const pos = effectiveCameraPos(cam);
           return (
-            <Group key={`cam-${cam.id}`} x={pos.x * ppm} y={pos.y * ppm} draggable={!drawingWall && !cam.locked && !lockCameras} onDragEnd={(e) => handleCamDragEnd(cam, e)} onClick={() => selectCamera(cam.id)} onTap={() => selectCamera(cam.id)} onContextMenu={(e) => { e.evt.preventDefault(); if (!lockCameras) openContextMenu('camera', cam.id, !!cam.locked, e); }}>
+            <Group key={`cam-${cam.id}`} x={pos.x * ppm} y={pos.y * ppm} draggable={!drawingWall && !cam.locked && !lockCameras}
+              onDragStart={(e) => gruppenStart('camera', cam.id, e)}
+              onDragMove={gruppenZiehen}
+              onDragEnd={(e) => handleCamDragEnd(cam, e)}
+              onClick={(e) => auswahlKlick('camera', cam.id, e)}
+              onTap={(e) => auswahlKlick('camera', cam.id, e)}
+              onContextMenu={(e) => { e.evt.preventDefault(); if (!lockCameras) openContextMenu('camera', cam.id, !!cam.locked, e); }}>
+              {istAusgewaehlt(auswahl, 'camera', cam.id) && auswahlGroesse(auswahl) > 1 && <Circle radius={14} stroke={P.beschriftung} strokeWidth={1.5} dash={[4, 3]} listening={false} />}
               {cam.id === surfaceCameraId && <Circle radius={16} stroke={cam.color} strokeWidth={2} dash={[4, 3]} listening={false} />}
               <Circle radius={isSelected ? 10 : 8} fill={cam.color} stroke={isSelected ? '#fff' : cam.color} strokeWidth={isSelected ? 3 : 1} shadowColor={cam.color} shadowBlur={isSelected ? 12 : 0} />
               <Line points={[0, 0, 14 * Math.cos((cam.pan * Math.PI) / 180), 14 * Math.sin((cam.pan * Math.PI) / 180)]} stroke={cam.color} strokeWidth={2} />

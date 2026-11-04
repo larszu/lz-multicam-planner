@@ -1004,7 +1004,7 @@ function cameraFov(cam: ReturnType<typeof useStore.getState>['cameras'][0]) {
 
 export default function Venue3D() {
   const { t } = useTranslation();
-  const { venue, cameras: planCameras, persons, backgroundPlan, updatePerson, selectCamera, selectedCameraId, programCameraId } = useStore();
+  const { venue, cameras: planCameras, persons, backgroundPlan, dropPerson, selectCamera, selectedCameraId, programCameraId } = useStore();
   const cameras = useLiveCameras(planCameras);
   const surfaceCameraId = useSurfaceCameraId(planCameras);
   const follow = useMixerFollow(planCameras);
@@ -1274,7 +1274,7 @@ export default function Venue3D() {
               key={p.id}
               x={p.x}
               z={p.y}
-              onDragEnd={(nx, nz) => updatePerson(p.id, { x: nx, y: nz })}
+              onDragEnd={(nx, nz) => dropPerson(p.id, nx, nz)}
             >
               <group position={[0, groundHeightAt(venue.stages, p.x, p.y), 0]}>
                 {/* Menschen sehen in jeder Darstellung gleich aus (#173). */}

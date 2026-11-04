@@ -6,6 +6,19 @@
 import type { ReferencePerson, StageObjectType } from '../types';
 import type { MenschGestalt, Oberteil, Pose, Schuhe, Statur, Unterteil } from '../avplan/scene3d';
 
+/** Sitzflaeche, auf der die Figur in der Pose `sitzen` bei 1,75 m sitzt (Norm). */
+export const SITZFLAECHE_M = 0.45;
+const FIGUR_NORM_M = 1.75;
+
+/** Stehende Groesse der Figur: sitzend ist `height` die Hoehe im Sitzen. */
+export const figurGroesse = (pose: Pose, height: number) => (pose === 'sitzen' ? Math.max(1.2, height / 0.72) : height);
+
+/** Um so viel hebt sich eine sitzende Figur, damit sie auf `seatHeight` sitzt statt auf der Norm. */
+export function sitzHub(pose: Pose, height: number, seatHeight: number | undefined): number {
+  if (pose !== 'sitzen' || seatHeight === undefined) return 0;
+  return seatHeight - (SITZFLAECHE_M * figurGroesse(pose, height)) / FIGUR_NORM_M;
+}
+
 export interface PersonDarstellung {
   pose: Pose;
   gestalt: MenschGestalt;
