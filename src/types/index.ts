@@ -941,7 +941,10 @@ export function editModeOf(groups: readonly EditGroup[]): EditMode | null {
 export interface ProjectFile {
   formatVersion: 1;
   appVersion: string;
-  projectVersion: number; // auto-incremented on changes
+  /** Interner Aenderungszaehler; zeigt nicht den Stand, nur „ungespeichert". */
+  projectVersion: number;
+  /** Wie oft gespeichert (1 = erstes Speichern). Fehlt in Dateien von vor #251. */
+  revision?: number;
   savedAt: string; // ISO date
   /**
    * Stabile Projekt-Id (cable-planner#908), siehe `utils/projectId.ts`.

@@ -51,12 +51,13 @@ export const APP_VERSION = __APP_VERSION__;
  */
 /** Der Vorgabename einer Projektdatei - einmal formuliert, damit Speichern
  *  und der Vorschlag in Speichern-unter nicht auseinanderlaufen. */
-export function defaultProjectFileName(project: { venue: { name: string }; projectVersion: number }): string {
-  return `${project.venue.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_v${project.projectVersion}.mcplan`;
+export function defaultProjectFileName(project: { venue: { name: string } }): string {
+  return `${project.venue.name.replace(/[^a-zA-Z0-9_-]/g, '_')}.mcplan`;
 }
 
 export function buildProjectFile(s: {
   projectVersion: number;
+  savedRevision?: number;
   projectId?: string;
   venue: Venue;
   cameras: VenueCamera[];
@@ -76,6 +77,7 @@ export function buildProjectFile(s: {
     formatVersion: 1,
     appVersion: APP_VERSION,
     projectVersion: s.projectVersion,
+    revision: s.savedRevision ?? 0,
     ...(s.projectId ? { projectId: s.projectId } : {}),
     savedAt: new Date().toISOString(),
     venue: s.venue,
@@ -322,8 +324,13 @@ interface AppState {
   // Project versioning
   /** Stabile Id des Projekts (cable-planner#908) — siehe `utils/projectId.ts`. */
   projectId: string;
+  /** Interner Aenderungszaehler fuer „ungespeichert" — keine Anzeige. */
   projectVersion: number;
   lastSavedVersion: number;
+  /** Wie oft das Projekt gespeichert wurde (0 = noch nie), siehe utils/projectStand.ts. */
+  savedRevision: number;
+  /** Zeitpunkt des letzten Speicherns (ISO), `null` wenn unbekannt. */
+  savedAt: string | null;
   /**
    * Die letzte automatische Sicherung (`store/autosave.ts`) ist an der
    * localStorage-Quota gescheitert. Nicht fatal — das Projekt steht weiter im
@@ -1196,13 +1203,15 @@ export const useStore = create<AppState>((set, get) => ({
     nextId = 1;
     stageId = 1;
     personId = 1;
-    set({ venue: defaultVenue, cameras: [], selectedCameraId: null, persons: [], walls: [], backgroundPlan: null, projectVersion: 1, lastSavedVersion: 0 });
+    set({ venue: defaultVenue, cameras: [], selectedCameraId: null, persons: [], walls: [], backgroundPlan: null, projectVersion: 1, lastSavedVersion: 0, savedRevision: 0, savedAt: null });
   },
 
   // ── Project versioning ──
   projectId: newProjectId(),
   projectVersion: 1,
   lastSavedVersion: 1, // #199 — ein frisches, leeres Projekt ist nicht „ungespeichert" (wie nach „Neu")
+  savedRevision: 0,
+  savedAt: null,
   autosaveStorageFull: false,
   hasUnsavedChanges: () => {
     const s = get();
@@ -1233,6 +1242,7 @@ export const useStore = create<AppState>((set, get) => ({
       formatVersion: 1,
       appVersion: APP_VERSION,
       projectVersion: 0,
+      revision: 0,
       projectId: newProjectId(),
       savedAt: new Date().toISOString(),
       venue: defaultVenue,
@@ -1359,6 +1369,8 @@ export const useStore = create<AppState>((set, get) => ({
       currentShotId: null,
       projectVersion: project.projectVersion,
       lastSavedVersion: project.projectVersion,
+      savedRevision: Number.isInteger(project.revision) && project.revision! > 0 ? project.revision! : 0,
+      savedAt: project.revision === 0 ? null : project.savedAt ?? null,
       projectEpoch: get().projectEpoch + 1,
       // Eine Datei ohne Id (vor cable-planner#908 gespeichert) bekommt hier
       // ihre — und behaelt sie ab dem naechsten Speichern.

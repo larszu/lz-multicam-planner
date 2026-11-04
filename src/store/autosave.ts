@@ -34,20 +34,22 @@ type Zustand = ReturnType<typeof useStore.getState>;
 
 interface Sicherung {
   lastSavedVersion: number;
+  /** Zeitpunkt des letzten echten Speicherns; `project.savedAt` ist der der Sicherung. */
+  savedAt?: string | null;
   project: ProjectFile;
 }
 
 /** Was in die Projektdatei geht. Aendert sich eines davon (per Referenz —
  *  der Store ersetzt, er veraendert nicht), ist neu zu sichern. */
 const projektTeile = (s: Zustand): unknown[] => [
-  s.projectId, s.projectVersion, s.lastSavedVersion, s.venue, s.cameras, s.persons, s.walls, s.shotlists,
+  s.projectId, s.projectVersion, s.lastSavedVersion, s.savedRevision, s.savedAt, s.venue, s.cameras, s.persons, s.walls, s.shotlists,
   s.backgroundPlan, s.avForeign, s.stageForeign, s.floorPlanForeign, s.wallForeign, s.personForeign,
   s.customCameras, s.customLenses,
 ];
 
 export function writeAutosave(): boolean {
   const s = useStore.getState();
-  const sicherung: Sicherung = { lastSavedVersion: s.lastSavedVersion, project: buildProjectFile(s) };
+  const sicherung: Sicherung = { lastSavedVersion: s.lastSavedVersion, savedAt: s.savedAt, project: buildProjectFile(s) };
   // Scheitert das Schreiben, bleibt die vorige Sicherung liegen, statt
   // geloescht zu werden: waechst ein Projekt ueber die Quota (typisch: ein
   // eingebetteter PDF-Grundriss), ist der Stand von davor mehr wert als ein
@@ -114,6 +116,6 @@ export function restoreAutosave(): boolean {
     // Bildschirm statt eines leeren Projekts.
     return false;
   }
-  useStore.setState({ lastSavedVersion: sicherung.lastSavedVersion });
+  useStore.setState({ lastSavedVersion: sicherung.lastSavedVersion, savedAt: sicherung.savedAt ?? null });
   return true;
 }

@@ -15,12 +15,12 @@ import {
   riggingLines,
 } from '../../utils/cameraCardExtras';
 import { stampForStand, stampLine } from '../../utils/documentStamp';
+import { describeStand, projectStand } from '../../utils/projectStand';
 import { coverageLines, reachReport } from '../../utils/lensReach';
 import { paintLines } from '../../utils/paintState';
 import { shadingLines } from '../../utils/shadingCapability';
 import { registryLines } from '../../utils/paintRegistry';
 import { useTranslation, format } from '../../i18n';
-import { WEBGL_POWER_PREFERENCE } from '../../utils/gpuInfo';
 import { renderSelectedCameraView } from '../Preview/cameraViewRenderer';
 
 export type ExportMode = 'current' | 'all' | 'widetele' | 'all-widetele';
@@ -42,7 +42,7 @@ interface ExportDetail {
 export default function ExportPanel() {
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
-  const { cameras, venue, persons, projectVersion } = useStore();
+  const { cameras, venue, persons } = useStore();
   const { t } = useTranslation();
 
   const capture2DCanvas = useCallback((): HTMLCanvasElement | null => {
@@ -56,22 +56,19 @@ export default function ExportPanel() {
   }, []);
 
   const capture3DCanvas = useCallback((): HTMLCanvasElement | null => {
-    const canvases = document.querySelectorAll('canvas');
-    for (const c of canvases) {
-      if (c.closest('[data-venue3d]')) return c;
-    }
-    for (const c of canvases) {
-      const ctx = c.getContext('webgl2', { powerPreference: WEBGL_POWER_PREFERENCE }) || c.getContext('webgl', { powerPreference: WEBGL_POWER_PREFERENCE });
-      if (ctx) return c;
+    const registry = getExportRegistry();
+    if (typeof registry.capture3DExport === 'function') {
+      try { return registry.capture3DExport(); } catch { /* fall through */ }
     }
     return null;
   }, []);
 
   const capturePreviewCanvas = useCallback((): HTMLCanvasElement | null => {
     const registry = getExportRegistry();
-    if (typeof registry.capturePreviewCanvas === 'function') {
-      try { return registry.capturePreviewCanvas(); } catch { /* fall through */ }
-    }
+    try {
+      const bild = registry.renderPreviewOffscreen?.(1280) ?? registry.capturePreviewCanvas?.() ?? null;
+      if (bild) return bild;
+    } catch { /* fall through */ }
     return renderSelectedCameraView(1280);
   }, []);
 
@@ -85,7 +82,7 @@ export default function ExportPanel() {
   }, []);
 
   /** Render a single export PNG for a given camera + optional focal length override. */
-  const renderOne = useCallback(async (targetCam: VenueCamera, opts?: { focalOverride?: number; variantLabel?: string; extraSettleMs?: number }) => {
+  const renderOne = useCallback(async (targetCam: VenueCamera, opts?: { focalOverride?: number; variantLabel?: string }) => {
     const camDef = getCameraById(targetCam.cameraId, useStore.getState().customCameras);
     const lensDef = getLensById(targetCam.lensId, useStore.getState().customLenses);
     if (!camDef || !lensDef) return;
@@ -106,8 +103,7 @@ export default function ExportPanel() {
 
     if (needSelectionChange) useStore.getState().selectCamera(targetCam.id);
     if (needFocalChange) useStore.getState().updateCamera(targetCam.id, { focalLength });
-    const extra = opts?.extraSettleMs ?? 0;
-    if (needSelectionChange || needFocalChange || extra > 0) await waitForPaint(250 + extra);
+    if (needSelectionChange || needFocalChange) await waitForPaint(250);
 
     // ── Layout constants ──
     const EW = 1920;
@@ -152,7 +148,7 @@ export default function ExportPanel() {
     ctx.textAlign = 'right';
     ctx.fillStyle = '#9ca3af';
     ctx.font = '14px sans-serif';
-    ctx.fillText(format(t('preview.export.headerMeta', '{venue} — Project v{pv} — LZ Multicam Planner v{av}'), { venue: venue.name, pv: projectVersion, av: APP_VERSION }), EW - padding, 30);
+    ctx.fillText(format(t('preview.export.headerMeta', '{venue} — {stand} — LZ Multicam Planner v{av}'), { venue: venue.name, stand: describeStand(projectStand(useStore.getState()), t, { withChanges: true }), av: APP_VERSION }), EW - padding, 30);
     ctx.fillText(format(t('preview.export.exportedAt', 'Exported: {when}'), { when: new Date().toLocaleString() }), EW - padding, 50);
     if (adapterInfo) {
       ctx.fillStyle = '#f59e0b';
@@ -501,11 +497,10 @@ export default function ExportPanel() {
     // brauchen keine eigenen Zeilen: sie sind Renderings genau dieses
     // Zustands und wuerden dieselben Zeilen liefern.
     //
-    // Keine Revision und damit keine Abweichungs-Behauptung (Regel 2): der
-    // MultiCam-Planner zaehlt Aenderungen (`projectVersion`), statt Staende
-    // festzuschreiben. Diese Zahl steht bereits in der Kopfzeile -- sie kann
-    // aber kollidieren, wenn zwei Leute dieselbe Datei unterschiedlich
-    // weiterbearbeiten. Genau diese Luecke schliesst der Fingerabdruck.
+    // Keine Revision und damit keine Abweichungs-Behauptung (Regel 2): die
+    // Speicher-Revision in der Kopfzeile kann kollidieren, wenn zwei Leute
+    // dieselbe Datei unterschiedlich weiterbearbeiten. Genau diese Luecke
+    // schliesst der Fingerabdruck.
     const stamp = stampForStand({
       project: venue.name || 'MultiCam',
       current: cameraSheetFingerprint({
@@ -554,7 +549,7 @@ export default function ExportPanel() {
     ctx.fillText(stampLine(stamp), padding, totalH - stampH + 18);
 
     // ── Download ──
-    const filename = `${targetCam.label.replace(/\s+/g, '_')}${opts?.variantLabel ? `_${opts.variantLabel.replace(/\s+/g, '_')}` : ''}_${venue.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_v${projectVersion}.png`;
+    const filename = `${targetCam.label.replace(/\s+/g, '_')}${opts?.variantLabel ? `_${opts.variantLabel.replace(/\s+/g, '_')}` : ''}_${venue.name.replace(/[^a-zA-Z0-9_-]/g, '_')}.png`;
     await new Promise<void>((resolve) => {
       out.toBlob((blob) => {
         if (!blob) { resolve(); return; }
@@ -571,7 +566,7 @@ export default function ExportPanel() {
     // ── Restore overrides ──
     if (needFocalChange) useStore.getState().updateCamera(targetCam.id, { focalLength: originalFocal });
     if (needSelectionChange) useStore.getState().selectCamera(originalSelected);
-  }, [cameras, venue, projectVersion, capture2DCanvas, capture3DCanvas, capturePreviewCanvas, waitForPaint, t]);
+  }, [cameras, venue, capture2DCanvas, capture3DCanvas, capturePreviewCanvas, waitForPaint, t]);
 
   const generateExport = useCallback(async (mode: ExportMode = 'current') => {
     const state = useStore.getState();
@@ -587,28 +582,19 @@ export default function ExportPanel() {
 
     setExporting(true);
 
-    let restoreLayout: (() => void) | null = null;
+    // Nie geoeffnete 3D-Ansicht: einmal kurz zeigen, damit die Szene entsteht.
     const registry = getExportRegistry();
-    if (typeof registry.prepareForExport === 'function') {
-      try {
-        const prep = await registry.prepareForExport();
-        if (prep) restoreLayout = prep.restore;
-      } catch { /* fall through */ }
-    }
-
-    const framingApi = registry.framing3D;
-    let savedFraming: import('../../store/exportRegistry').FramingState | null = null;
-    if (framingApi) {
-      try {
-        savedFraming = framingApi.save();
-        framingApi.fitVenue(state.venue.widthM, state.venue.heightM);
-        // Allow the framing change to render — the WebGL drawing buffer needs at
-        // least one paint at the new camera before the capture has visible content.
-        await waitForPaint(500);
-      } catch { savedFraming = null; }
+    let hide3D: (() => void) | null = null;
+    if (!registry.capture3DExport && registry.reveal3DForExport) {
+      hide3D = registry.reveal3DForExport();
+      for (let i = 0; i < 20 && !registry.capture3DExport; i++) await waitForPaint(100);
+      await waitForPaint(600);
     }
 
     const originalSelected = state.selectedCameraId;
+    // Weit/Tele stellt die Brennweite kurz um und zurueck; das ist keine
+    // Aenderung am Projekt und darf es nicht „ungespeichert" machen.
+    const versionBefore = state.projectVersion;
     const wantsWideTele = mode === 'widetele' || mode === 'all-widetele';
 
     // Build the work queue
@@ -638,24 +624,18 @@ export default function ExportPanel() {
         await renderOne(jobs[i].cam, {
           focalOverride: jobs[i].focalOverride,
           variantLabel: jobs[i].variantLabel,
-          // The first capture in the batch needs extra settle time so the WebGL
-          // 3D canvas, freshly resized by the layout swap and the framing change,
-          // actually paints visible content before drawImage reads from it.
-          extraSettleMs: i === 0 ? 400 : 0,
         });
       }
     } finally {
       // Restore original selection (renderOne handles per-camera restore but final
       // cleanup ensures we land on whatever was selected before the batch).
       useStore.getState().selectCamera(originalSelected);
-      if (framingApi && savedFraming) {
-        try { framingApi.apply(savedFraming); } catch { /* ignore */ }
-      }
-      if (restoreLayout) restoreLayout();
+      if (wantsWideTele) useStore.setState({ projectVersion: versionBefore });
+      hide3D?.();
       setExporting(false);
       setExportProgress({ current: 0, total: 0 });
     }
-  }, [renderOne, t]);
+  }, [renderOne, waitForPaint, t]);
 
   useEffect(() => {
     const handler = (e: Event) => {

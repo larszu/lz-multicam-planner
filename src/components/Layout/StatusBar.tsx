@@ -1,7 +1,9 @@
 import BridgeStatusText from '../Bridge/BridgeStatusText';
 import { useBridgeLive } from '../../store/bridgeLive';
 import { openSettings } from '../Settings/openSettings';
+import { useShallow } from 'zustand/react/shallow';
 import { useStore } from '../../store/useStore';
+import { describeStand, projectStand } from '../../utils/projectStand';
 import { getCameraById } from '../../data/cameras';
 import { useTranslation, format } from '../../i18n';
 import { EDIT_GROUPS, editModeOf } from '../../types';
@@ -34,7 +36,7 @@ import { EDIT_GROUPS, editModeOf } from '../../types';
 export default function StatusBar() {
   const { t } = useTranslation();
   const venue = useStore((s) => s.venue);
-  const projectVersion = useStore((s) => s.projectVersion);
+  const stand = useStore(useShallow((s) => projectStand(s)));
   const cameras = useStore((s) => s.cameras);
   const persons = useStore((s) => s.persons);
   const walls = useStore((s) => s.walls);
@@ -68,7 +70,7 @@ export default function StatusBar() {
     <footer className="bc-statusbar">
       <span className="truncate font-medium text-bc-text">{venue.name}</span>
       <span className="text-bc-dim" aria-hidden="true">|</span>
-      <span className="whitespace-nowrap">v{projectVersion}</span>
+      <span className="whitespace-nowrap">{describeStand(stand, t)}</span>
       <span className="whitespace-nowrap">
         {format(t('status.cameras', '{count} cameras'), { count: cameras.length })}
       </span>

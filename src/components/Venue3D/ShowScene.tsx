@@ -8,7 +8,7 @@
 // Teuer ist nur, was die Qualitaetsstufe erlaubt: echte Scheinwerfer und
 // Schatten nach `StufenWerte`, das Publikum als Instanzen.
 // ───────────────────────────────────────────────────────────────────────────
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, type MutableRefObject } from 'react';
 import { PLANUNGS_BODEN } from './planungsLook';
 import { wendeLookAn, type RenderLook } from '../Render3D/renderLook';
 import * as THREE from 'three';
@@ -49,12 +49,14 @@ function useEntsorgen(obj: THREE.Object3D | null): void {
 }
 
 /* ── Pipeline: rendert statt react-three-fiber (useFrame mit Prioritaet 1) ── */
-export function ScenePipeline({ quality, look, dof, onWerte }: {
+export function ScenePipeline({ quality, look, dof, onWerte, griff }: {
   quality: Qualitaet;
   /** Derselbe Look wie im gerenderten Kamerabild (Render3D/renderLook). */
   look: RenderLook;
   dof: Tiefenschaerfe | null;
   onWerte: (w: StufenWerte, stufe: Stufe) => void;
+  /** Bekommt die Pipeline, damit der Export ihre Groesse kurz umstellen kann. */
+  griff?: MutableRefObject<SzenenPipeline | null>;
 }) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
@@ -70,8 +72,13 @@ export function ScenePipeline({ quality, look, dof, onWerte }: {
     const p = new SzenenPipeline(gl, scene, camera, { qualitaet: quality, stufeGeaendert: (st, w) => onWerteRef.current(w, st) });
     wendeLookAn(p, lookRef.current);
     ref.current = p;
+    if (griff) griff.current = p;
     onWerteRef.current(p.werte, p.stufe);
-    return () => { p.dispose(); ref.current = null; };
+    return () => {
+      p.dispose();
+      ref.current = null;
+      if (griff?.current === p) griff.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gl, scene]);
   useEffect(() => { ref.current?.setKamera(camera); }, [camera]);
