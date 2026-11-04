@@ -1,6 +1,10 @@
 import { useStore, OBJECT_PRESETS } from '../../store/useStore';
 import { CAMERAS, getCameraById, getAdapterInfo, getEffectiveSensor, getCoverageStatus, getSpeedBooster, speedBoosterExists } from '../../data/cameras';
 import { LENSES, getLensById, getCompatibleLenses, pickInitialMountAndLens, integratedLensesFor, lensFitsCamera, GENERIC_INTEGRATED_LENS } from '../../data/lenses';
+import { activeLensAdapter, adaptersForBody, FLANGE_FOCAL_MM } from '../../data/lensAdapters';
+import { FRAME_MASKS, formatLabel, maskedFov } from '../../utils/rahmenmaske';
+import { parseLensModelCode } from '../../utils/lensModelCode';
+import ControlRouteFields from './ControlRouteFields';
 import { SITZT_AUF_STUHL, STUHL_BLICK_DEG } from '../../utils/auswahl';
 import { computeFov, computeDof } from '../../utils/fov';
 import { checkPresets, presetRows, type PresetFinding } from '../../utils/ptzPresets';
@@ -343,7 +347,8 @@ function CameraCard({
   // The active mount controls lens compatibility — when the user has swapped
   // the body's mount plate (e.g. URSA Broadcast B4 → EF), only lenses for
   // that plate are physically attachable.
-  const activeMount = cam.activeMount ?? camDef?.mount;
+  const converter = camDef ? activeLensAdapter(camDef, undefined, cam.lensAdapterId) : undefined;
+  const activeMount = converter?.lensMount ?? cam.activeMount ?? camDef?.mount;
   // Strict: only lenses that physically attach to the active mount.
   const isIntegrated = camDef?.mount === 'integrated';
   const compatDeduped = camDef
@@ -385,9 +390,9 @@ function CameraCard({
 
   // Adapter & effective sensor
   const speedBooster = camDef ? getSpeedBooster(camDef, cam.activeMount ?? lensDef?.mount) : null;
-  const adapterInfo = camDef && lensDef ? getAdapterInfo(camDef, lensDef, cam.useSpeedbooster, cam.activeMount) : null;
-  const effectiveSensor = camDef && lensDef ? getEffectiveSensor(camDef, lensDef, cam.useSpeedbooster, cam.sensorModeIndex, cam.activeMount) : camDef?.sensor;
-  const coverage = camDef && lensDef ? getCoverageStatus(camDef, lensDef, cam.useSpeedbooster, cam.activeMount, cam.sensorModeIndex) : null;
+  const adapterInfo = camDef && lensDef ? getAdapterInfo(camDef, lensDef, cam.useSpeedbooster, cam.activeMount, cam.lensAdapterId, cam.sensorModeIndex) : null;
+  const effectiveSensor = camDef && lensDef ? getEffectiveSensor(camDef, lensDef, cam.useSpeedbooster, cam.sensorModeIndex, cam.activeMount, cam.lensAdapterId) : camDef?.sensor;
+  const coverage = camDef && lensDef ? getCoverageStatus(camDef, lensDef, cam.useSpeedbooster, cam.activeMount, cam.sensorModeIndex, cam.lensAdapterId) : null;
   // Grenzen und Marken der drei Objektiv-Regler.
   const focalMin = lensDef?.focalLengthMin ?? 4;
   const focalMax = Math.max(focalMin + 1, lensDef?.focalLengthMax ?? 300);
@@ -800,6 +805,44 @@ function CameraCard({
             </FieldRow>
           )}
 
+          {/* #241 — optischer Konverter (B4-Objektiv an grossem Sensor). */}
+          {camDef && !isIntegrated && adaptersForBody(camDef).length > 0 && (
+            <FieldRow label={t('sidebar.cam.converter', 'Optical converter')} htmlFor={`converter-${cam.id}`}>
+              <select
+                id={`converter-${cam.id}`}
+                className="block w-full border border-bc-border bg-bc-panel-raised text-bc-text-bright"
+                style={{ padding: '3px 6px' }}
+                value={converter?.id ?? ''}
+                onChange={(e) => {
+                  const next = adaptersForBody(camDef).find((a) => a.id === e.target.value);
+                  const mount = next ? next.lensMount : (cam.activeMount ?? camDef.mount);
+                  const passt = lensDef && (lensDef.mount === mount || lensDef.mount === 'universal');
+                  const ersatz = passt ? undefined : getCompatibleLenses(camDef.mount, camDef.adaptedMounts, mount)[0];
+                  updateCamera(cam.id, {
+                    lensAdapterId: next?.id,
+                    ...(ersatz ? { lensId: ersatz.id, focalLength: ersatz.focalLengthMin, aperture: ersatz.maxApertureWide, extenderActive: 1 } : {}),
+                  });
+                }}
+              >
+                <option value="">{t('sidebar.cam.converterNone', 'None')}</option>
+                {adaptersForBody(camDef).map((a) => (
+                  <option key={a.id} value={a.id}>{`${a.manufacturer} ${a.model} (${a.lensMount} → ${camDef.mount}, ×${a.magnification})`}</option>
+                ))}
+              </select>
+              {converter && (
+                <div className="mt-1 p-2 bg-bc-dark border border-bc-border text-[10px] leading-snug text-bc-muted">
+                  {format(t('sidebar.cam.converterFacts', 'Magnification ×{m} · light loss −{l} T · image circle {c} mm · length {len} mm'), {
+                    m: converter.magnification, l: converter.lightLossStops, c: converter.imageCircleMm, len: converter.lengthMm ?? '–',
+                  })}
+                  {FLANGE_FOCAL_MM[converter.lensMount] && (
+                    <div>{format(t('sidebar.cam.flange', '{mount} flange focal distance {mm} mm'), { mount: converter.lensMount, mm: FLANGE_FOCAL_MM[converter.lensMount].mm.toFixed(2) })}</div>
+                  )}
+                  <a className="underline" href={converter.manufacturerUrl} target="_blank" rel="noreferrer">{t('sidebar.cam.datasheet', 'Data sheet')}</a>
+                </div>
+              )}
+            </FieldRow>
+          )}
+
           {/* Bildkreis-Deckung. `marginal` ist ein Dauerzustand dieser
               Kombination und kein Fehler — nur echtes Vignettieren ist eine
               Warnung. Vorher hatte beides dieselbe Alarmfarbe. */}
@@ -817,7 +860,7 @@ function CameraCard({
             <FieldRow
               label={t('sidebar.cam.sensorMode', 'Sensor mode')}
               htmlFor={`sensormode-${cam.id}`}
-              hint={adapterInfo?.cropSensor ? format(t('sidebar.cam.adapterForces', 'Adapter forces {name}'), { name: adapterInfo.cropSensor.name }) : undefined}
+              hint={adapterInfo?.cropSensor && !adapterInfo.magnification ? format(t('sidebar.cam.adapterForces', 'Adapter forces {name}'), { name: adapterInfo.cropSensor.name }) : undefined}
             >
               <select
                 id={`sensormode-${cam.id}`}
@@ -825,11 +868,29 @@ function CameraCard({
                 style={{ padding: '3px 6px' }}
                 value={cam.sensorModeIndex ?? 0}
                 onChange={(e) => updateCamera(cam.id, { sensorModeIndex: parseInt(e.target.value) })}
-                disabled={!!adapterInfo?.cropSensor}
-                title={adapterInfo?.cropSensor ? t('sidebar.cam.sensorModeLocked', 'Adapter crop overrides the sensor mode') : t('sidebar.cam.sensorModePick', 'Pick the camera body crop mode')}
+                disabled={!!adapterInfo?.cropSensor && !adapterInfo.magnification}
+                title={adapterInfo?.cropSensor && !adapterInfo.magnification ? t('sidebar.cam.sensorModeLocked', 'Adapter crop overrides the sensor mode') : t('sidebar.cam.sensorModePick', 'Pick the camera body crop mode')}
               >
                 {camDef.sensorModes.map((mode, idx) => (
-                  <option key={idx} value={idx}>{mode.name}</option>
+                  <option key={idx} value={idx}>{formatLabel(mode)}</option>
+                ))}
+              </select>
+            </FieldRow>
+          )}
+
+          {/* #217 — Rahmenmaske. Optional; ohne Maske gilt das volle Format. */}
+          {camDef && (
+            <FieldRow label={t('sidebar.cam.frameMask', 'Frame mask')} htmlFor={`framemask-${cam.id}`}>
+              <select
+                id={`framemask-${cam.id}`}
+                className="block w-full border border-bc-border bg-bc-panel-raised text-bc-text-bright"
+                style={{ padding: '3px 6px' }}
+                value={cam.frameMask ?? ''}
+                onChange={(e) => updateCamera(cam.id, { frameMask: (e.target.value || undefined) as VenueCamera['frameMask'] })}
+              >
+                <option value="">{t('sidebar.cam.frameMaskNone', 'Full frame')}</option>
+                {FRAME_MASKS.map((m) => (
+                  <option key={m} value={m}>{m}</option>
                 ))}
               </select>
             </FieldRow>
@@ -950,8 +1011,23 @@ function CameraCard({
                 <input placeholder={t('sidebar.form.manufacturer', 'Manufacturer')} className="bg-bc-panel border border-bc-border px-1 py-0.5 text-bc-text-bright text-xs"
                   value={newLens.manufacturer} onChange={(e) => setNewLens({ ...newLens, manufacturer: e.target.value })} />
                 <input placeholder={t('sidebar.form.model', 'Model')} className="bg-bc-panel border border-bc-border px-1 py-0.5 text-bc-text-bright text-xs"
-                  value={newLens.model} onChange={(e) => setNewLens({ ...newLens, model: e.target.value })} />
+                  value={newLens.model} onChange={(e) => {
+                    const code = parseLensModelCode(e.target.value);
+                    setNewLens({
+                      ...newLens,
+                      model: e.target.value,
+                      ...(code ? { focalMin: String(code.wideMm), focalMax: String(code.teleMm) } : {}),
+                    });
+                  }} />
               </div>
+              {parseLensModelCode(newLens.model) && (() => {
+                const code = parseLensModelCode(newLens.model)!;
+                return (
+                  <p className="text-bc-dim text-[10px]">
+                    {format(t('sidebar.cam.modelCode', 'Model code: {r}× zoom from {w} mm → {tele} mm. Check aperture and extender on the data sheet.'), { r: code.zoomRatio, w: code.wideMm, tele: code.teleMm })}
+                  </p>
+                );
+              })()}
               <div className="grid grid-cols-3 gap-1">
                 <label><span className="text-bc-dim text-[10px]">{t('sidebar.cam.minMm', 'Min mm')}</span>
                   <input type="number" className="w-full bg-bc-panel border border-bc-border px-1 py-0.5 text-bc-text-bright text-xs"
@@ -1388,6 +1464,15 @@ function CameraCard({
                     tone="muted"
                   />
                 )}
+                {cam.frameMask && (() => {
+                  const m = maskedFov(fov.horizontalDeg, cam.frameMask);
+                  return (
+                    <Readout
+                      label={format(t('sidebar.cam.maskFov', 'Mask {mask}'), { mask: cam.frameMask })}
+                      value={`${m.hDeg.toFixed(1)}° × ${m.vDeg.toFixed(1)}°`}
+                    />
+                  );
+                })()}
               </>
             )}
             {dof && (
@@ -1625,7 +1710,7 @@ function CameraCard({
                   <p className="text-bc-dim">{BUS_SCOPE_NOTE}</p>
                 </>
               )}
-
+              <ControlRouteFields cam={cam} onChange={(controlRoute) => updateCamera(cam.id, { controlRoute })} />
               <p className="text-bc-muted">
                 {t('sidebar.paint.sceneFileIntro', 'The scene file belongs to the position and to the show, not on a card in the camera slot. Otherwise the second show day starts from memory.')}
               </p>

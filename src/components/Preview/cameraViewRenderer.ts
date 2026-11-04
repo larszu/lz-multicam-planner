@@ -151,7 +151,7 @@ export function drawCameraView(args: DrawCameraViewArgs): ProjectedPerson[] | un
   const lensDef = getLensById(cam.lensId, customLenses);
   if (!camDef || !lensDef) return;
 
-  const sensor = getEffectiveSensor(camDef, lensDef, cam.useSpeedbooster, cam.sensorModeIndex, cam.activeMount);
+  const sensor = getEffectiveSensor(camDef, lensDef, cam.useSpeedbooster, cam.sensorModeIndex, cam.activeMount, cam.lensAdapterId);
 
   if (!(cssW > 0)) return; // versteckter Tab: nichts zu zeichnen
   const cssH = Math.round(cssW * 9 / 16);
@@ -944,7 +944,8 @@ export function drawCameraView(args: DrawCameraViewArgs): ProjectedPerson[] | un
     ctx.setLineDash([]);
   }
 
-  if (!bare && args.overlays.maske) zeichneRahmenmaske(ctx, W, H, args.overlays.maske);
+  const maske = !bare && args.overlays.maske && args.overlays.maske !== 'none' ? args.overlays.maske : cam.frameMask;
+  if (maske) zeichneRahmenmaske(ctx, W, H, maske);
 
   // Rule of thirds
   if (!bare && showThirds) {

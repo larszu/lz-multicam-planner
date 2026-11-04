@@ -43,7 +43,7 @@
 // library", die KI-Hinweise in der Seitenleiste auf „AI" (`initialSection`).
 // ───────────────────────────────────────────────────────────────────────────
 import { useEffect, useState } from 'react';
-import { FiCpu, FiDatabase, FiRadio, FiSliders, FiX } from 'react-icons/fi';
+import { FiCpu, FiDatabase, FiRadio, FiSliders, FiTerminal, FiX } from 'react-icons/fi';
 import { APP_VERSION } from '../../store/useStore';
 import { useTranslation, type Language } from '../../i18n';
 import { liesThema, setzeThema, type Thema } from '../../lib/thema';
@@ -51,6 +51,7 @@ import DeviceLibrarySection from './DeviceLibrarySection';
 import AiSection from './AiSection';
 import BridgeSection from './BridgeSection';
 import GpuSection from './GpuSection';
+import McpSection from './McpSection';
 import type { SettingsSection } from './openSettings';
 import hauptlogoDunkel from '../../assets/brand/lzm_hauptlogo_offwhite.svg';
 import hauptlogoHell from '../../assets/brand/lzm_hauptlogo_navy.svg';
@@ -69,6 +70,7 @@ export default function SettingsDialog({ onClose, initialSection = 'general' }: 
     { id: 'library', label: t('settings.tab.library', 'Device library'), icon: FiDatabase },
     { id: 'ai', label: t('settings.tab.ai', 'AI'), icon: FiCpu },
     { id: 'bridge', label: t('settings.tab.bridge', 'Bridge & mixer'), icon: FiRadio },
+    { id: 'mcp', label: t('settings.tab.mcp', 'Assistant (MCP)'), icon: FiTerminal },
   ];
   const aktiv = SECTIONS.find((s) => s.id === section) ?? SECTIONS[0];
 
@@ -145,6 +147,7 @@ export default function SettingsDialog({ onClose, initialSection = 'general' }: 
           {section === 'library' && <DeviceLibrarySection />}
           {section === 'ai' && <AiSection />}
           {section === 'bridge' && <BridgeSection />}
+          {section === 'mcp' && <McpSection />}
           {section === 'general' && (<>
           <section>
             <h3 className="text-sm font-semibold text-bc-text-bright">

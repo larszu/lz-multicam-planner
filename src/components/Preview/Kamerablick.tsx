@@ -307,8 +307,8 @@ export default function Kamerablick({ kopf }: KamerablickProps) {
 
   const camDef = cam ? getCameraById(cam.cameraId, useStore.getState().customCameras) : undefined;
   const lensDef = cam ? getLensById(cam.lensId, useStore.getState().customLenses) : undefined;
-  const sensor = cam && camDef && lensDef ? getEffectiveSensor(camDef, lensDef, cam.useSpeedbooster, cam.sensorModeIndex, cam.activeMount) : undefined;
-  const adapterInfo = cam && camDef && lensDef ? getAdapterInfo(camDef, lensDef, cam.useSpeedbooster, cam.activeMount) : null;
+  const sensor = cam && camDef && lensDef ? getEffectiveSensor(camDef, lensDef, cam.useSpeedbooster, cam.sensorModeIndex, cam.activeMount, cam.lensAdapterId) : undefined;
+  const adapterInfo = cam && camDef && lensDef ? getAdapterInfo(camDef, lensDef, cam.useSpeedbooster, cam.activeMount, cam.lensAdapterId, cam.sensorModeIndex) : null;
   const fov = cam && sensor ? computeFov(sensor, cam.focalLength, cam.focusDistance, cam.extenderActive, lensDef?.squeeze ?? 1) : null;
   const dof = cam && sensor ? computeDof(sensor, cam.focalLength, cam.aperture, cam.focusDistance, cam.extenderActive) : null;
 

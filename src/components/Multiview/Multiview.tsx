@@ -35,7 +35,7 @@ function lensLine(cam: VenueCamera): string {
   const camDef = getCameraById(cam.cameraId, customCameras);
   const lensDef = getLensById(cam.lensId, customLenses);
   if (!camDef || !lensDef) return '';
-  const sensor = getEffectiveSensor(camDef, lensDef, cam.useSpeedbooster, cam.sensorModeIndex, cam.activeMount);
+  const sensor = getEffectiveSensor(camDef, lensDef, cam.useSpeedbooster, cam.sensorModeIndex, cam.activeMount, cam.lensAdapterId);
   const fov = computeFov(sensor, cam.focalLength, cam.focusDistance, cam.extenderActive, lensDef.squeeze ?? 1);
   const range = lensDef.focalLengthMin === lensDef.focalLengthMax
     ? `${lensDef.focalLengthMin}mm`

@@ -35,3 +35,26 @@ contextBridge.exposeInMainWorld('multicamAtem', {
     return () => ipcRenderer.removeListener('atem:state', h);
   },
 });
+
+contextBridge.exposeInMainWorld('multicamMcp', {
+  status: () => ipcRenderer.invoke('mcp:status'),
+  set: (wunsch) => ipcRenderer.invoke('mcp:set', {
+    enabled: !!(wunsch && wunsch.enabled),
+    writeAllowed: !!(wunsch && wunsch.writeAllowed),
+  }),
+  token: () => ipcRenderer.invoke('mcp:token'),
+  serve: (handler) => {
+    const h = async (_e, msg) => {
+      let result;
+      try {
+        result = await handler(String(msg.name), msg.args && typeof msg.args === 'object' ? msg.args : {});
+      } catch (err) {
+        result = { text: String((err && err.message) || err), isError: true };
+      }
+      ipcRenderer.send('mcp:reply', { id: msg.id, result });
+    };
+    ipcRenderer.on('mcp:call', h);
+    ipcRenderer.send('mcp:ready');
+    return () => ipcRenderer.removeListener('mcp:call', h);
+  },
+});

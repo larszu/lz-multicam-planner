@@ -95,6 +95,10 @@ rate. The director sees the show before the first rehearsal.
 - **Templates:** football stadium, stadium event, small and large concert, church, conference — or save your own.
 - **Live from a control panel:** with *Settings → Bridge & mixer* switched on, the planner connects to [LZ Camera Bridge](https://github.com/larszu/lz-camera-bridge) (default `ws://localhost:9700`, reconnects on its own, status in the status bar). Pan, tilt and zoom the bridge reports — for example from a Broadcast Pix joystick — turn the planned camera in 2D and 3D; the camera chosen on the panel gets a dashed ring in 2D and a green tally in 3D. Each planned camera follows the bridge camera with the number in its name (*CAM 2* → 2); a different number goes in the camera's *Bridge camera* field. The plan stays as it was until you click *Apply* on the camera marked *Live*.
 - **Multiview from a mixer:** *Settings → Bridge & mixer → Multiview follows a mixer* shows programme and preview of an ATEM directly — no bridge needed, desktop app only, since a browser cannot speak the ATEM's UDP protocol — or of any mixer the bridge drives — a real ATEM as well as its *virtual mixer*, switched from a control panel. *Cameras on mixer inputs* places each camera on an input, with the input names the mixer reports; *Assign by name* matches “CAM 1” to “Cam1”. Inputs without a camera (bars, clips) show their name in the bus window. A real mixer is only shown unless *Switch this mixer from the multiview* is on; the virtual mixer takes the planner's cuts and camera names back, so tally and the panel's buttons match. AUTO dissolves here too. The bridge's switcher page opens the planner ready for this (`?bridge=ws://…:9700&mixer=1`). The browser build allows the bridge at `ws://localhost:9700`.
+- **Formats and frame masks:** a body's recording formats (sensor modes) show their size in mm and, where the data sheet gives it, in pixels; *Frame mask* puts 2.39, 1.85, 4:3, 1:1, 4:5 or 9:16 on the picture and gives the masked angle of view. Optional — without a mask the full format counts.
+- **B4 lenses on large sensors:** *Optical converter* fits an IB/E HDx converter between a B4 zoom and a PL/EF/E/FZ/MFT body: magnification, light loss and image circle from the manufacturer's data sheet go into angle of view, aperture and the coverage check. Typing a broadcast model code (`HA22x7.8BERM`) into a custom lens fills its focal range.
+- **Control route per camera:** under *Picture state*, after the protocol, say how the commands get there — direct, through a robotic head, or through a network-serial bridge with interface, line settings (baud, data bits, parity, stop bits), pinout, bridge mode and port. VISCA has its values from Sony's command list one click away; the card says when protocol and route do not fit. Addresses stay out of the plan.
+- **Assistant connection (MCP), desktop app:** *Settings → Assistant (MCP)* lets an AI assistant on the same computer work in the plan step by step — `scene_outline`, `get_node`, `place_camera`, `aim_at` (also `look_at`), `frame_shot`, `set_lens`, `move_camera`, `render_preview`, `render_top_view`, `undo`/`redo`. Off by default, only on `127.0.0.1:4191` with a token, changing the plan is a second switch, every change is one undo step, no access data is offered.
 - **Hands over to the Cable Planner:** cameras, lenses and positions travel in the `.avplan` exchange file.
 
 ## Quick start
@@ -141,6 +145,15 @@ wählt (mit den Eingangsnamen des Mischers, *Nach Namen zuordnen* hilft). Einen
 echten Mischer zeigt der Planer nur, außer *Diesen Mischer aus der Multiview
 schalten* ist an; der Mischer ohne Hardware übernimmt Schnitte und
 Kameranamen vom Planer.
+
+Optik und Steuerung: *Rahmenmaske* legt 2.39, 1.85, 9:16 … aufs Bild,
+*Optischer Konverter* setzt ein B4-Objektiv über einen IB/E-HDx-Konverter an
+einen großen Sensor (Werte vom Datenblatt), und unter *Bildzustand* steht je
+Kamera der Steuerweg: direkt, über Robotik-Kopf oder über eine
+Netzwerk-Seriell-Bridge mit Schnittstelle, Leitungswerten, Belegung, Betriebsart
+und Port. *Einstellungen → Assistent (MCP)* lässt einen KI-Assistenten auf
+diesem Rechner im Plan arbeiten — aus als Vorgabe, jede Änderung ein
+Rückgängig-Schritt.
 
 Windows-Rechner mit zwei Grafikkarten: den Installer statt der portablen
 Fassung nehmen und die Programmdatei (angezeigt unter *Einstellungen →

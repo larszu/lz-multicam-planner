@@ -73,6 +73,8 @@ export default function Calculator() {
         objektiv,
         gewaehlt.useSpeedbooster,
         gewaehlt.sensorModeIndex,
+        gewaehlt.activeMount,
+        gewaehlt.lensAdapterId,
       );
       const treffer = Object.entries(SENSORS).find(([, v]) => v.name === s.name);
       if (treffer) setSensorKey(treffer[0]);

@@ -44,13 +44,13 @@ export interface KameraBildwinkel {
 
 /** Bildwinkel einer Planer-Kamera aus Sensor, Brennweite, Extender und Squeeze. */
 export function kameraBildwinkel(
-  cam: Pick<VenueCamera, 'cameraId' | 'lensId' | 'focalLength' | 'focusDistance' | 'extenderActive' | 'useSpeedbooster' | 'sensorModeIndex' | 'activeMount'>,
+  cam: Pick<VenueCamera, 'cameraId' | 'lensId' | 'focalLength' | 'focusDistance' | 'extenderActive' | 'useSpeedbooster' | 'sensorModeIndex' | 'activeMount' | 'lensAdapterId'>,
   katalog: { customCameras: Camera[]; customLenses: Lens[] },
 ): KameraBildwinkel | null {
   const camDef = getCameraById(cam.cameraId, katalog.customCameras);
   const lensDef = getLensById(cam.lensId, katalog.customLenses);
   if (!camDef || !lensDef) return null;
-  const sensor = getEffectiveSensor(camDef, lensDef, cam.useSpeedbooster, cam.sensorModeIndex, cam.activeMount);
+  const sensor = getEffectiveSensor(camDef, lensDef, cam.useSpeedbooster, cam.sensorModeIndex, cam.activeMount, cam.lensAdapterId);
   const fov = computeFov(sensor, cam.focalLength, cam.focusDistance, cam.extenderActive, lensDef.squeeze ?? 1);
   return { camDef, lensDef, sensor, fov, hDeg: fov.horizontalDeg, vDeg: bildVDeg(fov.horizontalDeg) };
 }

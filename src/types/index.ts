@@ -7,6 +7,9 @@ export interface SensorSize {
   widthMm: number;
   heightMm: number;
   cropFactor: number;
+  /** Aufnahmeformat in Pixeln (Datenblatt). Fehlt es, kennt der Plan nur die Millimeter. */
+  pixelsW?: number;
+  pixelsH?: number;
 }
 
 // ── Camera ──
@@ -88,6 +91,10 @@ export interface AdapterInfo {
   cropSensor?: SensorSize; // forced sensor crop (e.g. 2/3" when using B4 adapter)
   /** Free-form background info displayed in the camera card when the adapter is active. */
   notes?: string;
+  /** Vergroesserung einer Korrekturoptik zwischen Objektiv und Body (Brennweite und Blende mal diesen Faktor). */
+  magnification?: number;
+  /** Groesster Bildkreis hinter der Korrekturoptik in mm (Datenblatt). */
+  imageCircleMm?: number;
 }
 
 // ── Lens image circle ──
@@ -397,6 +404,36 @@ export type AimTarget =
   | { kind: 'stage'; stageId?: string }
   | { kind: 'person'; id: string }
   | { kind: 'point'; x: number; y: number };
+/** Rahmenmasken als Seitenverhaeltnis (Breite:Hoehe). */
+export type FrameMask = '2.39' | '2.00' | '1.85' | '4:3' | '1:1' | '4:5' | '9:16';
+
+/** Wie der Steuerweg physisch laeuft. */
+export type ControlRouteVia = 'direct' | 'robotic-head' | 'serial-bridge';
+
+export type SerialInterface = 'RS-232' | 'RS-422' | 'RS-485-2w' | 'RS-485-4w';
+export type BridgeMode = 'tcp-server' | 'tcp-client' | 'udp' | 'rfc2217';
+
+/** Netzwerk-Seriell-Bridge dieses Steuerwegs. Keine Adressen: die stehen in der Anlage, nicht im Plan. */
+export interface SerialBridgePlan {
+  /** Geraet (Hersteller/Modell oder Inventarname). */
+  device?: string;
+  serial?: SerialInterface;
+  /** Steckerbelegung im Klartext. */
+  pinout?: string;
+  baud?: number;
+  dataBits?: 7 | 8;
+  parity?: 'none' | 'even' | 'odd';
+  stopBits?: 1 | 2;
+  mode?: BridgeMode;
+  port?: number;
+}
+
+export interface ControlRoute {
+  via: ControlRouteVia;
+  /** Robotik-Kopf, durch den die Kamerabefehle getunnelt werden. */
+  head?: string;
+  bridge?: SerialBridgePlan;
+}
 
 export interface VenueCamera {
   id: string;
@@ -426,6 +463,12 @@ export interface VenueCamera {
    * `camera.adaptedMounts`.
    */
   activeMount?: string;
+  /** Optischer Konverter zwischen Objektiv und Body (`data/lensAdapters.ts`), z. B. B4 an PL. */
+  lensAdapterId?: string;
+  /** Rahmenmaske innerhalb des Formats (z. B. 2.39 auf 16:9). Fehlt sie, gilt das volle Bild. */
+  frameMask?: FrameMask;
+  /** Wie die Steuerbefehle zur Kamera kommen (#164): direkt, ueber Kopf, ueber Seriell-Bridge. */
+  controlRoute?: ControlRoute;
   /**
    * Physical rig the camera is mounted on. Determines the Z (height) slider
    * range via `MOUNT_HEIGHT_RANGE` and whether the live track slider is shown
