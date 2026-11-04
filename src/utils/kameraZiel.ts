@@ -137,3 +137,56 @@ export function shotSizeLabel(t: (key: string, en: string) => string, s: ShotSiz
 export function istFestbrennweite(lens: Pick<Lens, 'focalLengthMin' | 'focalLengthMax'> | null | undefined): boolean {
   return !!lens && lens.focalLengthMin === lens.focalLengthMax;
 }
+
+/**
+ * Worauf scharfgestellt wird (#225): dieselben Ziele wie fuer die Ausrichtung
+ * plus die vordere Kante einer Buehne.
+ */
+export type FokusZiel = AimTarget | { kind: 'stage-edge'; stageId: string };
+
+/**
+ * Wo die optische Achse im Grundriss in die Buehne eintritt — die Kante, die
+ * der Kamera in Blickrichtung zugewandt ist. Waagerechter Lauf ab Kamera in
+ * Metern; `null`, wenn die Achse die Buehne verfehlt oder die Kamera darauf steht.
+ */
+export function laufBisKante(cam: VenueCamera, st: Stage): number | null {
+  const pos = effectiveCameraPos(cam);
+  const pan = (cam.pan * Math.PI) / 180;
+  const d = [Math.cos(pan), Math.sin(pan)];
+  const o = [pos.x, pos.y];
+  const lo = [st.x, st.y];
+  const hi = [st.x + st.width, st.y + st.height];
+  let ein = -Infinity;
+  let aus = Infinity;
+  for (let i = 0; i < 2; i++) {
+    if (Math.abs(d[i]) < 1e-9) {
+      if (o[i] < lo[i] || o[i] > hi[i]) return null;
+      continue;
+    }
+    const a = (lo[i] - o[i]) / d[i];
+    const b = (hi[i] - o[i]) / d[i];
+    ein = Math.max(ein, Math.min(a, b));
+    aus = Math.min(aus, Math.max(a, b));
+  }
+  if (ein > aus || ein <= 0) return null;
+  return ein;
+}
+
+/**
+ * Fokusentfernung zum Ziel. Buehnenkante: Abstand Kamera → Schnittpunkt der
+ * optischen Achse mit der senkrechten Ebene ueber der Kante, also entlang der
+ * Achse (so ist `focusDistance` gemeint). Sonst: Abstand zum Zielpunkt.
+ */
+export function fokusEntfernung(cam: VenueCamera, ziel: FokusZiel, szene: ZielSzene): number | null {
+  if (ziel.kind === 'stage-edge') {
+    const st = szene.venue.stages.find((s) => s.id === ziel.stageId);
+    const lauf = st ? laufBisKante(cam, st) : null;
+    if (lauf === null) return null;
+    const cosTilt = Math.cos((cam.tilt * Math.PI) / 180);
+    return cosTilt < 0.05 ? null : lauf / cosTilt;
+  }
+  const punkt = zielPunkt(ziel, szene);
+  if (!punkt) return null;
+  const pos = effectiveCameraPos(cam);
+  return Math.hypot(punkt.x - pos.x, punkt.y - pos.y, punkt.z - cam.z);
+}
