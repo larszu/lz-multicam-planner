@@ -67,6 +67,7 @@ export const venue: Record<string, string> = {
   'venue.toggle.labels': 'Beschriftung',
   'venue.toggle.audience': 'Publikum',
   'venue.toggle.operators': 'Kameraleute',
+  'venue.toggle.tally': 'Tally (PVW grün, PGM rot)',
   'venue.toggle.showLight': 'Showlicht',
   'venue.toggle.showLightSimple': 'Nicht in der einfachen Ansicht',
   'venue.loading': '3D-Szene wird geladen…',

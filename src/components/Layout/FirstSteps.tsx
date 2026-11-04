@@ -4,6 +4,7 @@ import { useStore } from '../../store/useStore';
 import { loadJSON, saveJSON } from '../../utils/storage';
 import { useTranslation } from '../../i18n';
 import { FIRST_STEPS_OPEN_EVENT } from './firstStepsEvent';
+import { KAMERABLICK_OFFEN_EVENT, kamerablickWuenschen } from '../Venue3D/kamerablickWunsch';
 
 // Der eine Einstieg (lzm-web 4, leise Stufe): vier Schritte, die sich durch
 // die echte Handlung abhaken. Ein Klick fuehrt zur Funktion, nicht zum Haken.
@@ -43,8 +44,14 @@ export default function FirstSteps({ activeTabId, onSelectTab }: FirstStepsProps
   }), [update]);
 
   useEffect(() => {
-    if (activeTabId === 'tab-preview' || activeTabId === 'tab-multiview') update({ viewed: true });
+    if (activeTabId === 'tab-multiview') update({ viewed: true });
   }, [activeTabId, update]);
+
+  useEffect(() => {
+    const gesehen = () => update({ viewed: true });
+    window.addEventListener(KAMERABLICK_OFFEN_EVENT, gesehen);
+    return () => window.removeEventListener(KAMERABLICK_OFFEN_EVENT, gesehen);
+  }, [update]);
 
   useEffect(() => {
     const open = () => { update({ dismissed: false }); setCollapsed(false); };
@@ -52,11 +59,12 @@ export default function FirstSteps({ activeTabId, onSelectTab }: FirstStepsProps
     return () => window.removeEventListener(FIRST_STEPS_OPEN_EVENT, open);
   }, [update]);
 
+  const zumKamerablick = () => { onSelectTab('tab-3d'); kamerablickWuenschen(); };
   const steps = [
     { id: 'camera', done: hasCamera, label: t('firstSteps.camera', 'Draw a camera into the plan'), go: () => { setEditMode('cameras'); onSelectTab('tab-2d'); } },
     { id: 'target', done: hasTarget, label: t('firstSteps.target', 'Place a person on the stage'), go: () => { setEditMode('objects'); onSelectTab('tab-2d'); } },
-    { id: 'focal', done: stored.focal, label: t('firstSteps.focal', 'Adjust the focal length'), go: () => onSelectTab('tab-preview') },
-    { id: 'view', done: stored.viewed, label: t('firstSteps.view', 'Check the picture in the preview'), go: () => onSelectTab('tab-preview') },
+    { id: 'focal', done: stored.focal, label: t('firstSteps.focal', 'Adjust the focal length'), go: zumKamerablick },
+    { id: 'view', done: stored.viewed, label: t('firstSteps.view', 'Check the picture in the camera view'), go: zumKamerablick },
   ];
   const doneCount = steps.filter((s) => s.done).length;
   const complete = doneCount === steps.length;

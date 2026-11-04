@@ -2,7 +2,7 @@ import React from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Grid, Text, PerspectiveCamera, Html, TransformControls, Billboard } from '@react-three/drei';
 import { useStore } from '../../store/useStore';
-import { useLiveCameras, useSurfaceCameraId } from '../../store/bridgeLive';
+import { useLiveCameras, useMixerFollow, useSurfaceCameraId } from '../../store/bridgeLive';
 import { getCameraById, getEffectiveSensor } from '../../data/cameras';
 import { getLensById } from '../../data/lenses';
 import { computeFov } from '../../utils/fov';
@@ -27,7 +27,7 @@ import { useIstHell } from '../../lib/useIstHell';
 import { CoverageWedge, ScenePipeline } from './ShowScene';
 import { SzenenGrund } from '../Render3D/SzenenGrund';
 import { pipelineQualitaet, renderLook } from '../Render3D/renderLook';
-import { entsorgeKameraCache, stufenWerte, type Detail, type Stufe, type StufenWerte, type Tally } from '../../avplan/scene3d';
+import { entsorgeKameraCache, stufenWerte, type Detail, type Stufe, type StufenWerte } from '../../avplan/scene3d';
 import { kameraModell, type KameraModell } from '../../utils/kameraModell';
 import { Bediener } from './KameraModell';
 import { useKameraRig } from './useKameraRig';
@@ -39,6 +39,8 @@ import CameraListPanel, { type CameraRow } from './CameraListPanel';
 import { cameraRowDetail } from './cameraRow';
 import { WEBGL_POWER_PREFERENCE } from '../../utils/gpuInfo';
 import Kamerablick from '../Preview/Kamerablick';
+import { tallyBus, tallyFarbe, tallyLampe, type TallyBus } from '../../utils/tally';
+import { KAMERABLICK_WUNSCH_EVENT, kamerablickGeoeffnet, kamerablickWunschAbholen } from './kamerablickWunsch';
 
 /** Fahrt der Blickkamera (Ansichts-Knoepfe, Klick in der Kameraliste). */
 export const FLY_EVENT = 'multicam-3d-fly';
@@ -532,15 +534,10 @@ interface CameraLook {
   showLabel: boolean;
   /** Schrifthoehe der Beschriftung in Metern — waechst mit der Halle. */
   labelSize: number;
-  tally: 'pgm' | 'pvw' | null;
+  tally: TallyBus;
   /** Durch diese Kamera wird gerade geschaut: Gehaeuse und Pyramide weg. */
   isPov: boolean;
 }
-
-// Tally wie am Mischer: Rot = Program, Gruen = Preview. In der Szene ist das
-// Bildinhalt, keine Oberflaeche — darum Farbwerte statt Token.
-const TALLY_PGM = '#D6402E';
-const TALLY_PVW = '#2F7D5C';
 
 function FovPyramid({ cam, isSelected, look }: { cam: ReturnType<typeof useStore.getState>['cameras'][0]; isSelected: boolean; look: CameraLook }) {
   const camDef = getCameraById(cam.cameraId, useStore.getState().customCameras);
@@ -605,7 +602,9 @@ function FovPyramid({ cam, isSelected, look }: { cam: ReturnType<typeof useStore
 
   // Guard nach den Hooks: ohne gueltige Kamera/Linse gibt es keine Geometrie.
   if (!geometry || look.isPov) return null;
-  const tallyColor = look.tally === 'pgm' ? TALLY_PGM : look.tally === 'pvw' ? TALLY_PVW : null;
+  const tallyColor = tallyFarbe(look.tally);
+  const linie = tallyColor ?? cam.color;
+  const betont = isSelected || !!tallyColor;
 
   return (
     // The pyramid mesh is modelled looking along -Z. Both the pitch (rotate-X)
@@ -625,8 +624,8 @@ function FovPyramid({ cam, isSelected, look }: { cam: ReturnType<typeof useStore
       {look.showFrustum && look.showVolume && (
         <mesh geometry={geometry}>
           <meshBasicMaterial
-            color={cam.color}
-            opacity={isSelected ? 0.12 : 0.06}
+            color={linie}
+            opacity={betont ? 0.12 : 0.06}
             transparent
             side={THREE.DoubleSide}
             depthWrite={false}
@@ -636,7 +635,7 @@ function FovPyramid({ cam, isSelected, look }: { cam: ReturnType<typeof useStore
       {/* Wireframe */}
       {look.showFrustum && (
         <lineSegments geometry={geometry}>
-          <lineBasicMaterial color={cam.color} opacity={isSelected ? 0.8 : 0.3} transparent />
+          <lineBasicMaterial color={linie} opacity={betont ? 0.8 : 0.3} transparent />
         </lineSegments>
       )}
       {/* Min FOV wireframe (red) */}
@@ -984,9 +983,15 @@ export default function Venue3D() {
   const { venue, cameras: planCameras, persons, backgroundPlan, updatePerson, selectCamera, selectedCameraId, programCameraId } = useStore();
   const cameras = useLiveCameras(planCameras);
   const surfaceCameraId = useSurfaceCameraId(planCameras);
+  const follow = useMixerFollow(planCameras);
   const [unlockedCameraId, setUnlockedCameraId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState<CameraEditMode>('move');
   const [prefs, updatePrefs] = useView3DPrefs();
+  const tallyStand = useMemo(() => ({
+    an: prefs.tally,
+    programId: programCameraId,
+    previewId: follow?.extern ? follow.previewId : selectedCameraId,
+  }), [prefs.tally, programCameraId, follow?.extern, follow?.previewId, selectedCameraId]);
   const schmal = useSchmal();
   const [preset, setPreset] = useState<ViewPreset>('perspective');
   const [werte, setWerte] = useState<StufenWerte>(() => stufenWerte('high'));
@@ -1023,16 +1028,27 @@ export default function Venue3D() {
     flyTo({ topOf: { widthM: venue.widthM, depthM: venue.heightM } });
   }, [venue.widthM, venue.heightM, flyTo]);
 
-  // Kamerablick (2026-10-14): dieselbe Komponente wie der Vorschau-Reiter —
-  // Bild, Overlays, Objektiv, Presets, Kamerasteuerung. Vorher flog die freie
-  // 3D-Kamera an den Standort und zeigte nur das Bild; zwei Kamerablicke mit
-  // zwei Bedienungen. Die 3D-Szene bleibt dahinter geladen, damit der Weg
-  // zurueck zu „Perspektive" sofort da ist.
+  // Kamerablick: Bild, Overlays, Objektiv, Presets, Kamerasteuerung — der
+  // einzige Kamerablick der App (#243). Die 3D-Szene bleibt dahinter geladen,
+  // damit der Weg zurueck zu „Perspektive" sofort da ist.
   const goCamera = useCallback((id: string) => {
     if (useStore.getState().selectedCameraId !== id) selectCamera(id);
     setPreset('camera');
   }, [selectCamera]);
   const kamerablick = preset === 'camera' && !!selectedCameraId;
+
+  useEffect(() => {
+    const abholen = () => {
+      if (!kamerablickWunschAbholen()) return;
+      const st = useStore.getState();
+      const id = st.selectedCameraId ?? st.cameras[0]?.id;
+      if (id) goCamera(id);
+    };
+    abholen();
+    window.addEventListener(KAMERABLICK_WUNSCH_EVENT, abholen);
+    return () => window.removeEventListener(KAMERABLICK_WUNSCH_EVENT, abholen);
+  }, [goCamera]);
+  useEffect(() => { if (kamerablick) kamerablickGeoeffnet(); }, [kamerablick]);
 
   const pickCamera = useCallback((id: string) => goCamera(id), [goCamera]);
 
@@ -1066,12 +1082,11 @@ export default function Venue3D() {
     const m = new Map<string, KameraModell>();
     for (const c of cameras) {
       const info = fovById.get(c.id);
-      // Am Pult gewaehlt = Vorschau-Tally, wie am Mischer.
-      const tally: Tally = c.id === programCameraId ? 'rot' : (c.id === selectedCameraId && programCameraId) || c.id === surfaceCameraId ? 'gruen' : 'aus';
+      const tally = tallyLampe(tallyBus(c.id, tallyStand), c.id === surfaceCameraId, tallyStand.an);
       m.set(c.id, kameraModell(c, info?.camDef, info?.lensDef, { detail, tally, deckeM: venue.ceilingHeightM }));
     }
     return m;
-  }, [cameras, fovById, detail, programCameraId, selectedCameraId, surfaceCameraId, venue.ceilingHeightM]);
+  }, [cameras, fovById, detail, tallyStand, surfaceCameraId, venue.ceilingHeightM]);
   useEffect(() => () => entsorgeKameraCache(), []);
 
   const diag = Math.hypot(venue.widthM, venue.heightM);
@@ -1187,6 +1202,7 @@ export default function Venue3D() {
                 hFovDeg={fov.horizontalDeg}
                 index={i}
                 emphasis={cam.id === selectedCameraId || cam.id === programCameraId}
+                tallyColor={tallyFarbe(tallyBus(cam.id, tallyStand))}
               />
             );
           })}
@@ -1217,7 +1233,7 @@ export default function Venue3D() {
                 showVolume: !prefs.coverage,
                 showLabel: prefs.labels,
                 labelSize,
-                tally: cam.id === programCameraId ? 'pgm' : cam.id === selectedCameraId && programCameraId ? 'pvw' : null,
+                tally: tallyBus(cam.id, tallyStand),
                 isPov: false,
               }}
             />

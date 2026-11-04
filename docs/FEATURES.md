@@ -23,7 +23,7 @@ Measured 2026-09-09: **published** — the `deploy` job ran and succeeded.
 
 LZ Multicam Planner is designed for quick, intuitive camera planning with essential features for real-world broadcast productions. Its streamlined workflow and simple interface make it perfect for fast setups and clear projects—without the complexity and feature overload of traditional CAD or architecture applications.
 
-- **Start right away:** the app opens on your last project. A small *First steps* card (draw a camera, place a person, adjust the focal length, check the preview) ticks itself off as you work; hide it anytime, *Help → First steps* brings it back.
+- **Start right away:** the app opens on your last project. A small *First steps* card (draw a camera, place a person, adjust the focal length, check the camera view) ticks itself off as you work; hide it anytime, *Help → First steps* brings it back.
 - **Modern, calm interface:** neutral surfaces, brand blue only as accent, soft rounded panels, light and dark (anthracite) theme — switch *Auto · Light · Dark* right in the header (also in Settings). Details under [Design / interface](#design--interface).
 
 ---
@@ -205,17 +205,17 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 - **Room (optional, collapsed in the sidebar):** ceiling height, floor (concrete, wood, carpet, grass, tiles, black stage floor), walls (plain colour, painted plaster, concrete, brick, wood panelling, black drape — used for the hall walls and every drawn wall in the 3D view; painted plaster takes each wall's own colour), **audience areas** and **video walls**. Add an area with *Seated area* or *Standing area*, then move, resize and rotate it in the 2D plan; rows, row gap, rise per row, first-row height and occupancy sit under *Fine-tune*. Seated areas are rows of seats on a rising stand, standing areas a loose, dense crowd on the floor; one click switches between the two. Video walls are dragged and rotated the same way (the arrow shows where the picture faces); their card also has X, Y (centre of the lower edge in plan metres), Z (lower edge above the floor), turn, width and height as numbers. Audience areas have X and Y under *Fine-tune*. Nothing here is required — without areas the 3D view fills the free floor with people by itself
 
 ### 3D Venue View
-- **Views:** *Top* (plan from above, stage at the top like in the 2D plan) and *Perspective* glide there instead of jumping. *Camera view* shows the selected camera's picture with all its controls — the same view as the *Preview* tab (see *Camera view & Preview*); *Top* or *Perspective* bring the free 3D view back
+- **Views:** *Top* (plan from above, stage at the top like in the 2D plan) and *Perspective* glide there instead of jumping. *Camera view* shows the selected camera's picture with all its controls (see *Camera view*); *Top* or *Perspective* bring the free 3D view back
 - **Camera list** on the right: number, camera, lens range @ current focal length, rig and horizontal FOV. **Click a camera to look through its lens** — opens the camera view for it. On a narrow window the list steps aside in the camera view; ‹ › switch cameras there
 - **Coverage** wedges on the floor from each camera to its focus point, with a sight line; the selected camera also shows its 3D FOV pyramid
-- **Tally** from the Multiview: Program camera red, Preview green — on the camera in 3D and in the list
+- **Tally** from the Multiview or the followed mixer: the Program camera is red, the Preview camera (the selected one, or the mixer's preview) green — lamp, label, FOV pyramid and coverage wedge. The *Tally (PVW green, PGM red)* switch in the camera list turns it off; the setting is remembered
 - **Photoreal by default:** dark arena with haze, trusses with fixtures whose beams stand in the haze, warm front light on the stage with real shadows, LED walls that glow and light the stage, floodlights over pitches, a night sky outdoors. Ambient occlusion, bloom, AgX tone mapping. One **Quality** switch: *Auto* (starts high, lowers once if the frame rate stays low), *High*, *Low*, and *Simple* — a light 3D view without lighting effects, shadows or post-processing for slow computers. A spinner covers the view until the scene has drawn its first frame
 - **Audience** from the room's audience areas — seated on seats and stands, standing with some hands raised — or, without areas, filling the free floor (centre aisle, clearance around stages, cameras, people and walls). Thousands of people with varied clothing, size and posture, instanced so they stay smooth. Space is kept free around cameras and people. Scenery only: Preview and sight lines do not take it into account; place a person if a head in the shot matters
 - **Cameras look like the real thing:** body, lens and mount are built from the catalogue and the rig — no extra input. PTZ → PTZ head (on a tripod, or with *Fixed mount* on the wall, under the ceiling from 2.5 m or close to it); broadcast camera with a box lens → studio camera with box lens, with a B4 handheld lens → shoulder-camera look; cinema → cinema body with cine prime or cine zoom (matte box on *High*); FX3 class and mirrorless → small body with cage. Tripod, pedestal, jib/Technocrane (arm length from the rig), dolly and slider (laid track, the cart follows the track offset) and shoulder rig are modelled; other rigs (cable cam, drone, scissor lift …) keep the drawn rig with the camera on top. The FOV pyramid starts at the front of the lens. With many cameras the planning view uses simpler models
 - **Camera operators** (toggle, off by default) stand at tripods, pedestals and dollies and carry shoulder cameras
 - **People on stage** appear as detailed people in every view, facing the cameras. Pose and clothing follow the object and its name: *Moderation*/*Host* speaks in a jacket or dress, *Vocal* sings into a mic, guitar and seated objects get their pose, others stand in varied poses — always the same look for the same person
 - **Light: Hall · Daylight** (with show light): *Daylight* puts the venue under the open sky — sun, sky, moon and stars from date, time, place (German cities or coordinates), the floor plan's north direction and weather (clear, partly cloudy, overcast, haze). The time slider marks sunrise, sunset, golden hour and blue hour. Stage lights stay visible by day; at night the exposure matches the hall look. Applies to the rendered camera pictures too. Times are in the computer's time zone
-- **One render pipeline for all four views:** free 3D, camera view, preview and multiview share scene, lights, materials, quality steps, AgX tone mapping, exposure and bloom (`src/components/Render3D/renderLook.ts`). Change it once and every picture follows
+- **One render pipeline for all four views:** free 3D, camera view and multiview share scene, lights, materials, quality steps, AgX tone mapping, exposure and bloom (`src/components/Render3D/renderLook.ts`). Change it once and every picture follows
 - **Show light adjustable** (right-hand bar, under *Light: Hall*): brightness, colour mood (white, warm, blue / magenta, concert colours or your own colour), haze density, fixtures (wash + beams, wash only, beams only), amount (few, normal, many) and *Point beams at the stage*. The fixtures themselves are still generated from your stages — the settings only steer them. Values live in the project (`.mcplan`), apply to preview and multiview too, and older files simply get the defaults
 - **Show light** off = evenly lit planning view with grid, but floor and wall materials stay visible. **Video wall** draws one wall per stage when the room has none; **Camera operators**, **Labels** and **Floor plan** can be toggled; all toggles are remembered
 - Rendering building blocks come from `@avplan/scene3d` (see *Shared suite packages*)
@@ -226,8 +226,8 @@ LZ Multicam Planner is designed for quick, intuitive camera planning with essent
 - Walls are built with their own thickness and keep their door and window
   openings open — jambs, sill and lintel stay standing
 
-### Camera view & Preview
-One view answers *what does this camera see?* — in the **Preview** tab and as **Camera view** in the 3D view. Same picture, same controls, same settings (overlays, presets, transition time are shared between both).
+### Camera view
+One view answers *what does this camera see?* — **Camera view** in the 3D view. Layouts and saved layout presets that still carry the former *Preview* tab load without it.
 - **Rendered by default:** the camera's picture through the same scene as the 3D view — stage, people, audience, show light, wall materials — with the lens's focal length, sensor, pan and tilt. Show light, audience and the *Simple* quality of the 3D view apply here as well
 - **3D · Simple** switch under the picture: *Simple* is the classic drawing (ground grid, sky/horizon, stage outlines, reference silhouettes); it is also shown while the 3D scene loads
 - **The angle of view comes from the lens, never from the window:** sensor, focal length, extender and anamorphic squeeze set it (`computeFov`); the picture is shown 16:9, letterboxed or pillarboxed, whatever the shape of the window. Drawing, camera view and rendered picture frame the same thing in every window size (`src/utils/bildwinkel.ts`, test `bildwinkelEinheit`)
@@ -242,13 +242,13 @@ One view answers *what does this camera see?* — in the **Preview** tab and as 
 
 ### Multiview
 - Every camera live as a tile, like the multiviewer of a vision mixer — camera, lens range, focal length and horizontal FOV on each tile
-- Large **Preview** (green) and **Program** (red) windows; Preview is always the selected camera, so 2D, 3D and Preview follow along
+- Large **Preview** (green) and **Program** (red) windows; Preview is always the selected camera, so 2D and 3D follow along
 - **CUT** (Space) and **AUTO** dissolve (Enter, duration adjustable); after a take the old program source moves to preview
 - Click a tile for preview, double-click to take it straight to program; keys 1–9 = preview, Shift+1–9 = program
 - Time-of-day timecode (25 fps) in the toolbar
 - **3D · Simple** switch in the toolbar: rendered pictures through the 3D scene (default) or the classic drawing
 - One shared renderer for all tiles; tiles render small (max. 480 px), Preview/Program larger. After a change the big windows come first and the tiles follow within a few frames instead of freezing the window. Quality lowers itself once if pictures take too long
-- Draws every camera itself — Preview and Multiview work side by side, with or without the Preview panel open
+- Draws every camera itself — it works with or without the camera view open
 
 ### Shotlist & Rig
 - **Shotlist:** *Capture shot* freezes the selected camera — position, pan, tilt, focal length, aperture, focus — as a numbered shot with a thumbnail. Several shotlists per project; name each shot, add a note, set the transition (*Off · Fast · Slow · Manual*) and the movement style of the rig. A transition that is physically too fast for the rig is flagged. Step through with Q / E, play the sequence, export the storyboard as PNG or print it / save it as PDF. Shotlists are part of the project: they are saved in the `.mcplan` (and the `.avplan` cameras slot), come back with the autosave and follow undo / redo. Opening a project saved before shotlists lived in the file takes over the shotlists this browser kept on its own whose shots point at that project's cameras; each list moves into the first such project, and a copy of the old lists stays in local storage
@@ -297,7 +297,7 @@ One view answers *what does this camera see?* — in the **Preview** tab and as 
   does not need to know MultiCam's project format; it is rebuilt on every
   export and dropped on import.
 - Dockable panel system (FlexLayout): drag, split, tab, resize
-- Layout modes: Focus (single tab) and Grid (2D and 3D on the left; Preview, Multiview and Calculator stacked on the right). In Grid mode drag a module from the tab bar onto the layout to dock it somewhere else — also one that is already open
+- Layout modes: Focus (single tab) and Grid (2D and 3D on the left; Multiview and Calculator stacked on the right). In Grid mode drag a module from the tab bar onto the layout to dock it somewhere else — also one that is already open
 - Customizable layout presets (save/load/delete)
 - Venue templates: football stadium, stadium event, small and large concert, church, conference, custom (save your own) — each with fitting audience areas and video walls
 - Export: Combined 1920px PNG containing 2D plan, 3D view, camera preview, and technical data sheet

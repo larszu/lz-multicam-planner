@@ -2,6 +2,7 @@ import { useStore } from './store/useStore';
 import Header from './components/Layout/Header';
 import { TABS } from './components/Layout/tabs';
 import FirstSteps from './components/Layout/FirstSteps';
+import { ohneEntfalleneReiter } from './components/Layout/layoutMigration';
 import StatusBar from './components/Layout/StatusBar';
 import CommandPalette, { type Command } from './components/Layout/CommandPalette';
 import { history, useHistoryShortcuts } from './store/history';
@@ -9,7 +10,6 @@ import Sidebar from './components/Sidebar/Sidebar';
 import Venue2D from './components/Venue2D/Venue2D';
 import LoadingIndicator from './components/Layout/LoadingIndicator';
 import { useBraucht3D } from './components/Render3D/kameraBild3d';
-import Kamerablick from './components/Preview/Kamerablick';
 import Multiview from './components/Multiview/Multiview';
 import Calculator from './components/Sidebar/Calculator';
 import ShotlistPanel from './components/Shotlist/ShotlistPanel';
@@ -43,16 +43,14 @@ function getSelectedIndexForTab(tabId: string) {
   switch (tabId) {
     case 'tab-3d':
       return 1;
-    case 'tab-preview':
-      return 2;
     case 'tab-multiview':
-      return 3;
+      return 2;
     case 'tab-calc':
-      return 4;
+      return 3;
     case 'tab-shotlist':
-      return 5;
+      return 4;
     case 'tab-rig':
-      return 6;
+      return 5;
     case 'tab-2d':
     default:
       return 0;
@@ -78,15 +76,12 @@ function createFocusLayoutJson(t: TFn, selectedTabId = 'tab-2d'): IJsonModel {
           children: [
             { type: 'tab', name: t('header.tab.2dPlan', '2D plan'), component: 'venue2d', id: 'tab-2d' },
             { type: 'tab', name: t('header.tab.3dView', '3D view'), component: 'venue3d', id: 'tab-3d' },
-            { type: 'tab', name: t('header.tab.preview', 'Preview'), component: 'preview', id: 'tab-preview' },
             { type: 'tab', name: t('header.tab.multiview', 'Multiview'), component: 'multiview', id: 'tab-multiview' },
             { type: 'tab', name: t('header.tab.calculator', 'Calculator'), component: 'calculator', id: 'tab-calc' },
             { type: 'tab', name: 'Shotlist', component: 'shotlist', id: 'tab-shotlist' },
-            // Kein eigener Reiter mehr fuer die Rig-Steuerung (Nutzer-Meldung
-            // 2026-09-09). Sie sitzt jetzt UNTER dem Preview, im selben
-            // Bereich: das Pult faehrt die Kamera, das Preview zeigt, was
-            // dabei herauskommt — nebeneinander zu sehen ist der ganze Sinn.
-            // Als Reiter war beides nie gleichzeitig sichtbar.
+            // Kein eigener Reiter fuer die Rig-Steuerung (Nutzer-Meldung
+            // 2026-09-09): sie sitzt im Kamerablick der 3D-Ansicht, neben dem
+            // Bild, das sie faehrt.
           ],
         },
       ],
@@ -135,18 +130,7 @@ function createGridLayoutJson(t: TFn): IJsonModel {
           children: [
             {
               type: 'tabset',
-              weight: 40,
-              id: 'ts-right-top',
-              selected: 0,
-              children: [
-                { type: 'tab', name: t('header.tab.preview', 'Preview'), component: 'preview', id: 'tab-preview' },
-              ],
-            },
-            // Eigener Block (#172): im selben Block wie die Vorschau war immer
-            // nur eines von beiden zu sehen.
-            {
-              type: 'tabset',
-              weight: 35,
+              weight: 65,
               id: 'ts-right-mid',
               selected: 0,
               children: [
@@ -155,7 +139,7 @@ function createGridLayoutJson(t: TFn): IJsonModel {
             },
             {
               type: 'tabset',
-              weight: 25,
+              weight: 35,
               id: 'ts-right-bottom',
               selected: 0,
               children: [
@@ -170,7 +154,8 @@ function createGridLayoutJson(t: TFn): IJsonModel {
 }
 
 function loadUserLayoutPresets(): Record<string, IJsonModel> {
-  return loadJSON<Record<string, IJsonModel>>(LAYOUT_PRESETS_KEY, {});
+  const roh = loadJSON<Record<string, IJsonModel>>(LAYOUT_PRESETS_KEY, {});
+  return Object.fromEntries(Object.entries(roh).map(([name, json]) => [name, ohneEntfalleneReiter(json)]));
 }
 
 // three.js steckt nur in der 3D-Ansicht; erst laden, wenn sie gebraucht wird.
@@ -191,7 +176,7 @@ function useLayoutModel(t: TFn) {
       const savedVersion = Number(localStorage.getItem(LAYOUT_VERSION_KEY) ?? '0');
       if (savedVersion === CURRENT_LAYOUT_VERSION) {
         const saved = loadJSON<IJsonModel | null>(LAYOUT_STORAGE_KEY, null);
-        if (saved) return Model.fromJson(saved);
+        if (saved) return Model.fromJson(ohneEntfalleneReiter(saved));
       }
     } catch { /* ignore corrupt data */ }
     return Model.fromJson(createFocusLayoutJson(t));
@@ -328,7 +313,6 @@ export default function App() {
   const TAB_CONFIGS: Record<string, { component: string; name: string }> = {
     'tab-2d': { component: 'venue2d', name: t('header.tab.2dPlan', '2D plan') },
     'tab-3d': { component: 'venue3d', name: t('header.tab.3dView', '3D view') },
-    'tab-preview': { component: 'preview', name: t('header.tab.preview', 'Preview') },
     'tab-multiview': { component: 'multiview', name: t('header.tab.multiview', 'Multiview') },
     'tab-calc': { component: 'calculator', name: t('header.tab.calculator', 'Calculator') },
     'tab-shotlist': { component: 'shotlist', name: 'Shotlist' },
@@ -443,8 +427,6 @@ export default function App() {
             </div>
           </Suspense>
         );
-      case 'preview':
-        return <Kamerablick />;
       case 'multiview':
         return <Multiview />;
       case 'calculator':
@@ -699,7 +681,7 @@ export default function App() {
       <StatusBar />
 
       <ExportPanel />
-      <FirstSteps activeTabId={layoutMode === 'focus' ? focusTabId : 'tab-preview'} onSelectTab={handleSelectTab} />
+      <FirstSteps activeTabId={layoutMode === 'focus' ? focusTabId : 'tab-multiview'} onSelectTab={handleSelectTab} />
       <CommandPalette commands={commands} />
       {braucht3D && <Suspense fallback={null}><KameraBildHost /></Suspense>}
 

@@ -4,13 +4,10 @@
 // Nutzer-Meldung 2026-10-14: „In 3D View gibt es ‚Camera view', das ist
 // halbwegs redundant zu Preview. Integriere alle Preview-Features da rein."
 //
-// Vorher gab es zwei Kamerablicke mit zwei Bedienungen: den Vorschau-Reiter
-// (Overlays, Objektiv-Regler, Presets, Rig-Pult) und den Kamerablick der
-// 3D-Ansicht (nur das Bild). Jetzt ist es dieselbe Komponente: der
-// Vorschau-Reiter zeigt sie, und „Kamerablick" in der 3D-Ansicht zeigt sie
-// an der Stelle der freien 3D-Kamera. Das Bild kommt in beiden Faellen aus
-// dem gemeinsamen Renderer (Render3D/kameraBild3d), nicht aus einer zweiten
-// Szene.
+// „Kamerablick" in der 3D-Ansicht zeigt sie an der Stelle der freien
+// 3D-Kamera; der fruehere Vorschau-Reiter ist entfallen (#243). Das Bild
+// kommt aus dem gemeinsamen Renderer (Render3D/kameraBild3d), nicht aus
+// einer zweiten Szene.
 //
 // #193: Der Bereich scrollt als GANZES — vorher hatte er zwei Scrollbereiche
 // (Bild+Regler oben, Rig-Pult unten), und in einem kleinen Fenster war der
@@ -69,11 +66,9 @@ const KEINE_PRESETS: PreviewPreset[] = [];
 
 // ── Bildquelle fuer Export und Shotlist ──
 //
-// Beide Kamerablicke liefern ein Bild. Angemeldet ist der zuletzt
-// eingeblendete (der 3D-Kamerablick, solange er offen ist), darunter liegt
-// der Vorschau-Reiter. Ein einfaches „wer zuletzt schreibt" hinterliesse
-// beim Schliessen des 3D-Blicks eine leere Stelle, obwohl die Vorschau noch
-// steht.
+// Angemeldet ist der zuletzt eingeblendete Kamerablick. Ist keiner offen,
+// zeichnen Export und Shotlist die gewaehlte Kamera selbst
+// (renderSelectedCameraView).
 interface Bildquelle {
   capture: () => HTMLCanvasElement | null;
   offscreen: (cssWidth?: number) => HTMLCanvasElement | null;

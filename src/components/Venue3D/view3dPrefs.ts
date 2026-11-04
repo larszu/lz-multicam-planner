@@ -18,6 +18,8 @@ export interface View3DPrefs {
   floorPlan: boolean;
   /** Kamerafrau bzw. Kameramann an Stativ, Pedestal, Dolly und Schulterkamera. */
   operators: boolean;
+  /** Tally in der Szene: Preview gruen, Program rot. */
+  tally: boolean;
   /** Kameraliste rechts ein- oder ausgeklappt. */
   listOpen: boolean;
   /**
@@ -42,6 +44,7 @@ export const DEFAULT_VIEW3D_PREFS: View3DPrefs = {
   videoBoard: false,
   floorPlan: true,
   operators: false,
+  tally: true,
   listOpen: true,
   quality: 'auto',
 };

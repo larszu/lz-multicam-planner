@@ -54,8 +54,8 @@ it — framed to the sensor, following pan, tilt and zoom.
   <img src="docs/img/preview-light.webp" alt="Rendered camera preview of a church stage with safe areas and lens data">
 </picture>
 <b>Camera view.</b> The camera's picture with its focal length, aperture
-and focus, plus safe areas, thirds and a data readout — the same view in the
-Preview tab and in the 3D view. Fold out the camera control underneath and
+and focus, plus safe areas, thirds and a data readout — *3D view → Camera
+view*. Fold out the camera control underneath and
 save the shot to a shotlist.
 </td>
 <td width="50%" valign="top">
@@ -79,7 +79,7 @@ before the first rehearsal.
 
 - **Camera and lens catalogue:** 377 cameras from 36 brands, 835 lenses from 37 brands, 49 camera rigs — almost all with a link to the manufacturer's datasheet. Adapters, extenders and your own devices included.
 - **AI floor-plan analysis:** reads walls, stages and scale from an uploaded plan, with Claude, ChatGPT, Gemini, Mistral or Grok and your own API key.
-- **One picture everywhere:** 3D view, camera view, preview and multiview render the same scene with the same light and tone mapping; the angle of view comes from sensor, focal length, extender and squeeze, shown 16:9 whatever the window shape.
+- **One picture everywhere:** 3D view, camera view and multiview render the same scene with the same light and tone mapping; the angle of view comes from sensor, focal length, extender and squeeze, shown 16:9 whatever the window shape.
 - **Depth of field from the camera data:** focus distance, aperture, focal length and sensor — the sharp zone in the picture matches the DoF numbers beside it.
 - **Show light you can set:** brightness, colour mood, haze, number and kind of fixtures — generated from your stages, stored in the project.
 - **Daylight and real camera bodies in 3D:** sun, sky and weather from date, time and place; each camera drawn as its body, lens and rig.
@@ -95,8 +95,8 @@ before the first rehearsal.
 1. [Open the planner in the browser](https://larszu.github.io/lz-multicam-planner/) or install the [desktop app](https://github.com/larszu/lz-multicam-planner/releases/latest).
 2. Start from a template (sidebar → *Templates*) or upload your floor plan.
 3. *Add* a camera, choose body and lens, drag it into position.
-4. Check the shot in *Preview* or *3D view → Camera view* (the same view); switch between cameras in *Multiview*.
-5. Save the project (`.mcplan`, `Ctrl/⌘+S`) or export a PNG sheet with plan, 3D view, preview and data. *Save* writes back to the file you opened or saved last and only asks the first time; *Save as…* (`Ctrl/⌘+Shift+S`) always asks for a name and location. The desktop app, Chrome and Edge save in place; other browsers download a new copy each time.
+4. Check the shot in *3D view → Camera view*; switch between cameras in *Multiview*. In 3D the Preview camera is green and the Program camera red; the *Tally* switch in the 3D camera list turns that off.
+5. Save the project (`.mcplan`, `Ctrl/⌘+S`) or export a PNG sheet with plan, 3D view, camera view and data. *Save* writes back to the file you opened or saved last and only asks the first time; *Save as…* (`Ctrl/⌘+Shift+S`) always asks for a name and location. The desktop app, Chrome and Edge save in place; other browsers download a new copy each time.
 
 ### Windows: dedicated graphics card
 
@@ -110,8 +110,9 @@ The app asks for the high-performance GPU on its own. On laptops with Intel and 
 
 LZ Multicam Planner zeichnet Kameras in den Raum und zeigt sofort, ob die
 Optiken passen: Grundriss mit echtem Bildwinkel, fotorealistisches 3D mit Blick
-durch jede Kamera, gerenderte Vorschau und Multiview mit Preview, Program, CUT
-und AUTO. Läuft im Browser und als Desktop-App für macOS und Windows,
+durch jede Kamera (*3D-Ansicht → Kamerablick*) und Multiview mit Preview,
+Program, CUT und AUTO. In 3D ist die Preview-Kamera grün und die
+Program-Kamera rot; der Schalter *Tally* in der Kameraliste blendet das aus. Läuft im Browser und als Desktop-App für macOS und Windows,
 kostenlos nutzbar.
 
 Live vom Pult: *Einstellungen → Bridge & Mischer* verbindet mit LZ Camera

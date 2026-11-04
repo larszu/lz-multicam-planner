@@ -144,4 +144,9 @@ const app = readFileSync(resolve(hier, '..', 'src/App.tsx'), 'utf8');
 assert.match(app, /\.\.\.TABS\.map/, 'Palette baut die Ansichten nicht aus TABS');
 assert.ok(app.includes('<CommandPalette commands={commands} />'), 'Palette ist nicht gemountet');
 
+// ── 8. Tally der 3D-Szene in den Statusfarben (#244) ────────────────────
+const tally = readFileSync(resolve(hier, '..', 'src/utils/tally.ts'), 'utf8');
+assert.ok(tally.includes(`pgm: '${token('--color-bc-signal')}'`), 'PGM-Tally weicht von --color-bc-signal ab');
+assert.ok(tally.includes(`pvw: '${token('--color-bc-green')}'`), 'PVW-Tally weicht von --color-bc-green ab');
+
 console.log('brand:check ok — Design-Vertrag 2026-10 (ADR-007) in Hell und Dunkel eingehalten');

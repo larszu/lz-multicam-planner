@@ -21,6 +21,7 @@ import { shadingLines } from '../../utils/shadingCapability';
 import { registryLines } from '../../utils/paintRegistry';
 import { useTranslation, format } from '../../i18n';
 import { WEBGL_POWER_PREFERENCE } from '../../utils/gpuInfo';
+import { renderSelectedCameraView } from '../Preview/cameraViewRenderer';
 
 export type ExportMode = 'current' | 'all' | 'widetele' | 'all-widetele';
 
@@ -71,7 +72,7 @@ export default function ExportPanel() {
     if (typeof registry.capturePreviewCanvas === 'function') {
       try { return registry.capturePreviewCanvas(); } catch { /* fall through */ }
     }
-    return null;
+    return renderSelectedCameraView(1280);
   }, []);
 
   /** Wait two animation frames + a settle delay for Konva/R3F to paint at new dimensions. */
