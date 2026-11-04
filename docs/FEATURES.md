@@ -271,6 +271,7 @@ One view answers *what does this camera see?* — **Camera view** in the 3D view
 - **Depth of field from the camera data** (quality *High*): focus distance, aperture, focal length with extender and the sensor's circle of confusion — the same numbers the panel shows. The sharp zone in the picture starts exactly at *DoF near* from `computeDof`; behind the focus plane it stays a little shorter than physics, because the renderer's blur grows linearly with distance (`src/utils/tiefenschaerfe.ts`, test `tiefenschaerfe`). On *Low* and *Simple* and in the multiview tiles it is off; while you drag the picture it pauses and comes back 200 ms after the last step
 - **Overlays** behind one button: safe areas, rule of thirds, crosshair with focus distance, data panel, viewfinder label, ground grid (*Simple*), and a **frame mask** (9:16, 4:5, 1:1, 2.39) that darkens what a vertical, square or scope delivery cuts off; invert the pan or tilt direction there too.
 - **Viewfinder label** under the picture: number in the camera colour, lens and focal length (with extender), camera, format, aperture and crop factor. ‹ › step through the lenses that fit the mounted plate — only your favourite lenses once at least two are marked — and the picture changes with them. The download button saves picture and label as one PNG, as proof which lens makes which picture
+- **Phone as viewfinder** (phone button in the viewfinder label): a QR code and a link open a page on the phone — no app, no account, the cameras travel in the link itself (`#…`, never sent to a server). It shows the phone camera's live picture with the chosen camera's frame on top: camera, format, focal length, angle of view and frame width at the subject distance in the header, ‹ › through the lens set, focal length slider, frame masks and title safe. When the target is wider than the phone camera, the frame turns yellow and says how much of it the phone can show. The phone's angle is estimated from its 35 mm equivalent (default 26 mm, marked *approximate*) or calibrated once with an object of known width at a known distance. *Back to plan* takes the lens height by hand, tilt from the motion sensor and — after aiming at the planned target and tapping once — the pan from the compass, plus a note, and makes an exchange code (`MCV1.…`). Pasted into the same dialog in the planner, it sets lens, focal length, height, tilt and pan of that camera and adds the note; the position is then dragged in the 2D plan. If the whole project is too large for one QR code, the code carries the current camera and the link carries all (`src/utils/handySucher.ts`, test `handySucher`)
 - The data panel also shows hyperfocal distance and the circle of confusion used for the sensor The picture always carries the pan/tilt HUD, rulers and the in-frame / image-circle badges
 - Pan/tilt by dragging — with the mouse or one finger; wheel or pinch with two fingers zooms the lens
 - **Focus pick:** tap a person to set the focus distance; *Lock subject* keeps focus on the person nearest the crosshair while they or the camera move
@@ -485,6 +486,10 @@ page. It can also be triggered manually via the Actions tab for testing.
 - [`docs/venue-suite-architecture.md`](venue-suite-architecture.md) —
   extends that guide with `light-planner` and a shared venue data model. The
   shared-model part is built (`@avplan/*`); the merge part is superseded too.
+
+- [`docs/ideenquellen-239-240.md`](ideenquellen-239-240.md) — idea sources
+  for #239/#240 (camera simulation, film analysis, LiDAR room capture, show
+  shot planning): what fits the core, what does not, and why.
 
 ### Shared suite packages (ADR-015)
 

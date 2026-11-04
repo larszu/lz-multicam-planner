@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
@@ -12,28 +12,35 @@ import { restoreAutosave, startAutosave } from './store/autosave';
 import { useDeviceLibrary } from './library/store';
 import { startAutoSync } from './library/autoSync';
 import { verbinden as bridgeVerbinden } from './store/bridgeLive';
+import { istSucherAufruf } from './utils/handySucher';
+import { HandySucherSeite } from './components/HandySucher/seite';
 
-// Gespeicherten UI-Zoom vor dem ersten Render anwenden (kein Flash).
-applyZoom(loadZoom());
+// Handy als Sucher (#237): eigene Seite ohne Projekt, Sicherung und Bridge.
+const handy = istSucherAufruf(window.location.search);
 
-// Das zuletzt bearbeitete Projekt zurueckholen, BEVOR gerendert wird — sonst
-// zeigt die App kurz ein leeres Projekt. Die Sicherung laeuft erst danach
-// an, damit das Wiederherstellen sich nicht selbst noch einmal schreibt.
-restoreAutosave();
-const autosave = startAutosave();
-window.addEventListener('pagehide', autosave.flush);
+if (!handy) {
+  // Gespeicherten UI-Zoom vor dem ersten Render anwenden (kein Flash).
+  applyZoom(loadZoom());
 
-// Geraetebibliothek: eigene Eintraege anmelden, gespeicherte Anmeldung
-// pruefen, hochladen und abgleichen. Laeuft neben dem ersten Rendern; der
-// Katalog traegt bis dahin den Cache.
-startAutoSync();
-void useDeviceLibrary.getState().init();
+  // Das zuletzt bearbeitete Projekt zurueckholen, BEVOR gerendert wird — sonst
+  // zeigt die App kurz ein leeres Projekt. Die Sicherung laeuft erst danach
+  // an, damit das Wiederherstellen sich nicht selbst noch einmal schreibt.
+  restoreAutosave();
+  const autosave = startAutosave();
+  window.addEventListener('pagehide', autosave.flush);
 
-// Live-Verbindung zur Kamera-Bridge, nur wenn eingeschaltet.
-bridgeVerbinden();
+  // Geraetebibliothek: eigene Eintraege anmelden, gespeicherte Anmeldung
+  // pruefen, hochladen und abgleichen. Laeuft neben dem ersten Rendern; der
+  // Katalog traegt bis dahin den Cache.
+  startAutoSync();
+  void useDeviceLibrary.getState().init();
+
+  // Live-Verbindung zur Kamera-Bridge, nur wenn eingeschaltet.
+  bridgeVerbinden();
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    {handy ? <Suspense fallback={null}><HandySucherSeite /></Suspense> : <App />}
   </React.StrictMode>,
 );

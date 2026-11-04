@@ -55,6 +55,19 @@ export function zeichneRahmenmaske(ctx: CanvasRenderingContext2D, W: number, H: 
   ctx.restore();
 }
 
+/** Bild- und Titelsicherheit (3,5 % und 5 % Rand). */
+export function zeichneSicherheitsrahmen(ctx: CanvasRenderingContext2D, W: number, H: number, alpha = 0.15): void {
+  ctx.save();
+  ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([5, 4]);
+  for (const rand of [0.035, 0.05]) {
+    const m = W * rand;
+    ctx.strokeRect(m, m * (H / W), W - m * 2, H - m * 2 * (H / W));
+  }
+  ctx.restore();
+}
+
 const rad = (d: number) => (d * Math.PI) / 180;
 const deg = (r: number) => (r * 180) / Math.PI;
 

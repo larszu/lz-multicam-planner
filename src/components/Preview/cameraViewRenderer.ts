@@ -12,7 +12,7 @@
 // Die Vorschau ruft sie fuer ihr Bild, das Multiview fuer jede Kachel —
 // keiner braucht den anderen.
 // ───────────────────────────────────────────────────────────────────────────
-import { zeichneRahmenmaske, type Rahmenmaske } from '../../utils/rahmenmaske';
+import { zeichneRahmenmaske, zeichneSicherheitsrahmen, type Rahmenmaske } from '../../utils/rahmenmaske';
 import { useStore } from '../../store/useStore';
 import { defaultWallHeight, resolveWallHeights, type ResolvedWall } from '../../utils/wallHeight';
 import { getCameraById, getEffectiveSensor } from '../../data/cameras';
@@ -933,16 +933,7 @@ export function drawCameraView(args: DrawCameraViewArgs): ProjectedPerson[] | un
 
   // ═══ OVERLAY GUIDES ═══
   // Safe areas
-  if (!bare && showSafeAreas) {
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([5, 4]);
-    const asM = W * 0.035;
-    ctx.strokeRect(asM, asM * (H / W), W - asM * 2, H - asM * 2 * (H / W));
-    const tsM = W * 0.05;
-    ctx.strokeRect(tsM, tsM * (H / W), W - tsM * 2, H - tsM * 2 * (H / W));
-    ctx.setLineDash([]);
-  }
+  if (!bare && showSafeAreas) zeichneSicherheitsrahmen(ctx, W, H);
 
   const maske = !bare && args.overlays.maske && args.overlays.maske !== 'none' ? args.overlays.maske : cam.frameMask;
   if (maske) zeichneRahmenmaske(ctx, W, H, maske);
