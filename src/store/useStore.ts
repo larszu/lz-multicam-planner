@@ -32,7 +32,8 @@ import { newProjectId, isProjectId, legacyProjectId } from '../utils/projectId';
 import { pickProjectLibrary, mergeProjectLibrary, readCarriedLibrary } from '../utils/projectLibrary';
 import { libraryCameras, libraryLenses, setProjectLibraryEntries } from '../library/registry';
 import { translate } from '../i18n';
-import type { VenueSeatingBlock, VenueVideoWall } from '../avplan/floorplan';
+import type { VenueSeatingBlock } from '../avplan/floorplan';
+import { ledWandAendern, type LedVideoWall } from '../utils/ledWand';
 import { defaultWallHeight, migrateWallHeights } from '../utils/wallHeight';
 import { adoptLegacyShotlists, normaliseShotlists } from './legacyShotlists';
 import type { PlanVorschau } from '../lib/planVorschau';
@@ -158,7 +159,7 @@ interface AppState {
   updateSeatingBlock: (id: string, updates: Partial<VenueSeatingBlock>) => void;
   removeSeatingBlock: (id: string) => void;
   addVideoWall: () => void;
-  updateVideoWall: (id: string, updates: Partial<VenueVideoWall>) => void;
+  updateVideoWall: (id: string, updates: Partial<LedVideoWall>) => void;
   removeVideoWall: (id: string) => void;
 
   // Background plan
@@ -647,7 +648,7 @@ export const useStore = create<AppState>((set, get) => ({
     projectVersion: s.projectVersion + 1,
   })),
   updateVideoWall: (id, updates) => set((s) => ({
-    venue: { ...s.venue, videoWalls: (s.venue.videoWalls ?? []).map((w) => (w.id === id ? { ...w, ...updates } : w)) },
+    venue: { ...s.venue, videoWalls: (s.venue.videoWalls ?? []).map((w) => (w.id === id ? ledWandAendern(w, updates) : w)) },
     projectVersion: s.projectVersion + 1,
   })),
   removeVideoWall: (id) => set((s) => ({

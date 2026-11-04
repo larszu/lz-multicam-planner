@@ -18,7 +18,10 @@ import { stageTopZ } from '../../utils/stageBody';
 import { coverageWedge } from '../../utils/view3dScene';
 import { publikumsBild } from '../../utils/raum';
 import { showLichtAus, showRig } from '../../utils/showRig';
-import { videowandNormal, type RaumBoden, type RaumWand, type VenueVideoWall } from '../../avplan/floorplan';
+import { videowandNormal, type RaumBoden, type RaumWand } from '../../avplan/floorplan';
+import { leinwand, ledNormal, type LedVideoWall } from '../../utils/ledWand';
+import { flaecheCanvas } from '../../utils/pixelkarte';
+import { zeichneTestbild } from '../../utils/testbild';
 import {
   HINTERGRUENDE,
   SZENEN_ZEIT,
@@ -332,12 +335,72 @@ export function ShowRig({ venue, look, werte, draussen }: { venue: Venue; look: 
 /* ── LED-Waende ── */
 const LED_FARBEN: [string, string][] = [['#ff7a2e', '#3a2bd8'], ['#2b6bff', '#b02bd8'], ['#ffb347', '#d8402b']];
 
-export function LedWalls({ walls, maxLichter }: { walls: VenueVideoWall[]; maxLichter: number }) {
+function canvasTextur(c: HTMLCanvasElement | null): THREE.Texture | null {
+  if (!c) return null;
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+/** Inhalt je Wand: Testbild, Pixelkarte oder Bild/Video aus Datei bzw. URL. */
+function useLedTexturen(walls: LedVideoWall[]): Map<string, THREE.Texture> {
+  const schluessel = JSON.stringify(walls.map((w) => [w.id, w.label, w.led]));
+  const texturen = useMemo(() => {
+    const out = new Map<string, THREE.Texture>();
+    if (typeof document === 'undefined') return out;
+    const lw = leinwand(walls);
+    walls.forEach((w) => {
+      const d = ledNormal(w.led);
+      const f = lw.flaechen.find((x) => x.id === w.id);
+      if (!d || !f) return;
+      let t: THREE.Texture | null = null;
+      if (d.inhalt === 'pixelkarte') t = canvasTextur(flaecheCanvas(f));
+      else if (d.inhalt === 'testbild') {
+        const s = Math.min(1, 2048 / Math.max(f.breite, f.hoehe));
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(f.breite * s));
+        c.height = Math.max(1, Math.round(f.hoehe * s));
+        const ctx = c.getContext('2d');
+        if (ctx) zeichneTestbild(ctx, c.width, c.height, { nummer: lw.flaechen.indexOf(f) + 1, farbe: f.farbe, label: f.label });
+        t = canvasTextur(ctx ? c : null);
+      } else if (d.inhalt === 'medien' && d.medienUrl) {
+        if (d.medienArt === 'video') {
+          const v = document.createElement('video');
+          v.crossOrigin = 'anonymous';
+          v.muted = true;
+          v.loop = true;
+          v.playsInline = true;
+          v.src = d.medienUrl;
+          void v.play().catch(() => undefined);
+          t = new THREE.VideoTexture(v);
+        } else {
+          t = new THREE.TextureLoader().setCrossOrigin('anonymous').load(d.medienUrl, undefined, undefined, () => undefined);
+        }
+        t.colorSpace = THREE.SRGBColorSpace;
+      }
+      if (t) out.set(w.id, t);
+    });
+    return out;
+  }, [schluessel]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => {
+    texturen.forEach((t) => {
+      const v = t.image as HTMLVideoElement | undefined;
+      if (typeof HTMLVideoElement !== 'undefined' && v instanceof HTMLVideoElement) { v.pause(); v.removeAttribute('src'); v.load(); }
+      t.dispose();
+    });
+  }, [texturen]);
+  return texturen;
+}
+
+export function LedWalls({ walls, maxLichter }: { walls: LedVideoWall[]; maxLichter: number }) {
+  const texturen = useLedTexturen(walls);
   const obj = useMemo(() => {
     const g = new THREE.Group();
-    walls.map(videowandNormal).forEach((w, i) => {
+    walls.forEach((roh, i) => {
+      const w = videowandNormal(roh);
       const [a, b] = LED_FARBEN[i % LED_FARBEN.length];
-      const wand = erzeugeLedWand({ breiteM: w.widthM, hoeheM: w.heightM, farbeA: a, farbeB: b, helligkeit: 1.8 });
+      const pitchMm = ledNormal(roh.led)?.pitchMm;
+      const wand = erzeugeLedWand({ breiteM: w.widthM, hoeheM: w.heightM, farbeA: a, farbeB: b, helligkeit: 1.8, pitchMm, inhalt: texturen.get(w.id) ?? null });
       if (i < maxLichter) wand.add(erzeugeLedLicht({ breiteM: w.widthM, hoeheM: w.heightM, farbe: new THREE.Color(a).lerp(new THREE.Color(b), 0.5), staerke: 1.2 }));
       // Bodenstuetzen, damit eine hoch haengende Wand nicht schwebt.
       if (w.bottomM > 0.3) {
@@ -354,7 +417,7 @@ export function LedWalls({ walls, maxLichter }: { walls: VenueVideoWall[]; maxLi
       g.add(wand);
     });
     return g;
-  }, [walls, maxLichter]);
+  }, [walls, maxLichter, texturen]);
   useEntsorgen(obj);
   return obj ? <primitive object={obj} /> : null;
 }
