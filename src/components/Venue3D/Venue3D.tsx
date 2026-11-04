@@ -1,6 +1,6 @@
 import React from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Grid, Text, PerspectiveCamera, Html, TransformControls, Billboard } from '@react-three/drei';
+import { Grid, Text, PerspectiveCamera, Html, TransformControls } from '@react-three/drei';
 import { useStore } from '../../store/useStore';
 import { useLiveCameras, useMixerFollow, useSurfaceCameraId } from '../../store/bridgeLive';
 import { getCameraById, getEffectiveSensor } from '../../data/cameras';
@@ -35,6 +35,9 @@ import { sitzblockNormal } from '../../avplan/floorplan';
 import { Figur } from './Figuren';
 import { useKulissenDaten } from './kulissenDaten';
 import { LABEL_FONT } from './labelFont';
+import KameraMarke from './KameraMarke';
+import SchaerfeKoerper3D from './SchaerfeKoerper3D';
+import { schaerfeKoerper } from '../../utils/schaerfeKoerper';
 import CameraListPanel, { type CameraRow } from './CameraListPanel';
 import { cameraRowDetail } from './cameraRow';
 import { WEBGL_POWER_PREFERENCE } from '../../utils/gpuInfo';
@@ -558,6 +561,11 @@ interface CameraLook {
   showLabel: boolean;
   /** Schrifthoehe der Beschriftung in Metern — waechst mit der Halle. */
   labelSize: number;
+  /** Nummer wie in Kameraliste und Multiview. */
+  nummer: number;
+  /** Schaerfekoerper zeigen; `dofMaxM` begrenzt ihn auf die Halle. */
+  dof: boolean;
+  dofMaxM: number;
   tally: TallyBus;
   /** Durch diese Kamera wird gerade geschaut: Gehaeuse und Pyramide weg. */
   isPov: boolean;
@@ -624,6 +632,13 @@ function FovPyramid({ cam, isSelected, look }: { cam: ReturnType<typeof useStore
     return geo;
   }, [isZoom, fovMax?.horizontalDeg, fovMax?.verticalDeg, cam.focusDistance]);
 
+  const squeeze = lensDef?.squeeze ?? 1;
+  const koerper = useMemo(
+    () => (look.dof && sensor ? schaerfeKoerper(sensor, cam, squeeze, look.dofMaxM) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [look.dof, look.dofMaxM, sensor?.widthMm, sensor?.heightMm, squeeze, cam.focalLength, cam.aperture, cam.focusDistance, cam.extenderActive],
+  );
+
   // Guard nach den Hooks: ohne gueltige Kamera/Linse gibt es keine Geometrie.
   if (!geometry || look.isPov) return null;
   const tallyColor = tallyFarbe(look.tally);
@@ -674,36 +689,12 @@ function FovPyramid({ cam, isSelected, look }: { cam: ReturnType<typeof useStore
           <lineBasicMaterial color="#22c55e" opacity={0.4} transparent />
         </lineSegments>
       )}
-      {/* Label: dreht sich zum Betrachter, damit es auch von oben lesbar ist */}
+      {koerper && <SchaerfeKoerper3D k={koerper} farbe={cam.color} beschriftung={look.labelSize} />}
       {look.showLabel && (
-        <NahKleiner groesse={look.labelSize}>
-        <Billboard position={[0, 0.35 + look.labelSize * 0.8, 0]}>
-          <Text font={LABEL_FONT} fontSize={look.labelSize} color={tallyColor ?? '#F6F5F0'} anchorX="center" anchorY="middle" fontWeight="bold"
-            outlineWidth={look.labelSize * 0.08} outlineColor="#0B1426">
-            {cam.label}
-          </Text>
-        </Billboard>
-        </NahKleiner>
+        <KameraMarke nummer={look.nummer} label={cam.label} farbe={cam.color} tally={tallyColor} groesse={look.labelSize} />
       )}
     </group>
   );
-}
-
-/**
- * Beschriftung, die aus der Naehe nicht waechst: die Schrift ist fuer den
- * Blick ueber die ganze Halle bemessen und stand sonst im Rundgang meterhoch
- * vor dem Bild.
- */
-function NahKleiner({ groesse, children }: { groesse: number; children: React.ReactNode }) {
-  const ref = useRef<THREE.Group>(null);
-  const welt = useMemo(() => new THREE.Vector3(), []);
-  useFrame(({ camera }) => {
-    const g = ref.current;
-    if (!g) return;
-    const d = camera.position.distanceTo(g.getWorldPosition(welt));
-    g.scale.setScalar(Math.min(1, Math.max(0.15, d / (groesse * 30))));
-  });
-  return <group ref={ref}>{children}</group>;
 }
 
 type CameraEditMode = 'move' | 'height' | 'pan' | 'tilt';
@@ -1004,7 +995,7 @@ function cameraFov(cam: ReturnType<typeof useStore.getState>['cameras'][0]) {
 
 export default function Venue3D() {
   const { t } = useTranslation();
-  const { venue, cameras: planCameras, persons, backgroundPlan, dropPerson, selectCamera, selectedCameraId, programCameraId } = useStore();
+  const { venue, cameras: planCameras, persons, backgroundPlan, dropPerson, selectCamera, selectedCameraId, programCameraId, showDof, toggleShowDof } = useStore();
   const cameras = useLiveCameras(planCameras);
   const surfaceCameraId = useSurfaceCameraId(planCameras);
   const follow = useMixerFollow(planCameras);
@@ -1234,7 +1225,7 @@ export default function Venue3D() {
           })}
 
           {/* Cameras with explicit unlock + gizmo editing */}
-          {cameras.map((cam) => (
+          {cameras.map((cam, i) => (
             <CameraRig
               key={cam.id}
               cam={cam}
@@ -1259,6 +1250,9 @@ export default function Venue3D() {
                 showVolume: !prefs.coverage,
                 showLabel: prefs.labels,
                 labelSize,
+                nummer: i + 1,
+                dof: showDof && !cam.dofHidden,
+                dofMaxM: diag,
                 tally: tallyBus(cam.id, tallyStand),
                 isPov: false,
               }}
@@ -1299,6 +1293,12 @@ export default function Venue3D() {
         hasFloorPlan={!!backgroundPlan}
         hasRoomWalls={!!venue.videoWalls?.length}
         stufe={stufe}
+        dof={showDof}
+        onDof={toggleShowDof}
+        onDofKamera={(id) => {
+          const c = useStore.getState().cameras.find((k) => k.id === id);
+          if (c) useStore.getState().updateCamera(id, { dofHidden: !c.dofHidden });
+        }}
       />}
     </div>
   );

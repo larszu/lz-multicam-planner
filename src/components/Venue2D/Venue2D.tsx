@@ -943,9 +943,9 @@ export default function Venue2D() {
             keine Form, sondern Stille — und zwar genau dann, wenn der
             Schaerfebereich am groessten ist).
           */
-          const band = showDof
+          const band = showDof && !cam.dofHidden
             ? dofBand(sensor, cam.focalLength, cam.aperture, cam.focusDistance,
-                      cam.extenderActive ? 2 : 1, Math.max(venue.widthM, venue.heightM))
+                      cam.extenderActive, Math.max(venue.widthM, venue.heightM))
             : null;
 
           return (

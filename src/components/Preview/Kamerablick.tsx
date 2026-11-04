@@ -47,6 +47,8 @@ import LookToggle from '../Render3D/LookToggle';
 import { bereit3D, render3D, useBedarf3D, useBildVersion3D, useKameraLook } from '../Render3D/kameraBild3d';
 import { assignPreset, groupPresets, hasPose, type PreviewPreset } from '../../utils/previewPreset';
 import { formatAperture, formatDistance, niceTicks, stepAlong, stepStop, stopsInRange } from '../../utils/lensScale';
+import { RAHMENMASKEN, type Rahmenmaske } from '../../utils/rahmenmaske';
+import SucherSchild from './SucherSchild';
 
 /** Kuerzeste sinnvolle Fokusdistanz des Reglers (m). */
 const FOCUS_MIN = 0.5;
@@ -60,8 +62,8 @@ const TRANSITION_SEC_KEY = 'multicam-preview-transition-sec';
 const OVERLAYS_KEY = 'multicam-preview-overlays';
 const STEUERUNG_KEY = 'multicam-preview-control-open';
 
-interface Overlays { grid: boolean; safeAreas: boolean; thirds: boolean; crosshair: boolean; data: boolean }
-const OVERLAYS_START: Overlays = { grid: true, safeAreas: true, thirds: false, crosshair: true, data: true };
+interface Overlays { grid: boolean; safeAreas: boolean; thirds: boolean; crosshair: boolean; data: boolean; schild: boolean; maske: Rahmenmaske }
+const OVERLAYS_START: Overlays = { grid: true, safeAreas: true, thirds: false, crosshair: true, data: true, schild: true, maske: 'none' };
 const KEINE_PRESETS: PreviewPreset[] = [];
 
 // ── Bildquelle fuer Export und Shotlist ──
@@ -164,7 +166,7 @@ export default function Kamerablick({ kopf }: KamerablickProps) {
       cam,
       bare: false,
       scene: { venue, persons, walls, cameras, customCameras, customLenses },
-      overlays: { grid: ov.grid, safeAreas: ov.safeAreas, thirds: ov.thirds, crosshair: ov.crosshair },
+      overlays: { grid: ov.grid, safeAreas: ov.safeAreas, thirds: ov.thirds, crosshair: ov.crosshair, maske: ov.maske },
       t,
       hintergrund: gerendert ? bildPuffer.current : null,
     });
@@ -172,7 +174,7 @@ export default function Kamerablick({ kopf }: KamerablickProps) {
       projectedPersons.current = projected;
       setProjectedCount(projected.length);
     }
-  }, [cam, venue, persons, walls, cameras, ov.grid, ov.safeAreas, ov.thirds, ov.crosshair, t, look]);
+  }, [cam, venue, persons, walls, cameras, ov.grid, ov.safeAreas, ov.thirds, ov.crosshair, ov.maske, t, look]);
 
   // Synchron nach jedem Render, damit Schwenken per Zug ohne Ruckeln mitgeht.
   useLayoutEffect(() => { draw(); }, [draw, imageTick, bildVersion]);
@@ -477,6 +479,8 @@ export default function Kamerablick({ kopf }: KamerablickProps) {
         <DataCell label={t('preview.data.dofNear', 'DoF Near')} value={dof.nearLimit < 0.01 ? '0 m' : `${dof.nearLimit.toFixed(2)} m`} />
         <DataCell label={t('preview.data.dofFar', 'DoF Far')} value={dof.farLimit === Infinity ? '∞' : `${dof.farLimit.toFixed(2)} m`} />
         <DataCell label={t('preview.data.dofTotal', 'DoF Total')} value={dof.totalDof === Infinity ? '∞' : `${dof.totalDof.toFixed(2)} m`} />
+        <DataCell label={t('preview.data.hyperfocal', 'Hyperfocal')} value={`${dof.hyperfocal.toFixed(1)} m`} />
+        <DataCell label={t('preview.data.coc', 'Circle of confusion')} value={`${(dof.circleOfConfusion * 1000).toFixed(1)} µm`} sub={sensor?.name} />
       </div>
     </section>
   );
@@ -503,6 +507,17 @@ export default function Kamerablick({ kopf }: KamerablickProps) {
                 onPointerLeave={handlePointerUp}
               />
             </div>
+            {ov.schild && camDef && lensDef && sensor && (
+              <SucherSchild
+                cam={cam}
+                camDef={camDef}
+                lensDef={lensDef}
+                sensor={sensor}
+                nummer={cameras.findIndex((c) => c.id === cam.id) + 1}
+                maxBreite={bildMaxBreite}
+                bild={() => canvasRef.current}
+              />
+            )}
 
             {/* ── Werkzeuge am Bild: Darstellung, Einblendungen, Fokus, Hauptaktion ── */}
             <div className="flex flex-wrap items-center gap-2">
@@ -745,6 +760,7 @@ function Einblendungen({ ov, look, onOv, invertH, invertV, onInvert }: {
     [t('preview.overlay.thirds', 'Thirds'), ov.thirds, () => onOv({ thirds: !ov.thirds })],
     [t('preview.overlay.crosshair', 'Crosshair'), ov.crosshair, () => onOv({ crosshair: !ov.crosshair })],
     [t('preview.overlay.dataPanel', 'Data panel'), ov.data, () => onOv({ data: !ov.data })],
+    [t('preview.overlay.viewfinder', 'Viewfinder label'), ov.schild, () => onOv({ schild: !ov.schild })],
     [t('preview.invertH', 'Invert H'), invertH, () => onInvert({ invertPreviewH: !invertH })],
     [t('preview.invertV', 'Invert V'), invertV, () => onInvert({ invertPreviewV: !invertV })],
   ];
@@ -764,6 +780,16 @@ function Einblendungen({ ov, look, onOv, invertH, invertV, onInvert }: {
               {label}
             </label>
           ))}
+          <div className="mt-1 border-t border-bc-border px-2 pt-1.5">
+            <div className="mb-1 text-[11px] text-bc-dim">{t('preview.overlay.mask', 'Frame mask')}</div>
+            <div className="bc-seg bc-seg-kompakt flex-wrap" role="group" aria-label={t('preview.overlay.mask', 'Frame mask')}>
+              {(['none', ...RAHMENMASKEN] as Rahmenmaske[]).map((m) => (
+                <button key={m} type="button" aria-pressed={ov.maske === m} onClick={() => onOv({ maske: m })} className="px-2 text-xs font-medium">
+                  {m === 'none' ? t('preview.overlay.maskNone', 'Off') : m}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>

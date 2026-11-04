@@ -45,6 +45,7 @@ import LibraryBadge from '../Library/LibraryBadge';
 import UploadDialog from '../Library/UploadDialog';
 import UploadStatus from '../Library/UploadStatus';
 import { libraryCameras, libraryLenses } from '../../library/registry';
+import { kompatibleObjektive, objektivWechsel } from '../../utils/sucherSchild';
 import { useDeviceLibrary } from '../../library/store';
 import { isLibraryId, type LibraryItem } from '../../library/facet';
 import {
@@ -339,15 +340,9 @@ function CameraCard({
   const activeMount = cam.activeMount ?? camDef?.mount;
   // Strict: only lenses that physically attach to the active mount.
   const isIntegrated = camDef?.mount === 'integrated';
-  const compatLenses = camDef
-    ? (isIntegrated ? integratedLensesFor(camDef.id, [...customLenses, ...bibLenses]) : getCompatibleLenses(camDef.mount, camDef.adaptedMounts, cam.activeMount))
-    : allLenses;
-  const allCompat = [
-    ...compatLenses,
-    ...(isIntegrated ? [] : [...customLenses, ...bibLenses].filter((l) => !activeMount || l.mount === activeMount || l.mount === 'universal')),
-  ];
-  // Deduplicate by id
-  const compatDeduped = [...new Map(allCompat.map((l) => [l.id, l])).values()];
+  const compatDeduped = camDef
+    ? kompatibleObjektive(camDef, cam.activeMount, customLenses, bibLenses)
+    : [...new Map([...allLenses, ...bibLenses].map((l) => [l.id, l])).values()];
   // If the currently-selected lens is incompatible with the active mount (e.g.
   // a B4 lens left over from an older project where FZ mode silently auto-
   // applied the LA-FZB1), keep it visible in the dropdown so the user can see
@@ -844,16 +839,7 @@ function CameraCard({
               onChange={(e) => {
                 if (e.target.value === '__new__') { setShowNewLens(true); return; }
                 const lens = getLensById(e.target.value) ?? customLenses.find((l) => l.id === e.target.value);
-                const supportsExtender = cam.extenderActive === 1 || !!lens?.extenderFactors?.includes(cam.extenderActive);
-                updateCamera(cam.id, {
-                  lensId: e.target.value,
-                  focalLength: lens?.focalLengthMin ?? cam.focalLength,
-                  aperture: lens?.maxApertureWide ?? cam.aperture,
-                  // Reset extender when switching to a lens that doesn't support the current value
-                  extenderActive: supportsExtender ? cam.extenderActive : 1,
-                  // Keep Speed Booster only if one exists for the new lens→body combo
-                  useSpeedbooster: speedBoosterExists(lens?.mount, camDef?.mount) ? cam.useSpeedbooster : false,
-                });
+                updateCamera(cam.id, { ...objektivWechsel(cam, lens, camDef?.mount), lensId: e.target.value });
               }}
             >
               {Object.entries(grouped).map(([mount, lenses]) => (

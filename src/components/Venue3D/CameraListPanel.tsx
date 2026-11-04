@@ -1,4 +1,4 @@
-import { FiChevronRight, FiChevronLeft } from 'react-icons/fi';
+import { FiChevronRight, FiChevronLeft, FiEye, FiEyeOff } from 'react-icons/fi';
 import type { VenueCamera } from '../../types';
 import { useTranslation } from '../../i18n';
 import type { View3DPrefs, View3DQuality } from './view3dPrefs';
@@ -22,8 +22,12 @@ type ToggleKey = 'coverage' | 'labels' | 'audience' | 'operators' | 'tally' | 's
  * zu „was sieht sie".
  */
 export default function CameraListPanel({
-  rows, selectedId, programId, povId, prefs, onPrefs, onPick, hasFloorPlan, hasRoomWalls, stufe,
+  rows, selectedId, programId, povId, prefs, onPrefs, onPick, hasFloorPlan, hasRoomWalls, stufe, dof, onDof, onDofKamera,
 }: {
+  /** Schaerfebereich zeigen (derselbe Schalter wie im 2D-Plan). */
+  dof: boolean;
+  onDof: () => void;
+  onDofKamera: (id: string) => void;
   /** Der Raum hat eigene Videowaende — dann gibt es nichts anzudeuten. */
   hasRoomWalls: boolean;
   /** Wirksame Stufe — bei Auto die, auf die gesenkt wurde. */
@@ -98,6 +102,15 @@ export default function CameraListPanel({
             </button>
           );
         })}
+        <button
+          type="button"
+          aria-pressed={dof}
+          onClick={onDof}
+          className={`rounded-bc-full px-3 py-0.5 text-[11px] font-medium ${dof ? 'bg-bc-accent-soft text-bc-text-bright' : 'bg-bc-panel-raised text-bc-muted hover:text-bc-text'}`}
+          title={t('venue.toggle.dofTitle', 'Sharp zone of each camera as a body: near limit, focus plane, far limit, hyperfocal distance')}
+        >
+          {t('venue.toggle.dof', 'Depth of field')}
+        </button>
       </div>
 
       {prefs.showLight && prefs.quality !== 'simple' && (
@@ -165,12 +178,12 @@ export default function CameraListPanel({
           const selected = cam.id === selectedId;
           const program = cam.id === programId;
           return (
-            <li key={cam.id}>
+            <li key={cam.id} className="flex items-start gap-1">
               <button
                 type="button"
                 onClick={() => onPick(cam.id)}
                 aria-current={cam.id === povId ? 'true' : undefined}
-                className={`w-full flex items-start gap-2 rounded-bc-m px-2.5 py-1.5 text-left ${selected ? 'bg-bc-accent-soft' : 'hover:bg-bc-hover'}`}
+                className={`min-w-0 flex-1 flex items-start gap-2 rounded-bc-m px-2.5 py-1.5 text-left ${selected ? 'bg-bc-accent-soft' : 'hover:bg-bc-hover'}`}
               >
                 <span
                   className="mt-0.5 w-6 h-6 shrink-0 flex items-center justify-center rounded-bc-s text-[11px] font-bold text-bc-on-media"
@@ -191,6 +204,18 @@ export default function CameraListPanel({
                   <span className="block text-[10px] text-bc-muted">{t('venue.list.hfov', 'H FOV')}</span>
                 </span>
               </button>
+              {dof && (
+                <button
+                  type="button"
+                  onClick={() => onDofKamera(cam.id)}
+                  aria-pressed={!cam.dofHidden}
+                  aria-label={`${t('venue.list.dofCamera', 'Depth of field of this camera')} · ${cam.label}`}
+                  title={t('venue.list.dofCamera', 'Depth of field of this camera')}
+                  className="mt-1.5 grid h-7 w-7 shrink-0 place-items-center rounded-bc-full text-bc-dim hover:bg-bc-hover hover:text-bc-text-bright"
+                >
+                  {cam.dofHidden ? <FiEyeOff size={13} /> : <FiEye size={13} />}
+                </button>
+              )}
             </li>
           );
         })}

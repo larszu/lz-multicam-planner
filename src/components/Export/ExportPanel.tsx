@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { kontrastText } from '../../utils/color';
 import { useStore, APP_VERSION } from '../../store/useStore';
 import { getCameraById, getEffectiveSensor, getAdapterInfo } from '../../data/cameras';
 import { getLensById } from '../../data/lenses';
@@ -137,14 +138,27 @@ export default function ExportPanel() {
     // ── Header ──
     ctx.fillStyle = '#1a1d27';
     ctx.fillRect(0, 0, EW, headerH);
+    // Nummer in der Kamerafarbe wie in Liste, 3D und Multiview (#233).
+    const nummer = cameras.findIndex((c) => c.id === targetCam.id) + 1;
+    ctx.fillStyle = targetCam.color;
+    ctx.beginPath();
+    ctx.arc(padding + 22, 40, 22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = kontrastText(targetCam.color);
+    ctx.font = 'bold 22px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(nummer), padding + 22, 41);
+    ctx.textBaseline = 'alphabetic';
+    const textX = padding + 56;
     ctx.fillStyle = '#3b82f6';
     ctx.font = 'bold 28px sans-serif';
     ctx.textAlign = 'left';
     const variant = opts?.variantLabel ? ` — ${opts.variantLabel}` : '';
-    ctx.fillText(`${targetCam.label}${variant} — ${camDef.manufacturer} ${camDef.model}`, padding, 36);
+    ctx.fillText(`${targetCam.label}${variant} — ${camDef.manufacturer} ${camDef.model}`, textX, 36);
     ctx.fillStyle = '#e5e7eb';
     ctx.font = '16px sans-serif';
-    ctx.fillText(format(t('preview.export.lensLine', 'Lens: {mfr} {model} @ {fl}mm'), { mfr: lensDef.manufacturer, model: lensDef.model, fl: focalLength.toFixed(1) }), padding, 60);
+    ctx.fillText(format(t('preview.export.lensLine', 'Lens: {mfr} {model} @ {fl}mm'), { mfr: lensDef.manufacturer, model: lensDef.model, fl: focalLength.toFixed(1) }), textX, 60);
     ctx.textAlign = 'right';
     ctx.fillStyle = '#9ca3af';
     ctx.font = '14px sans-serif';

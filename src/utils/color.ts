@@ -39,3 +39,15 @@ export function alphaSuffix(opacity: number): string {
     .toString(16)
     .padStart(2, '0');
 }
+
+/** Schrift auf einer Kamerafarbe: dunkel auf hellen Farben, hell auf dunklen (WCAG-Luminanz). */
+export function kontrastText(hex: string): '#0b1426' | '#ffffff' {
+  const full = expandHex(hex);
+  if (!/^#[0-9a-f]{6}$/i.test(full)) return '#ffffff';
+  const lin = (o: number) => {
+    const c = parseInt(full.slice(o, o + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const l = 0.2126 * lin(1) + 0.7152 * lin(3) + 0.0722 * lin(5);
+  return l > 0.179 ? '#0b1426' : '#ffffff';
+}

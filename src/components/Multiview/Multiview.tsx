@@ -13,8 +13,18 @@ import { loadJSON, saveJSON } from '../../utils/storage';
 import { format, useTranslation } from '../../i18n';
 import type { VenueCamera } from '../../types';
 import { timecodeOfDay } from './timecode';
+import { FiDownload, FiGrid } from 'react-icons/fi';
+import { renderTestbild } from '../../utils/testbild';
+import { kontrastText } from '../../utils/color';
+import {
+  BILDRATEN, KACHEL_AUFLOESUNGEN, dateinameTeil, formatBildrate, fusszeile, pngSpeichern, wandLayout, zeichneWand,
+  type KachelAufloesung, type WandKachel,
+} from '../../utils/multiviewWand';
 
 const AUTO_SECONDS_KEY = 'multicam-mv-auto-seconds';
+const TILE_RES_KEY = 'multicam-mv-tile-res';
+const TESTBILD_KEY = 'multicam-mv-test-pattern';
+const FPS_KEY = 'multicam-mv-fps';
 /** Rechenzeit je Bild fuer Kacheln, bevor der Rest aufs naechste Bild wartet. */
 const BUDGET_MS = 12;
 
@@ -53,6 +63,26 @@ export default function Multiview() {
 
   const [autoSeconds, setAutoSeconds] = useState(() => loadJSON<number>(AUTO_SECONDS_KEY, 1));
   const [mixTo, setMixTo] = useState<string | null>(null);
+  const [tileRes, setTileRes] = useState<KachelAufloesung>(() => {
+    const v = loadJSON<number>(TILE_RES_KEY, 1);
+    return (KACHEL_AUFLOESUNGEN as readonly number[]).includes(v) ? v as KachelAufloesung : 1;
+  });
+  const [testbild, setTestbild] = useState<ReadonlySet<string>>(() => new Set(loadJSON<string[]>(TESTBILD_KEY, [])));
+  const [fps, setFps] = useState(() => loadJSON<number>(FPS_KEY, 25));
+  const tileResRef = useRef(tileRes);
+  useEffect(() => { tileResRef.current = tileRes; }, [tileRes]);
+  const testbildRef = useRef(testbild);
+  useEffect(() => { testbildRef.current = testbild; }, [testbild]);
+  const testbildSetzen = (next: ReadonlySet<string>) => {
+    setTestbild(next);
+    saveJSON(TESTBILD_KEY, [...next]);
+  };
+  const testbildUmschalten = (id: string) => {
+    const next = new Set(testbild);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    testbildSetzen(next);
+  };
+  const alleTestbild = cameras.length > 0 && cameras.every((c) => testbild.has(c.id));
 
   const rootRef = useRef<HTMLDivElement>(null);
   const pvwRef = useRef<HTMLCanvasElement>(null);
@@ -148,11 +178,20 @@ export default function Multiview() {
       if (tcRef.current) tcRef.current.textContent = timecodeOfDay(new Date());
 
       const r3 = lookRef.current === 'rendered' && bereit3D();
+      const s = useStore.getState();
+      const tb = testbildRef.current;
+      const res = tileResRef.current;
       const render = (id: string, el: HTMLCanvasElement, w: number, dpr: number, rolle: BildRolle) => {
-        if (!(r3 && render3D(id, el, w, dpr, rolle))) renderCamera(id, el, w, dpr);
+        const f = rolle === 'kachel' ? res : 1;
+        const i = s.cameras.findIndex((c) => c.id === id);
+        if (tb.has(id) && i >= 0) {
+          const c = s.cameras[i];
+          renderTestbild(el, w, dpr, { nummer: i + 1, farbe: c.color, label: c.label });
+        } else if (!(r3 && render3D(id, el, w * f, dpr, rolle))) renderCamera(id, el, w * f, dpr);
+        el.style.width = '100%';
+        el.style.height = 'auto';
       };
 
-      const s = useStore.getState();
       const dpr = window.devicePixelRatio || 1;
       const pvw = pvwRef.current;
       const pgm = pgmRef.current;
@@ -163,7 +202,7 @@ export default function Multiview() {
       const pgmW = widthOf(pgm);
 
       const mix = mixRef.current;
-      const key = [r3, bildVersion3D(), wallSurfaces.version, s.cameras, s.persons, s.venue, s.walls, s.customCameras, s.customLenses, s.language, previewRef.current, s.programCameraId, dpr, pvwW, pgmW, ...tileW];
+      const key = [r3, tb, res, bildVersion3D(), wallSurfaces.version, s.cameras, s.persons, s.venue, s.walls, s.customCameras, s.customLenses, s.language, previewRef.current, s.programCameraId, dpr, pvwW, pgmW, ...tileW];
       if (key.length !== lastKey.length || key.some((v, i) => v !== lastKey[i])) {
         lastKey = key;
         offen = [];
@@ -231,6 +270,31 @@ export default function Multiview() {
     cameras.find((c) => c.id === id)?.label
     ?? (extern && eingang ? inputName(follow.bus.inputs, eingang) : '—');
 
+  const busTitel = (bus: 'pvw' | 'pgm') => bus === 'pvw'
+    ? `${t('multiview.preview', 'PREVIEW')} · ${labelOf(previewId, follow?.bus.preview)}`
+    : `${t('multiview.program', 'PROGRAM')} · ${labelOf(mixTo ?? programId, follow?.bus.program)}`;
+
+  const wandSpeichern = () => {
+    const s = useStore.getState();
+    const kachelVon = (id: string | null, bild: HTMLCanvasElement | null): WandKachel | null => {
+      const i = s.cameras.findIndex((c) => c.id === id);
+      if (i < 0) return null;
+      const c = s.cameras[i];
+      const tally = c.id === programId ? 'pgm' : c.id === previewId ? 'pvw' : null;
+      return { bild, nummer: i + 1, farbe: c.color, label: c.label, tally };
+    };
+    const kacheln = s.cameras.map((c) => kachelVon(c.id, tileRefs.current.get(c.id) ?? null)!);
+    const probe = tileRefs.current.get(s.cameras[0]?.id ?? '');
+    const bild = zeichneWand({
+      layout: wandLayout(kacheln.length),
+      pvw: { kachel: kachelVon(previewId, pvwRef.current), titel: busTitel('pvw') },
+      pgm: { kachel: kachelVon(programId, pgmRef.current), titel: busTitel('pgm') },
+      kacheln,
+      fuss: fusszeile(t, { projekt: s.venue.name, datum: new Date(), fps, kachelW: probe?.width ?? 0, kachelH: probe?.height ?? 0 }),
+    });
+    pngSpeichern(bild, `multiview_${dateinameTeil(s.venue.name)}_${formatBildrate(fps)}fps.png`);
+  };
+
   if (cameras.length === 0) {
     return (
       <div className="flex h-full items-center justify-center p-6 text-sm text-bc-dim">
@@ -259,6 +323,22 @@ export default function Multiview() {
           </span>
         )}
         <LookToggle value={look} onChange={setLook} laedt={laedt3D} />
+        <button
+          type="button"
+          aria-pressed={alleTestbild}
+          onClick={() => testbildSetzen(alleTestbild ? new Set() : new Set(cameras.map((c) => c.id)))}
+          title={t('multiview.testPatternHint', 'Test pattern instead of the scene on every tile — the grid button on a tile switches just that one')}
+          className={`flex items-center gap-1 border px-2 py-1 text-xs ${alleTestbild ? 'border-bc-accent bg-bc-accent-soft text-bc-text-bright' : 'border-bc-border hover:bg-bc-hover'}`}
+        >
+          <FiGrid size={12} /> {t('multiview.testPattern', 'Test pattern')}
+        </button>
+        <div className="bc-seg bc-seg-kompakt" role="group" aria-label={t('multiview.tileRes', 'Tile resolution')} title={t('multiview.tileResHint', 'Render the tiles at a lower resolution so many cameras stay smooth')}>
+          {KACHEL_AUFLOESUNGEN.map((r) => (
+            <button key={r} type="button" aria-pressed={tileRes === r} onClick={() => { setTileRes(r); saveJSON(TILE_RES_KEY, r); }} className="px-2 text-[11px] font-medium">
+              {r === 1 ? '1/1' : `1/${Math.round(1 / r)}`}
+            </button>
+          ))}
+        </div>
         <button
           type="button"
           onClick={cut}
@@ -294,11 +374,28 @@ export default function Multiview() {
           />
           s
         </label>
+        <select
+          value={fps}
+          onChange={(e) => { const v = Number(e.target.value); setFps(v); saveJSON(FPS_KEY, v); }}
+          className="border border-bc-border bg-bc-panel-raised px-1 py-0.5 text-xs text-bc-text"
+          aria-label={t('multiview.fps', 'Frame rate for the PNG')}
+          title={t('multiview.fps', 'Frame rate for the PNG')}
+        >
+          {BILDRATEN.map((r) => <option key={r} value={r}>{formatBildrate(r)} fps</option>)}
+        </select>
+        <button
+          type="button"
+          onClick={wandSpeichern}
+          title={t('multiview.pngHint', 'Save the whole wall as PNG — footer with project, date, frame rate and tile resolution')}
+          className="flex items-center gap-1 border border-bc-border px-2 py-1 text-xs hover:bg-bc-hover"
+        >
+          <FiDownload size={12} /> PNG
+        </button>
       </div>
 
       <div className="grid grid-cols-2 gap-1 p-1">
-        <BusWindow tally="pvw" title={`${t('multiview.preview', 'PREVIEW')} · ${labelOf(previewId, follow?.bus.preview)}`} canvasRef={pvwRef} />
-        <BusWindow tally="pgm" title={`${t('multiview.program', 'PROGRAM')} · ${labelOf(mixTo ?? programId, follow?.bus.program)}`} canvasRef={pgmRef} />
+        <BusWindow tally="pvw" title={busTitel('pvw')} canvasRef={pvwRef} />
+        <BusWindow tally="pgm" title={busTitel('pgm')} canvasRef={pgmRef} />
       </div>
 
       <div className="grid gap-1 px-1 pb-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
@@ -306,27 +403,41 @@ export default function Multiview() {
           const onPgm = cam.id === programId || cam.id === mixTo;
           const onPvw = !onPgm && cam.id === previewId;
           return (
-            <button
-              key={cam.id}
-              type="button"
-              onClick={() => vorschau(cam.id)}
-              onDoubleClick={() => takeDirect(cam.id)}
-              title={t('multiview.tileHint', 'Click: preview · Double-click: straight to program')}
-              className={`relative block border-2 text-left ${onPgm ? 'border-bc-red' : onPvw ? 'border-bc-green' : 'border-bc-border'}`}
-            >
-              <canvas
-                ref={(el) => { if (el) tileRefs.current.set(cam.id, el); else tileRefs.current.delete(cam.id); }}
-                className="block w-full"
-              />
-              <span className="absolute left-0 top-0 max-w-full truncate bg-bc-scrim px-1 font-mono text-[10px] text-bc-on-media">
-                {lensLine(cam)}
-              </span>
-              <span
-                className={`absolute bottom-0 left-0 right-0 truncate px-1 py-0.5 text-center font-mono text-[10px] font-semibold ${onPgm ? 'bg-bc-red text-bc-on-media' : onPvw ? 'bg-bc-green text-bc-on-media' : 'bg-bc-scrim text-bc-on-media'}`}
+            <div key={cam.id} className={`relative border-2 ${onPgm ? 'border-bc-red' : onPvw ? 'border-bc-green' : 'border-bc-border'}`}>
+              <button
+                type="button"
+                onClick={() => vorschau(cam.id)}
+                onDoubleClick={() => takeDirect(cam.id)}
+                title={t('multiview.tileHint', 'Click: preview · Double-click: straight to program')}
+                className="block w-full text-left"
               >
-                {i < 9 ? `${i + 1} · ` : ''}{cam.label}
-              </span>
-            </button>
+                <canvas
+                  ref={(el) => { if (el) tileRefs.current.set(cam.id, el); else tileRefs.current.delete(cam.id); }}
+                  className="block w-full"
+                />
+                <span className="absolute left-0 top-0 max-w-full truncate bg-bc-scrim px-1 pr-8 font-mono text-[10px] text-bc-on-media">
+                  {lensLine(cam)}
+                </span>
+                <span
+                  className={`absolute bottom-0 left-0 right-0 flex items-center gap-1 truncate px-1 py-0.5 font-mono text-[10px] font-semibold ${onPgm ? 'bg-bc-red text-bc-on-media' : onPvw ? 'bg-bc-green text-bc-on-media' : 'bg-bc-scrim text-bc-on-media'}`}
+                >
+                  <span className="grid h-4 min-w-4 shrink-0 place-items-center rounded-bc-full px-1 text-[10px] font-bold" style={{ background: cam.color, color: kontrastText(cam.color) }}>
+                    {i + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-center">{cam.label}</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => testbildUmschalten(cam.id)}
+                aria-pressed={testbild.has(cam.id)}
+                aria-label={`${t('multiview.testPatternTile', 'Test pattern on this tile')} · ${cam.label}`}
+                title={t('multiview.testPatternTile', 'Test pattern on this tile')}
+                className={`absolute right-0 top-0 grid h-6 w-6 place-items-center ${testbild.has(cam.id) ? 'bg-bc-accent text-bc-accent-text' : 'bg-bc-scrim text-bc-on-media hover:bg-bc-hover'}`}
+              >
+                <FiGrid size={12} />
+              </button>
+            </div>
           );
         })}
       </div>
