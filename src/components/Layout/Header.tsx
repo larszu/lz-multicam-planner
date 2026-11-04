@@ -1,5 +1,6 @@
-import { useStore, APP_VERSION } from '../../store/useStore';
-import { FiCamera, FiBox, FiSliders, FiSave, FiUpload, FiDownload, FiX, FiCheck, FiMapPin, FiPlus, FiSettings, FiRotateCcw, FiRotateCw } from 'react-icons/fi';
+import { useStore, APP_VERSION, hatZwischenablage } from '../../store/useStore';
+import { auswahlGroesse, bereinigt } from '../../utils/auswahl';
+import { FiCamera, FiBox, FiSliders, FiSave, FiUpload, FiDownload, FiX, FiCheck, FiMapPin, FiPlus, FiSettings, FiRotateCcw, FiRotateCw, FiCopy, FiClipboard, FiTrash2 } from 'react-icons/fi';
 import { history, useHistoryState } from '../../store/history';
 import { toVenueExchange, parseVenueExchange } from '../../utils/venueExchange';
 import { cameraListOf, buildAvPlanExport } from '../../store/avplanExport';
@@ -69,6 +70,7 @@ export default function Header({
   const editModes = useMemo(() => getEditModes(t), [t]);
   const { venue, projectVersion, lastSavedVersion, newProject, editGroups, setEditMode, avForeign, showForeign, toggleShowForeign } = useStore();
   const { canUndo, canRedo } = useHistoryState();
+  const ausgewaehlt = useStore((s) => auswahlGroesse(bereinigt(s.auswahl, s.cameras, s.persons)));
   const modKey = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
   const hasForeignLighting = !!(avForeign.lighting && Array.isArray((avForeign.lighting as { fixtures?: unknown }).fixtures) && (avForeign.lighting as { fixtures: unknown[] }).fixtures.length > 0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -429,6 +431,16 @@ export default function Header({
               </MenuItem>
               <MenuItem icon={<FiRotateCw size={13} />} disabled={!canRedo} onClick={() => { close(); history.redo(); }} note={`${modKey}+Shift+Z`}>
                 {t('app.menu.redo', 'Redo')}
+              </MenuItem>
+              <MenuSeparator />
+              <MenuItem icon={<FiCopy size={13} />} disabled={ausgewaehlt === 0} onClick={() => { close(); useStore.getState().auswahlKopieren(); }} note={`${modKey}+C`}>
+                {t('app.menu.copy', 'Copy')}
+              </MenuItem>
+              <MenuItem icon={<FiClipboard size={13} />} disabled={!hatZwischenablage()} onClick={() => { close(); useStore.getState().einfuegen(); }} note={`${modKey}+V`}>
+                {t('app.menu.paste', 'Paste')}
+              </MenuItem>
+              <MenuItem icon={<FiTrash2 size={13} />} disabled={ausgewaehlt === 0} onClick={() => { close(); useStore.getState().auswahlLoeschen(); }} note={t('app.menu.deleteKey', 'Del')}>
+                {ausgewaehlt > 1 ? format(t('app.menu.deleteSelectionN', 'Delete {n} selected'), { n: ausgewaehlt }) : t('app.menu.deleteSelection', 'Delete selected')}
               </MenuItem>
               <MenuSeparator />
               <MenuHeading>{t('header.editMode', 'Edit mode')}</MenuHeading>

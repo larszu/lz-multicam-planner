@@ -1,6 +1,7 @@
 import { useStore, OBJECT_PRESETS } from '../../store/useStore';
 import { CAMERAS, getCameraById, getAdapterInfo, getEffectiveSensor, getCoverageStatus, getSpeedBooster, speedBoosterExists } from '../../data/cameras';
 import { LENSES, getLensById, getCompatibleLenses, pickInitialMountAndLens, integratedLensesFor, lensFitsCamera, GENERIC_INTEGRATED_LENS } from '../../data/lenses';
+import { SITZT_AUF_STUHL, STUHL_BLICK_DEG } from '../../utils/auswahl';
 import { computeFov, computeDof } from '../../utils/fov';
 import { checkPresets, presetRows, type PresetFinding } from '../../utils/ptzPresets';
 import { conflictsForCamera, conflictText } from '../../utils/sightline';
@@ -2130,7 +2131,8 @@ export default function Sidebar() {
     cameras, addCamera, venue, setVenue, showAllFov, toggleShowAllFov, showDof, toggleShowDof, clearAll,
     pixelsPerMeter, setPixelsPerMeter,
     addStage, removeStage, updateStage,
-    persons, addPerson, addStageObject, removePerson, updatePerson,
+    persons, addPerson, addStageObject, removePerson, updatePerson, seatPerson,
+    auswahl, setAuswahl, auswahlUmschalten,
     backgroundPlan, setBackgroundPlan,
     walls, addWall, removeWall, updateWall, wallSnap, setWallSnap,
   } = useStore();
@@ -2769,12 +2771,48 @@ export default function Sidebar() {
                 p.objectType === 'lectern' ? '🎙️' :
                 p.objectType === 'schneetiger' ? '🐅' :
                 p.objectType === 'custom' ? '◇' : '👤';
+              const gewaehlt = auswahl.personIds.includes(p.id);
+              const stuehle = SITZT_AUF_STUHL.has(p.objectType) ? persons.filter((c) => c.objectType === 'chair' && (c.id === p.seatedOn || !persons.some((o) => o.seatedOn === c.id))) : [];
               return (
-                <div key={p.id} className="flex items-center gap-2 bg-bc-dark p-1.5 border border-bc-border">
-                  <span className="text-bc-dim text-[10px] w-6 text-center">{icon}</span>
+                <div key={p.id} className={`flex flex-wrap items-center gap-2 bg-bc-dark p-1.5 border ${gewaehlt ? 'border-bc-accent' : 'border-bc-border'}`}>
+                  <button
+                    type="button"
+                    className="text-bc-dim text-[10px] w-6 text-center"
+                    aria-pressed={gewaehlt}
+                    title={t('sidebar.obj.select', 'Select (Shift/Ctrl/Cmd: add to selection)')}
+                    onClick={(e) => (e.shiftKey || e.metaKey || e.ctrlKey ? auswahlUmschalten('person', p.id) : setAuswahl({ cameraIds: [], personIds: [p.id] }))}
+                  >
+                    {icon}
+                  </button>
                   <input className="bg-transparent text-bc-text-bright text-xs w-16 outline-none" value={p.label}
                     onChange={(e) => updatePerson(p.id, { label: e.target.value })} />
                   <span className="text-bc-dim">{p.height}m</span>
+                  {p.objectType === 'chair' && (
+                    <label className="flex items-center gap-0.5 text-[10px] text-bc-muted" title={t('sidebar.obj.facing.title', 'Direction the seat faces in the plan: 0° right, 90° down, 180° left, 270° up')}>
+                      {t('sidebar.obj.facing', 'Facing')}
+                      <input
+                        type="number"
+                        className="w-11 bg-bc-panel border border-bc-border px-1 py-0.5 text-bc-text-bright text-[10px] tabular-nums"
+                        step={15}
+                        value={Math.round(p.facingDeg ?? STUHL_BLICK_DEG)}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          if (Number.isFinite(v)) updatePerson(p.id, { facingDeg: ((v % 360) + 360) % 360 });
+                        }}
+                      />°
+                    </label>
+                  )}
+                  {stuehle.length > 0 && (
+                    <select
+                      className="bg-bc-panel border border-bc-border px-1 py-0.5 text-bc-text-bright text-[10px]"
+                      value={p.seatedOn ?? ''}
+                      aria-label={t('sidebar.obj.seat', 'Seat on a chair')}
+                      onChange={(e) => seatPerson(p.id, e.target.value || null)}
+                    >
+                      <option value="">{t('sidebar.obj.seatNone', 'Not seated')}</option>
+                      {stuehle.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                    </select>
+                  )}
                   <input
                     type="color"
                     className="w-5 h-5 border border-bc-border cursor-pointer bg-transparent"

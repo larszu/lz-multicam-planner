@@ -6,6 +6,7 @@ import { ohneEntfalleneReiter } from './components/Layout/layoutMigration';
 import StatusBar from './components/Layout/StatusBar';
 import CommandPalette, { type Command } from './components/Layout/CommandPalette';
 import { history, useHistoryShortcuts } from './store/history';
+import { useAuswahlTasten } from './lib/useAuswahlTasten';
 import Sidebar from './components/Sidebar/Sidebar';
 import Venue2D from './components/Venue2D/Venue2D';
 import LoadingIndicator from './components/Layout/LoadingIndicator';
@@ -188,6 +189,7 @@ export default function App() {
   const { sidebarCollapsed, setSidebarCollapsed } = useStore();
   const braucht3D = useBraucht3D();
   useHistoryShortcuts();
+  useAuswahlTasten();
   const idRepairCount = useStore((state) => state.lastIdRepair);
   const dismissIdRepair = useStore((state) => state.dismissIdRepair);
   const libraryMerge = useStore((state) => state.lastLibraryMerge);

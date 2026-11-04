@@ -278,6 +278,14 @@ export interface ReferencePerson {
   color?: string;
   /** When true, the object can't be dragged in the 2D/3D plan. */
   locked?: boolean;
+  /** Blickrichtung im Plan in Grad wie der Kamera-Pan (0 = +x, 90 = +y).
+   *  Stuehle: wohin die Sitzflaeche zeigt. Personen ohne Angabe blicken zu
+   *  den Kameras (#250). */
+  facingDeg?: number;
+  /** Id des Stuhls, auf dem die Person sitzt; geht mit, wenn er bewegt wird. */
+  seatedOn?: string;
+  /** Hoehe der Sitzflaeche dieses Stuhls in Metern. */
+  seatHeight?: number;
 }
 
 // ── Background floor plan ──
