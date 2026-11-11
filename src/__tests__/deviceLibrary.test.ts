@@ -80,7 +80,35 @@ describe('facet mapping', () => {
       category: 'Lens',
       sourceUrl: 'https://x.example/ds.pdf',
       description: 'Box lens 107x, 4K Premier',
+      // Brennweite und Anschluss sind keine multicam-Eigenschaft: sie gehen
+      // in den KERN, damit jeder Planner sie lesen kann. Den Antrieb traegt
+      // der Server aus der Typenbezeichnung nach.
+      specs: {
+        kind: 'lens',
+        focalMinMm: ua107.focalLengthMin,
+        focalMaxMm: ua107.focalLengthMax,
+        apertureWide: ua107.maxApertureWide,
+        zoomRatio: Math.round((ua107.focalLengthMax / ua107.focalLengthMin) * 10) / 10,
+        ...(ua107.extenderFactors?.length ? { extenderFactors: ua107.extenderFactors } : {}),
+      },
+      interfaces: [{ kind: 'lens-mount', standard: ua107.mount.toLowerCase(), role: 'requires' }],
     });
+  });
+
+  it('proposal core: eine Kamera BIETET ihren Anschluss, adaptierte mit Hinweis', () => {
+    const kamera = { ...eigeneKamera, mount: 'PL', adaptedMounts: ['E'] } as Camera;
+    expect(proposalCore({ kind: 'camera', camera: kamera }, 'https://x.example/ds.pdf').interfaces).toEqual([
+      { kind: 'lens-mount', standard: 'pl', role: 'provides' },
+      // Ohne diesen Hinweis plant jemand ein Objektiv an eine Kamera, an die
+      // es nur mit einem Adapter passt, den er nicht dabei hat.
+      { kind: 'lens-mount', standard: 'e', role: 'provides', note: 'nur mit Adapter' },
+    ]);
+  });
+
+  it('proposal core: eine Festbrennweite behauptet kein Zoomverhaeltnis', () => {
+    const prime = { ...eigeneOptik, focalLengthMin: 50, focalLengthMax: 50, type: 'prime' as const };
+    const core = proposalCore({ kind: 'lens', lens: prime }, 'https://x.example/ds.pdf');
+    expect((core.specs as Record<string, unknown>).zoomRatio).toBeUndefined();
   });
 
   it('rejects what the planner would not take from a project file either', () => {
@@ -246,7 +274,13 @@ describe('store against a mocked server', () => {
     expect(body.planner).toBe('multicam');
     expect(body.items[0]).toEqual(JSON.parse(JSON.stringify({
       localId: eigeneKamera.id,
-      core: { manufacturer: 'Sony', model: 'PXW-FX9 (eigene)', category: 'Camera', sourceUrl: fx9.manufacturerUrl, description: fx9.notes },
+      core: {
+        manufacturer: 'Sony', model: 'PXW-FX9 (eigene)', category: 'Camera',
+        sourceUrl: fx9.manufacturerUrl, description: fx9.notes,
+        // Die Anschluesse gehen in den Kern mit: ein Objektiv findet seine
+        // Kamera nur, wenn beide Seiten in derselben Sprache dastehen.
+        interfaces: proposalCore({ kind: 'camera', camera: eigeneKamera }, fx9.manufacturerUrl ?? '').interfaces,
+      },
       facet: cameraToFacet(eigeneKamera),
     })));
     // Die Optik ohne Datenblattlink blockiert schon lokal und geht nicht mit:

@@ -57,14 +57,65 @@ export function lensToFacet(lens: Lens): MulticamFacet {
 
 /** Der gemeinsame Kern eines Uploads. Der Datenblattlink ist Pflicht — ohne
  *  ihn blockiert der Server; er kommt aus `manufacturerUrl`. */
+/**
+ * Fachliche Eigenschaften und Schnittstellen fuer den KERN des Geraets.
+ *
+ * WARUM SIE NICHT IM FACET BLEIBEN. Das multicam-Facet traegt den nativen
+ * Katalogeintrag — gut fuer multicam, unlesbar fuer alle anderen. Brennweite
+ * und Mount sind aber keine multicam-Eigenschaft: der Kabelplaner will
+ * wissen, ob ein Objektiv an die Kamera passt, der Inventarplaner, was da
+ * im Koffer liegt. Deshalb gehen dieselben Angaben zusaetzlich in den Kern,
+ * in der Form, die alle Planner lesen (`shared/specs.ts` des Servers).
+ *
+ * Den ANTRIEB (Zoom-/Fokus-/Iris-Servo) traegt der Server selbst nach: er
+ * steht bei Fujinon und Canon in der Typenbezeichnung, und die
+ * Buchstabentabelle gehoert an EINE Stelle, nicht in jeden Planner.
+ */
+function kernEigenschaften(item: LibraryItem): Pick<ProposalCore, 'specs' | 'interfaces'> {
+  if (item.kind === 'lens') {
+    const l = item.lens;
+    return {
+      specs: ohneLeeres({
+        kind: 'lens' as const,
+        focalMinMm: l.focalLengthMin,
+        focalMaxMm: l.focalLengthMax,
+        apertureWide: l.maxApertureWide,
+        apertureTele: l.maxApertureTele,
+        // Bei einer Festbrennweite ist das Verhaeltnis 1 und sagt nichts;
+        // dann bleibt das Feld leer, statt eine 1 zu behaupten.
+        zoomRatio: l.focalLengthMax > l.focalLengthMin ? Math.round((l.focalLengthMax / l.focalLengthMin) * 10) / 10 : undefined,
+        extenderFactors: l.extenderFactors?.length ? l.extenderFactors : undefined,
+      }),
+      // Ein Objektiv BRAUCHT einen Anschluss, eine Kamera BIETET ihn — so
+      // findet der Planer heraus, was zusammenpasst.
+      interfaces: l.mount ? [{ kind: 'lens-mount' as const, standard: l.mount.toLowerCase(), role: 'requires' as const }] : [],
+    };
+  }
+  const c = item.camera;
+  const mounts = [c.mount, ...(c.adaptedMounts ?? [])].filter(Boolean);
+  return {
+    interfaces: mounts.map((m, i) => ({
+      kind: 'lens-mount' as const,
+      standard: String(m).toLowerCase(),
+      role: 'provides' as const,
+      // Ein adaptierter Anschluss ist kein nativer: das gehoert dazugesagt,
+      // sonst plant jemand ein B4-Objektiv an eine FZ-Kamera ohne Adapter.
+      ...(i > 0 ? { note: 'nur mit Adapter' } : {}),
+    })),
+  };
+}
+
 export function proposalCore(item: LibraryItem, sourceUrl: string): ProposalCore {
   const entry = item.kind === 'camera' ? item.camera : item.lens;
+  const { specs, interfaces } = kernEigenschaften(item);
   const core: ProposalCore = {
     manufacturer: entry.manufacturer.trim(),
     model: entry.model.trim(),
     category: item.kind === 'camera' ? 'Camera' : 'Lens',
     sourceUrl: sourceUrl.trim(),
     ...(entry.notes ? { description: entry.notes } : {}),
+    ...(specs ? { specs } : {}),
+    ...(interfaces?.length ? { interfaces } : {}),
   };
   // Ohne Link kein leeres Feld: der Server meldet dann `no-source`, und das
   // ist die Auskunft, die der Nutzer braucht.
