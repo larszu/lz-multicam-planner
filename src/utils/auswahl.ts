@@ -3,6 +3,7 @@
 // Rein: die Store-Aktionen und der 2D-Plan rufen nur hier hinein, damit
 // Auswahl, Kopieren und Hinsetzen ohne Oberflaeche pruefbar sind.
 import type { ReferencePerson, VenueCamera } from '../types';
+import { duplikatLabel } from './duplikatLabel';
 import { SITZFLAECHE_M } from './personGestalt';
 
 export interface Auswahl {
@@ -89,6 +90,8 @@ export interface EinfuegeKontext {
   /** Anzahl Kameras im Plan — fuer Name und Farbe der neuen. */
   kameraZahl: number;
   farben: readonly string[];
+  /** #269 — Namen der vorhandenen Objekte; Kopien bekommen die naechste freie Nummer. */
+  personLabels?: readonly string[];
 }
 
 /**
@@ -119,9 +122,13 @@ export function einfuegen(clip: Zwischenablage, k: EinfuegeKontext): { cameras: 
       ...(fokus ? { lockedPersonId: fokus } : {}),
     };
   });
+  const vergeben = [...(k.personLabels ?? [])];
   const persons = clip.persons.map((p) => {
     const stuhl = p.seatedOn ? neueId.get(p.seatedOn) : undefined;
-    const kopie: ReferencePerson = { ...p, id: neueId.get(p.id)!, x: x(p.x), y: y(p.y), locked: false };
+    // #269 — ohne Namensliste (alte Aufrufer) bleibt der Name wie bisher.
+    const label = k.personLabels ? duplikatLabel(p.label, vergeben) : p.label;
+    vergeben.push(label);
+    const kopie: ReferencePerson = { ...p, id: neueId.get(p.id)!, label, x: x(p.x), y: y(p.y), locked: false };
     if (stuhl) kopie.seatedOn = stuhl;
     else delete kopie.seatedOn;
     return kopie;
