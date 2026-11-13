@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { duplikatLabel } from '../utils/duplikatLabel';
 import type { VenueCamera, Venue, ViewTab, EditMode, EditGroup, ReferencePerson, BackgroundPlan, Stage, ProjectFile, VenueTemplate, StageObjectType, Lens, Wall, Camera, Shot, Shotlist, RigTake, PtzPreset } from '../types';
 import { EDIT_GROUPS } from '../types';
 import { presetFromCamera, nextPresetNumber } from '../utils/ptzPresets';
@@ -732,7 +733,7 @@ export const useStore = create<AppState>((set, get) => ({
       const dup: ReferencePerson = {
         ...src,
         id: personUid(),
-        label: `${src.label} copy`,
+        label: duplikatLabel(src.label, s.persons.map((p) => p.label)),
         x: Math.min(s.venue.widthM, src.x + 0.5),
         y: Math.min(s.venue.heightM, src.y + 0.5),
         locked: false,
@@ -828,6 +829,7 @@ export const useStore = create<AppState>((set, get) => ({
         tiefeM: s.venue.heightM,
         kameraZahl: s.cameras.length,
         farben: CAMERA_COLORS,
+        personLabels: s.persons.map((p) => p.label),
       });
       n = neu.cameras.length + neu.persons.length;
       return {
@@ -1786,6 +1788,6 @@ export const useStore = create<AppState>((set, get) => ({
 // Strg+Z, Schliessen — weg. Dieses Netz zaehlt fuer sie mit. Oeffnen und Neu
 // (`projectEpoch`) setzen die Version bewusst selbst und bleiben aussen vor.
 useStore.subscribe((s, prev) => {
-  if (s.projectEpoch !== prev.projectEpoch || s.projectVersion !== prev.projectVersion) return;
+  if (s.projectVersion !== prev.projectVersion || s.projectEpoch !== prev.projectEpoch) return;
   if (HISTORY_KEYS.some((k) => s[k] !== prev[k])) useStore.setState({ projectVersion: s.projectVersion + 1 });
 });
