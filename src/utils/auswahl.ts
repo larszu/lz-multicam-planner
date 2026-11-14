@@ -66,6 +66,12 @@ export function imRahmen(
 export interface Zwischenablage {
   cameras: VenueCamera[];
   persons: ReferencePerson[];
+  /**
+   * Namen der Personen und Objekte im Plan beim Kopieren, ergaenzt um jede
+   * eingefuegte Kopie — daraus vergibt `einfuegen` die naechste freie Nummer
+   * (#269: kopierte Stuehle trugen die Nummer des Originals).
+   */
+  namen?: Set<string>;
 }
 
 export function kopiere(a: Auswahl, cameras: VenueCamera[], persons: ReferencePerson[]): Zwischenablage {
@@ -73,7 +79,28 @@ export function kopiere(a: Auswahl, cameras: VenueCamera[], persons: ReferencePe
   return {
     cameras: cameras.filter((c) => a.cameraIds.includes(c.id)).map(klon),
     persons: persons.filter((p) => a.personIds.includes(p.id)).map(klon),
+    namen: new Set(persons.map((p) => p.label)),
   };
+}
+
+/**
+ * Naechster freier Name zu `name`: „Chair 3" wird zu „Chair n+1", wobei n die
+ * hoechste vergebene Nummer mit demselben Stamm ist. Ohne Nummer am Ende
+ * bekommt der Name eine (`Lectern` → `Lectern 2`). Der neue Name kommt in
+ * `vergeben`, damit mehrere Kopien hintereinander verschiedene Nummern tragen.
+ */
+export function naechsterName(name: string, vergeben: Set<string>): string {
+  const nummer = /^(.*?)\s*(\d+)$/;
+  const m = nummer.exec(name.trim());
+  const stamm = (m ? m[1] : name.trim()).trim();
+  let hoechste = m ? Number(m[2]) : 1;
+  for (const v of vergeben) {
+    const w = nummer.exec(v.trim());
+    if (w && w[1].trim() === stamm) hoechste = Math.max(hoechste, Number(w[2]));
+  }
+  const neu = `${stamm} ${hoechste + 1}`;
+  vergeben.add(neu);
+  return neu;
 }
 
 /** Versatz je Einfuegen; jedes weitere Einfuegen rueckt eine Stufe weiter. */
@@ -121,7 +148,8 @@ export function einfuegen(clip: Zwischenablage, k: EinfuegeKontext): { cameras: 
   });
   const persons = clip.persons.map((p) => {
     const stuhl = p.seatedOn ? neueId.get(p.seatedOn) : undefined;
-    const kopie: ReferencePerson = { ...p, id: neueId.get(p.id)!, x: x(p.x), y: y(p.y), locked: false };
+    const label = clip.namen ? naechsterName(p.label, clip.namen) : p.label;
+    const kopie: ReferencePerson = { ...p, id: neueId.get(p.id)!, label, x: x(p.x), y: y(p.y), locked: false };
     if (stuhl) kopie.seatedOn = stuhl;
     else delete kopie.seatedOn;
     return kopie;
