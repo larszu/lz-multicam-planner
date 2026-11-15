@@ -2,7 +2,7 @@
 // ohne Umweg ueber das Bearbeiten-Menue. Aus = gesperrt, man kann nicht
 // versehentlich die Buehne verschieben, waehrend man Kameras setzt.
 import type { ReactNode } from 'react';
-import { FiCamera, FiGrid, FiLock, FiMap, FiSquare, FiUser } from 'react-icons/fi';
+import { FiCamera, FiEye, FiEyeOff, FiGrid, FiLock, FiMap, FiSquare, FiUser } from 'react-icons/fi';
 import { useStore } from '../../store/useStore';
 import { useTranslation } from '../../i18n';
 import type { EditGroup } from '../../types';
@@ -11,6 +11,8 @@ export default function EditGroupsBar() {
   const { t } = useTranslation();
   const editGroups = useStore((s) => s.editGroups);
   const toggle = useStore((s) => s.toggleEditGroup);
+  const namenAn = useStore((s) => s.showObjectNames);
+  const namenUmschalten = useStore((s) => s.toggleShowObjectNames);
 
   const gruppen: { id: EditGroup; icon: ReactNode; label: string; title: string }[] = [
     { id: 'floorplan', icon: <FiMap size={13} />, label: t('venue.groups.floorplan', 'Floor plan'), title: t('venue.groups.floorplan.title', 'Floor plan and walls') },
@@ -46,6 +48,17 @@ export default function EditGroupsBar() {
           </button>
         );
       })}
+      {/* #269: Namen von Personen und Objekten im Plan ein-/ausblenden */}
+      <button
+        type="button"
+        aria-pressed={!namenAn}
+        onClick={namenUmschalten}
+        title={namenAn ? t('venue.names.hide', 'Hide names of persons and objects') : t('venue.names.show', 'Show names of persons and objects')}
+        className="flex min-h-8 items-center gap-1 rounded-bc-s px-2 text-xs font-medium text-bc-muted transition-colors hover:bg-bc-panel-raised hover:text-bc-text [@media(pointer:coarse)]:min-h-11"
+      >
+        {namenAn ? <FiEye size={13} /> : <FiEyeOff size={13} />}
+        <span className="hidden sm:inline">{t('venue.names', 'Names')}</span>
+      </button>
     </div>
   );
 }
