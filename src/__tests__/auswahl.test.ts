@@ -186,3 +186,53 @@ describe('Auswahl im Store', () => {
     expect(s().persons).toHaveLength(1);
   });
 });
+
+// #269 — Kopien bekommen die naechste freie Nummer, Mehrfachauswahl ausrichten.
+describe('naechsterName (#269)', () => {
+  it('zaehlt ueber die hoechste Nummer mit demselben Vorsatz hinaus', async () => {
+    const { naechsterName } = await import('../utils/auswahl');
+    expect(naechsterName('Chair 1', ['Chair 1', 'Chair 2', 'Table 7'])).toBe('Chair 3');
+    expect(naechsterName('Chair 2', ['Chair 2'])).toBe('Chair 3');
+    expect(naechsterName('Bühne', ['Bühne'])).toBe('Bühne 2');
+    expect(naechsterName('A (x) 1', ['A (x) 1', 'A (x) 4'])).toBe('A (x) 5');
+  });
+
+  it('Einfuegen vergibt fortlaufende Nummern, nicht die des Originals', () => {
+    const clip = { cameras: [], persons: [person('a', 1, 1, { label: 'Chair 1', objectType: 'chair' }), person('b', 2, 1, { label: 'Chair 2', objectType: 'chair' })] };
+    let n = 0;
+    const neu = einfuegen(clip, { camId: () => 'c', personId: () => `p${n++}`, stufe: 1, breiteM: 20, tiefeM: 20, kameraZahl: 0, farben: ['#fff'], vorhandeneNamen: ['Chair 1', 'Chair 2'] });
+    expect(neu.persons.map((p) => p.label)).toEqual(['Chair 3', 'Chair 4']);
+  });
+
+  it('Duplizieren im Store nummeriert weiter', async () => {
+    const { useStore, stop } = await frisch();
+    useStore.getState().addStageObject('chair', 1, 1);
+    const quelle = useStore.getState().persons[0];
+    useStore.getState().duplicatePerson(quelle.id);
+    const namen = useStore.getState().persons.map((p) => p.label);
+    expect(namen[1]).not.toBe(namen[0]);
+    expect(namen).toEqual(['Chair 1', 'Chair 2']);
+    stop();
+  });
+});
+
+describe('ausrichten (#269)', () => {
+  it('Kante, Mitte und Verteilen', async () => {
+    const { ausrichten } = await import('../utils/auswahl');
+    const o = [{ id: 'a', x: 1, y: 1 }, { id: 'b', x: 3, y: 2 }, { id: 'c', x: 9, y: 5 }];
+    expect(ausrichten(o, 'links')).toEqual({ b: { x: 1, y: 2 }, c: { x: 1, y: 5 } });
+    expect(ausrichten(o, 'mitteV')).toEqual({ a: { x: 1, y: 3 }, b: { x: 3, y: 3 }, c: { x: 9, y: 3 } });
+    expect(ausrichten(o, 'verteilenH')).toEqual({ b: { x: 5, y: 2 } });
+    expect(ausrichten([o[0]], 'links')).toEqual({});
+  });
+
+  it('Store richtet nur ungesperrte markierte Objekte aus', async () => {
+    const { useStore, stop } = await frisch();
+    useStore.setState({ persons: [person('a', 1, 1), person('b', 4, 3), person('c', 6, 8, { locked: true })] });
+    useStore.getState().setAuswahl({ cameraIds: [], personIds: ['a', 'b', 'c'] });
+    useStore.getState().auswahlAusrichten('oben');
+    const p = useStore.getState().persons;
+    expect(p.map((q) => q.y)).toEqual([1, 1, 8]);
+    stop();
+  });
+});
