@@ -89,6 +89,63 @@ export interface EinfuegeKontext {
   /** Anzahl Kameras im Plan — fuer Name und Farbe der neuen. */
   kameraZahl: number;
   farben: readonly string[];
+  /** Namen der Objekte, die schon im Plan stehen — die Kopie bekommt die naechste freie Nummer (#269). */
+  vorhandeneNamen?: readonly string[];
+}
+
+/**
+ * Name fuer die Kopie eines Objekts (#269): „Chair 3" wird zu „Chair n+1",
+ * wobei n die hoechste Nummer mit demselben Vorsatz im Plan ist. Ein Name
+ * ohne Nummer am Ende bekommt „ 2", „ 3" … angehaengt.
+ */
+export function naechsterName(label: string, vorhandene: readonly string[]): string {
+  const m = /^(.*?)\s*(\d+)$/.exec(label.trim());
+  const vorsatz = (m ? m[1] : label.trim()).trim();
+  const muster = new RegExp(`^${vorsatz.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*(\\d+)$`);
+  let hoechste = m ? Number(m[2]) : 1;
+  for (const n of vorhandene) {
+    const t = muster.exec(n.trim());
+    if (t) hoechste = Math.max(hoechste, Number(t[1]));
+  }
+  return vorsatz ? `${vorsatz} ${hoechste + 1}` : String(hoechste + 1);
+}
+
+export type AusrichtArt = 'links' | 'mitteH' | 'rechts' | 'oben' | 'mitteV' | 'unten' | 'verteilenH' | 'verteilenV';
+
+/**
+ * Neue Positionen fuer mehrere markierte Objekte (#269): an einer Kante oder
+ * der Mitte ausrichten, oder gleichmaessig zwischen den aeussersten verteilen.
+ * Zurueck kommen nur die Ids, deren Lage sich aendert.
+ */
+export function ausrichten<T extends { id: string; x: number; y: number }>(
+  objekte: readonly T[],
+  art: AusrichtArt,
+): Record<string, { x: number; y: number }> {
+  const out: Record<string, { x: number; y: number }> = {};
+  if (objekte.length < 2) return out;
+  const xs = objekte.map((o) => o.x);
+  const ys = objekte.map((o) => o.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const setze = (o: T, x: number, y: number) => {
+    if (Math.abs(x - o.x) > 1e-9 || Math.abs(y - o.y) > 1e-9) out[o.id] = { x, y };
+  };
+  if (art === 'verteilenH' || art === 'verteilenV') {
+    const h = art === 'verteilenH';
+    const sortiert = [...objekte].sort((a, b) => (h ? a.x - b.x : a.y - b.y));
+    const start = h ? minX : minY;
+    const schritt = ((h ? maxX : maxY) - start) / (sortiert.length - 1);
+    sortiert.forEach((o, i) => setze(o, h ? start + i * schritt : o.x, h ? o.y : start + i * schritt));
+    return out;
+  }
+  for (const o of objekte) {
+    if (art === 'links') setze(o, minX, o.y);
+    else if (art === 'rechts') setze(o, maxX, o.y);
+    else if (art === 'mitteH') setze(o, (minX + maxX) / 2, o.y);
+    else if (art === 'oben') setze(o, o.x, minY);
+    else if (art === 'unten') setze(o, o.x, maxY);
+    else setze(o, o.x, (minY + maxY) / 2);
+  }
+  return out;
 }
 
 /**
@@ -119,9 +176,12 @@ export function einfuegen(clip: Zwischenablage, k: EinfuegeKontext): { cameras: 
       ...(fokus ? { lockedPersonId: fokus } : {}),
     };
   });
+  const vergeben = [...(k.vorhandeneNamen ?? [])];
   const persons = clip.persons.map((p) => {
     const stuhl = p.seatedOn ? neueId.get(p.seatedOn) : undefined;
-    const kopie: ReferencePerson = { ...p, id: neueId.get(p.id)!, x: x(p.x), y: y(p.y), locked: false };
+    const label = naechsterName(p.label, vergeben);
+    vergeben.push(label);
+    const kopie: ReferencePerson = { ...p, id: neueId.get(p.id)!, label, x: x(p.x), y: y(p.y), locked: false };
     if (stuhl) kopie.seatedOn = stuhl;
     else delete kopie.seatedOn;
     return kopie;
