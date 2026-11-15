@@ -35,7 +35,7 @@ import { usePlanLaden } from '../../lib/usePlanLaden';
 import { teilplanAnlegen } from '../../lib/teilplanAnlegen';
 import EditGroupsBar from './EditGroupsBar';
 import RaumOverlay, { type RaumAuswahl } from './RaumOverlay';
-import { auswahlGroesse, imRahmen, istAusgewaehlt, leereAuswahl, rahmenAus, STUHL_BLICK_DEG, vereinige, type AuswahlArt } from '../../utils/auswahl';
+import { auswahlGroesse, imRahmen, istAusgewaehlt, leereAuswahl, rahmenAus, STUHL_BLICK_DEG, vereinige, type AuswahlArt, type AusrichtArt } from '../../utils/auswahl';
 
 // Shared style for context-menu items (issue #38).
 const ctxItemStyle: React.CSSProperties = {
@@ -116,6 +116,8 @@ export default function Venue2D() {
   const setPlanVorschau = useStore((s) => s.setPlanVorschau);
   const planBereichModus = useStore((s) => s.planBereichModus);
   const setPlanBereichModus = useStore((s) => s.setPlanBereichModus);
+  const showObjectNames = useStore((s) => s.showObjectNames);
+  const auswahlAusrichten = useStore((s) => s.auswahlAusrichten);
   const planAusrichten = useStore((s) => s.planAusrichten);
   const setPlanAusrichten = useStore((s) => s.setPlanAusrichten);
   const publikumZeichnen = useStore((s) => s.publikumZeichnen);
@@ -1223,12 +1225,12 @@ export default function Venue2D() {
               ) : (
                 <Circle radius={Math.max(5, footW / 3)} fill={col} stroke="#fff" strokeWidth={1} opacity={0.85} />
               )}
-              <Text x={-26} y={8} text={`${p.locked ? '🔒 ' : ''}${p.label} (${p.height}m)`} fontSize={9} fill={col} align="center" width={52} />
+              {showObjectNames && <Text x={-26} y={8} text={`${p.locked ? '🔒 ' : ''}${p.label} (${p.height}m)`} fontSize={9} fill={col} align="center" width={52} />}
             </Group>
           );
         })}
 
-        {/* Rig in der Draufsicht: Standflaeche, Schiene mit Sektionsstoeßen,
+        {/* Rig in der Draufsicht: Standflaeche, Schiene mit Sektionsstoßen,
             Ausleger und Fahrweg — aus den echten Maßen des gewaehlten Rigs
             (utils/rigGeometry). Vor der Kamera-Marke gezeichnet, damit die
             Marke oben liegt. */}
@@ -1434,7 +1436,7 @@ export default function Venue2D() {
         style={{
           position: 'absolute',
           left: Math.min(menu.x, containerSize.w - 170),
-          top: Math.min(menu.y, containerSize.h - 110),
+          top: Math.max(0, Math.min(menu.y, containerSize.h - (auswahlGroesse(auswahl) >= 2 ? 340 : 110))),
           zIndex: 50,
           minWidth: 150,
           padding: 4,
@@ -1450,6 +1452,26 @@ export default function Venue2D() {
             <button type="button" onClick={() => handleMenuAction('lock')} style={ctxItemStyle} className="hover:bg-bc-hover">
               {menu.locked ? <FiUnlock size={13} /> : <FiLock size={13} />} {menu.locked ? t('venue.unlockPosition', 'Unlock position') : t('venue.lockPosition', 'Lock position')}
             </button>
+            <div className="border-t border-bc-border" style={{ margin: '4px 6px' }} />
+          </>
+        )}
+        {/* #269: mehrere markierte Objekte ausrichten und verteilen */}
+        {menu.kind !== 'wall' && auswahlGroesse(auswahl) >= 2 && (
+          <>
+            {([
+              ['links', t('venue.align.left', 'Align left')],
+              ['mitteH', t('venue.align.centerH', 'Center horizontally')],
+              ['rechts', t('venue.align.right', 'Align right')],
+              ['oben', t('venue.align.top', 'Align top')],
+              ['mitteV', t('venue.align.centerV', 'Center vertically')],
+              ['unten', t('venue.align.bottom', 'Align bottom')],
+              ['verteilenH', t('venue.align.distributeH', 'Distribute horizontally')],
+              ['verteilenV', t('venue.align.distributeV', 'Distribute vertically')],
+            ] as [AusrichtArt, string][]).map(([art, text]) => (
+              <button key={art} type="button" onClick={() => { auswahlAusrichten(art); setMenu(null); }} style={ctxItemStyle} className="hover:bg-bc-hover">
+                {text}
+              </button>
+            ))}
             <div className="border-t border-bc-border" style={{ margin: '4px 6px' }} />
           </>
         )}
