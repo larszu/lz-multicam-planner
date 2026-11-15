@@ -24,6 +24,17 @@
 export const venue: Record<string, string> = {
   // Venue2D-Kontextmenü
   'venue.duplicate': 'Duplizieren',
+  'venue.names': 'Namen',
+  'venue.names.hide': 'Namen von Personen und Objekten ausblenden',
+  'venue.names.show': 'Namen von Personen und Objekten einblenden',
+  'venue.align.left': 'Links ausrichten',
+  'venue.align.centerH': 'Horizontal zentrieren',
+  'venue.align.right': 'Rechts ausrichten',
+  'venue.align.top': 'Oben ausrichten',
+  'venue.align.centerV': 'Vertikal zentrieren',
+  'venue.align.bottom': 'Unten ausrichten',
+  'venue.align.distributeH': 'Horizontal verteilen',
+  'venue.align.distributeV': 'Vertikal verteilen',
   'venue.groups': 'Im Plan bearbeitbar',
   'venue.groups.floorplan': 'Grundriss',
   'venue.groups.floorplan.title': 'Grundriss und Wände',
