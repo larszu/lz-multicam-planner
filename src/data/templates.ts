@@ -137,8 +137,8 @@ export const TEMPLATES: VenueTemplate[] = [
       videoWalls: [{ id: 'tvw-11', label: 'Screen', x: 6, y: 0.3, widthM: 3.2, heightM: 1.8, bottomM: 1.1 }],
     },
     cameras: [
-      { label: 'CAM 1', cameraId: 'pana-aw-ue40', lensId: 'ptz-pana-ue40', x: 6, y: 9, z: 2.5, pan: -90, tilt: 0, focalLength: 8, aperture: 2.8, focusDistance: 8, color: '#ef4444', extenderActive: 1 },
-      { label: 'CAM 2', cameraId: 'pana-aw-ue40', lensId: 'ptz-pana-ue40', x: 2, y: 7, z: 2.5, pan: -60, tilt: 0, focalLength: 20, aperture: 2.8, focusDistance: 7, color: '#3b82f6', extenderActive: 1 },
+      { label: 'CAM 1', cameraId: 'panasonic-aw-ue40', lensId: 'ptz-pana-ue40', x: 6, y: 9, z: 2.5, pan: -90, tilt: 0, focalLength: 8, aperture: 2.8, focusDistance: 8, color: '#ef4444', extenderActive: 1 },
+      { label: 'CAM 2', cameraId: 'panasonic-aw-ue40', lensId: 'ptz-pana-ue40', x: 2, y: 7, z: 2.5, pan: -60, tilt: 0, focalLength: 20, aperture: 2.8, focusDistance: 7, color: '#3b82f6', extenderActive: 1 },
     ],
   },
 ];
