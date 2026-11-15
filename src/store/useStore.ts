@@ -44,7 +44,7 @@ import { zielFolgen } from '../utils/kameraZiel';
 import { mitFixierung, type Ansicht3D, type Ansicht3DModus } from '../utils/ansicht3d';
 import type { PositionUebernahme } from '../utils/kameraPositionen';
 import { rigLimits } from '../utils/rigLimits';
-import { ablegen, aufstehen, bereinigt, einfuegen as kopieEinfuegen, freierStuhl, hinsetzen, istAusgewaehlt, kopiere, leereAuswahl, sitzendeFolgen, umschalten, type Auswahl, type AuswahlArt, type Zwischenablage } from '../utils/auswahl';
+import { ablegen, aufstehen, ausrichten, bereinigt, einfuegen as kopieEinfuegen, freierStuhl, hinsetzen, istAusgewaehlt, kopiere, leereAuswahl, naechsterName, sitzendeFolgen, umschalten, type Auswahl, type AuswahlArt, type AusrichtArt, type Zwischenablage } from '../utils/auswahl';
 
 // Injected by Vite from package.json. In a release build that came through
 // the GitHub Actions workflow this matches the git release tag exactly,
@@ -189,6 +189,8 @@ interface AppState {
   positionenSetzen: (cams: Record<string, { x: number; y: number }>, persons: Record<string, { x: number; y: number }>) => void;
   auswahlKopieren: () => number;
   einfuegen: () => number;
+  /** Markierte, nicht gesperrte Objekte ausrichten oder verteilen (#269) — ein Schritt. */
+  auswahlAusrichten: (art: AusrichtArt) => void;
 
   // Custom lenses
   customLenses: Lens[];
@@ -280,6 +282,9 @@ interface AppState {
   setActiveTab: (tab: ViewTab) => void;
   showAllFov: boolean;
   toggleShowAllFov: () => void;
+  /** Namen von Personen und Objekten im 2D-Plan zeigen (#269). */
+  showObjectNames: boolean;
+  toggleShowObjectNames: () => void;
   /**
    * Das Schaerfeband im Grundriss (#141).
    *
@@ -732,7 +737,7 @@ export const useStore = create<AppState>((set, get) => ({
       const dup: ReferencePerson = {
         ...src,
         id: personUid(),
-        label: `${src.label} copy`,
+        label: naechsterName(src.label, s.persons.map((p) => p.label)),
         x: Math.min(s.venue.widthM, src.x + 0.5),
         y: Math.min(s.venue.heightM, src.y + 0.5),
         locked: false,
@@ -802,6 +807,20 @@ export const useStore = create<AppState>((set, get) => ({
       };
     }),
 
+  auswahlAusrichten: (art) => {
+    const s = get();
+    const a = bereinigt(s.auswahl, s.cameras, s.persons);
+    const objekte = [
+      ...s.cameras.filter((c) => a.cameraIds.includes(c.id) && !c.locked).map((c) => ({ id: c.id, x: c.x, y: c.y, art: 'camera' as const })),
+      ...s.persons.filter((p) => a.personIds.includes(p.id) && !p.locked).map((p) => ({ id: p.id, x: p.x, y: p.y, art: 'person' as const })),
+    ];
+    const neu = ausrichten(objekte, art);
+    const cams: Record<string, { x: number; y: number }> = {};
+    const ps: Record<string, { x: number; y: number }> = {};
+    for (const o of objekte) if (neu[o.id]) (o.art === 'camera' ? cams : ps)[o.id] = neu[o.id];
+    if (Object.keys(cams).length + Object.keys(ps).length > 0) s.positionenSetzen(cams, ps);
+  },
+
   auswahlKopieren: () => {
     const s = get();
     const clip = kopiere(bereinigt(s.auswahl, s.cameras, s.persons), s.cameras, s.persons);
@@ -828,6 +847,7 @@ export const useStore = create<AppState>((set, get) => ({
         tiefeM: s.venue.heightM,
         kameraZahl: s.cameras.length,
         farben: CAMERA_COLORS,
+        vorhandeneNamen: s.persons.map((p) => p.label),
       });
       n = neu.cameras.length + neu.persons.length;
       return {
@@ -1350,6 +1370,8 @@ export const useStore = create<AppState>((set, get) => ({
   setEditMode: (mode) => set({ editGroups: mode === 'all' ? [...EDIT_GROUPS] : [mode] }),
   showAllFov: true,
   toggleShowAllFov: () => set((s) => ({ showAllFov: !s.showAllFov })),
+  showObjectNames: true,
+  toggleShowObjectNames: () => set((s) => ({ showObjectNames: !s.showObjectNames })),
   showDof: false,
   toggleShowDof: () => set((s) => ({ showDof: !s.showDof })),
   coverageMode: 'off',
@@ -1719,7 +1741,7 @@ export const useStore = create<AppState>((set, get) => ({
     nextId = Math.max(nextId, maxIdSuffix(r.walls.map((w) => w.id)) + 1);
     personId = Math.max(personId, maxIdSuffix(r.persons.map((p) => p.id)) + 1);
     stageId = Math.max(stageId, maxIdSuffix((r.venue.stages ?? []).map((st) => st.id)) + 1);
-    // #198 — der Austausch kennt nur absolute Hoehen; Wände auf der
+    // #198 — der Austausch kennt nur absolute Hoehen; Waende auf der
     // Standardhoehe des Projekts folgen ihr danach weiter.
     const standard = defaultWallHeight(get().venue);
     const importWalls = migrateWallHeights(r.walls, standard).walls;
